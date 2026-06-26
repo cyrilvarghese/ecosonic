@@ -15,6 +15,13 @@
   --c-fire: oklch(0.80 0.11 45);
   --c-ether: oklch(0.78 0.10 305);
 
+  /* Readable text variants — darker for contrast on the light background (esp. Air). */
+  --ink-earth: oklch(0.48 0.11 140);
+  --ink-water: oklch(0.50 0.12 240);
+  --ink-air: oklch(0.52 0.10 250);
+  --ink-fire: oklch(0.52 0.16 45);
+  --ink-ether: oklch(0.50 0.15 305);
+
   /* Semantic */
   --background: var(--n-50);
   --foreground: var(--n-800);
@@ -35,6 +42,7 @@
   --border: var(--n-200);
   --input: var(--n-200);
   --ring: var(--accent);
+  --accent-ink: var(--ink-ether);
   --radius: 1rem;
 
   /* Effects */
@@ -43,11 +51,11 @@
     oklch(0.90 0.05 300), oklch(0.92 0.04 240), oklch(0.92 0.04 20), oklch(0.93 0.04 160));
 }
 
-[data-element="earth"] { --accent: var(--c-earth); --ring: var(--c-earth); }
-[data-element="water"] { --accent: var(--c-water); --ring: var(--c-water); }
-[data-element="air"]   { --accent: var(--c-air);   --ring: var(--c-air); }
-[data-element="fire"]  { --accent: var(--c-fire);  --ring: var(--c-fire); }
-[data-element="ether"] { --accent: var(--c-ether); --ring: var(--c-ether); }
+[data-element="earth"] { --accent: var(--c-earth); --ring: var(--c-earth); --accent-ink: var(--ink-earth); }
+[data-element="water"] { --accent: var(--c-water); --ring: var(--c-water); --accent-ink: var(--ink-water); }
+[data-element="air"]   { --accent: var(--c-air);   --ring: var(--c-air);   --accent-ink: var(--ink-air); }
+[data-element="fire"]  { --accent: var(--c-fire);  --ring: var(--c-fire);  --accent-ink: var(--ink-fire); }
+[data-element="ether"] { --accent: var(--c-ether); --ring: var(--c-ether); --accent-ink: var(--ink-ether); }
 
 @theme inline {
   --color-background: var(--background);
