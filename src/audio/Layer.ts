@@ -20,6 +20,7 @@ export class Layer {
 
   private ctx: AudioContext;
   private gain: GainNode;
+  private analyser: AnalyserNode;
   private url: string;
   private minDb: number;
 
@@ -46,6 +47,26 @@ export class Layer {
     this.gain = ctx.createGain();
     this.gain.gain.value = 0; // silent until started
     this.gain.connect(master);
+    // Passive per-lane tap for visualization (no onward connection, does not affect audio).
+    this.analyser = ctx.createAnalyser();
+    this.analyser.fftSize = 1024;
+    this.gain.connect(this.analyser);
+  }
+
+  /** Passive analyser tapping this layer's output, for per-lane visualization. */
+  getAnalyser(): AnalyserNode { return this.analyser; }
+
+  /** Current loop position and loop duration (seconds), or null if not yet known. */
+  getProgress(): { position: number; duration: number } | null {
+    if (this.kind === 'buffer') {
+      if (!this.buffer) return null;
+      const duration = this.buffer.duration;
+      const base = this.started ? this.offset + (this.ctx.currentTime - this.startedAt) : this.offset;
+      return { position: ((base % duration) + duration) % duration, duration };
+    }
+    const el = this.audioEl;
+    if (!el || !Number.isFinite(el.duration) || el.duration <= 0) return null;
+    return { position: el.currentTime % el.duration, duration: el.duration };
   }
 
   async load(): Promise<void> {
@@ -94,6 +115,7 @@ export class Layer {
     try { this.bufferSource?.stop(); } catch { /* already stopped */ }
     this.bufferSource?.disconnect();
     this.mediaNode?.disconnect();
+    this.analyser.disconnect();
     this.gain.disconnect();
     if (this.audioEl) { this.audioEl.pause(); this.audioEl.src = ''; }
   }

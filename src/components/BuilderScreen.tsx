@@ -2,6 +2,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
+import { EngineProvider } from '@/audio/EngineContext';
 import { ElementChooser } from '@/components/ElementChooser';
 import { TrackLane } from '@/components/TrackLane';
 import { TransportBar } from '@/components/TransportBar';
@@ -16,6 +17,7 @@ export function BuilderScreen() {
   if (!element) return <ElementChooser />;
 
   return (
+    <EngineProvider value={engine}>
     <div data-element={element.toLowerCase()} className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
@@ -34,5 +36,6 @@ export function BuilderScreen() {
 
       <TransportBar getAnalyser={() => engine.getAnalyser()} />
     </div>
+    </EngineProvider>
   );
 }

@@ -4,7 +4,7 @@ import { useSession } from '@/session/appStore';
 import { config } from '@/config';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { WaveformStrip } from '@/components/WaveformStrip';
+import { LaneVisualizer } from '@/components/LaneVisualizer';
 
 const { minDb, maxDb } = config.audio.volume;
 
@@ -26,7 +26,7 @@ export function TrackLane({ trackId }: { trackId: string }) {
         <div className="truncate text-sm text-foreground">{sample.name}</div>
       </div>
 
-      <WaveformStrip seed={sample.path} />
+      <LaneVisualizer trackId={trackId} />
 
       <Button variant="ghost" size="icon" aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}
         onClick={() => toggleTrackPlaying(trackId)}>

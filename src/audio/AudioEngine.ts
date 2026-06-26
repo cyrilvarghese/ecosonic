@@ -28,6 +28,14 @@ export class AudioEngine {
 
   getAnalyser(): AnalyserNode | null { return this.analyser; }
 
+  /** Per-lane analyser for visualization, or null if the track isn't loaded. */
+  getLayerAnalyser(id: string): AnalyserNode | null { return this.layers.get(id)?.getAnalyser() ?? null; }
+
+  /** Per-lane loop position/duration, or null if unknown. */
+  getLayerProgress(id: string): { position: number; duration: number } | null {
+    return this.layers.get(id)?.getProgress() ?? null;
+  }
+
   setMasterVolume(db: number) { this.masterDb = db; this.applyMaster(); }
 
   async setTracks(specs: TrackAudioSpec[]): Promise<void> {
