@@ -19,7 +19,7 @@ export function BuilderScreen() {
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <p className="label">Layer One — Sound Ecosystem Builder</p>
-          <h1 className="text-lg" style={{ color: 'var(--accent)' }}>{element}</h1>
+          <h1 className="text-lg text-glow" style={{ color: 'var(--accent)' }}>{element}</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={backToChooser}>Change element</Button>

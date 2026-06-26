@@ -20,7 +20,7 @@ export function TrackLane({ trackId }: { trackId: string }) {
   const { label, sample, volumeDb, muted, playing, locked } = track;
 
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 backdrop-blur">
+    <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 backdrop-blur transition-calm hover:bg-card/90">
       <div className="w-32 shrink-0">
         <div className="label">{label}</div>
         <div className="truncate text-sm text-foreground">{sample.name}</div>

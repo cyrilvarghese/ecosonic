@@ -18,7 +18,7 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
   return (
     <div className="sticky bottom-0 flex items-center gap-6 border-t border-border bg-card px-6 py-4 backdrop-blur">
       <Button size="lg" aria-label="Play all" onClick={toggleGlobalPlaying}
-        className="rounded-full" style={{ background: 'var(--accent)' }}>
+        className={`rounded-full transition-calm ${globalPlaying ? 'glow-accent' : ''}`} style={{ background: 'var(--accent)' }}>
         {globalPlaying ? <Pause size={20} /> : <Play size={20} />}
         <span className="ml-2">{globalPlaying ? 'Pause' : 'Play all'}</span>
       </Button>

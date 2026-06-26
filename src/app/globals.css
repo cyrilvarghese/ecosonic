@@ -87,3 +87,12 @@ body {
   color: var(--muted-foreground);
   font-size: 0.72rem;
 }
+
+:root {
+  --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 400ms;
+}
+
+.transition-calm { transition: all var(--dur) var(--ease-calm); }
+.glow-accent { box-shadow: 0 0 40px -8px var(--accent); }
+.text-glow { text-shadow: 0 0 24px var(--accent); }
