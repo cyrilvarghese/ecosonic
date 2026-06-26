@@ -28,6 +28,7 @@ export class Layer {
   private bufferSource: AudioBufferSourceNode | null = null;
   private audioEl: PitchedAudio | null = null;
   private mediaNode: MediaElementAudioSourceNode | null = null;
+  private objectUrl: string | null = null;
 
   private targetGain: number;
   private startedAt = 0;
@@ -75,7 +76,15 @@ export class Layer {
       const arr = await res.arrayBuffer();
       this.buffer = await this.ctx.decodeAudioData(arr);
     } else {
-      const el = new Audio(this.url) as PitchedAudio;
+      // Download the whole file once into an in-memory Blob and play from an object
+      // URL. This releases the HTTP connection after the fetch, so many large loops
+      // can play at once without hitting the browser's per-origin connection limit
+      // (which stalled streamed <audio> elements beyond the ~6th). Memory stays ~1x
+      // the file size (vs ~2x for decoded PCM).
+      const res = await fetch(this.url);
+      const blob = await res.blob();
+      this.objectUrl = URL.createObjectURL(blob);
+      const el = new Audio(this.objectUrl) as PitchedAudio;
       el.loop = true;
       el.preload = 'auto';
       el.preservesPitch = false;
@@ -118,6 +127,7 @@ export class Layer {
     this.analyser.disconnect();
     this.gain.disconnect();
     if (this.audioEl) { this.audioEl.pause(); this.audioEl.src = ''; }
+    if (this.objectUrl) { URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; }
   }
 
   private buildBufferSource(): AudioBufferSourceNode {
