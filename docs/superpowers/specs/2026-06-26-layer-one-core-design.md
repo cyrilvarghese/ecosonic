@@ -70,6 +70,7 @@ that a future **Layer Two** will arrange into a timed 30-minute meditation journ
 | Element pick | **User always picks** first | Per Layer One spec |
 | ARP & ELEMENT/SUB | **Ignored by builder** | Follow PDF selection categories strictly |
 | Audio engine | **Hybrid:** decode small files, stream large | Avoids RAM blow-up from 150 MB+ WAVs while keeping tones gapless |
+| Tunable constants | **Externalized to `config/ecosonic.config.json`** | Volume range, hybrid threshold, selection counts, tuning presets, ramp/motion timings — config-driven, no magic numbers in code |
 
 ---
 
@@ -110,6 +111,9 @@ exists. Each picked sample becomes one track, ordered as below:
 | MELODY | 1 | `MELODY` |
 | FX | 1–2 | `FX (A/B)` |
 
+> Counts (per-category `min`/`max`) are read from `config.selection` — the recipe is tunable
+> without code changes.
+
 - **Change (per track):** new random pick within the *same* category (prefer different from
   current). Disabled if the track is **locked**. Structure unchanged, only sonic content.
 - **Regenerate (global):** re-roll every **unlocked** track's sample (counts/structure fixed).
@@ -122,6 +126,8 @@ exists. Each picked sample becomes one track, ordered as below:
 ```
 ecosonic/
 ├─ ECOSONIC FILES/                 # existing library, untouched (streamed, not copied)
+├─ config/
+│  └─ ecosonic.config.json         # tunable constants (config-driven)
 ├─ scripts/
 │  └─ build-manifest.mjs           # scans library → manifest.json (filters cruft)
 ├─ app/
@@ -138,6 +144,7 @@ ecosonic/
 │  │  ├─ buildSelection.ts         # element → tracks (respects Lock)
 │  │  └─ sessionStore.ts           # Zustand: Project state + actions
 │  ├─ samples.ts                   # resolveSampleUrl() — Electron swap point
+│  ├─ config.ts                    # typed, zod-validated loader for ecosonic.config.json
 │  ├─ manifest.json                # generated
 │  └─ components/
 │     ├─ ElementChooser.tsx  ElementGlyph.tsx
@@ -190,11 +197,12 @@ autoplay policy. Per-track graph:
 source ──→ trackGain ──→ masterGain ──→ masterAnalyser ──→ destination
                                               └─ (drives Visualizer)
 ```
-- **Source choice (hybrid):** if `bytes < ~8 MB` → fetch + `decodeAudioData` → looping
+- **Source choice (hybrid):** if `bytes < config.audio.hybridThresholdBytes` → fetch + `decodeAudioData` → looping
   `AudioBufferSourceNode` (gapless, for tones/short loops). Else → `<audio loop>` +
   `MediaElementAudioSourceNode` (streamed, low memory). Both behind one `Layer` interface.
-- **Volume (dB → gain):** `gain = db <= -60 ? 0 : 10 ** (db / 20)`. UI range −60…0 dB,
-  per-track default −6 dB, master default 0 dB. Track volume is the **ceiling** for Layer Two.
+- **Volume (dB → gain):** `gain = db <= minDb ? 0 : 10 ** (db / 20)`. Range and defaults come
+  from `config.audio.volume` (`minDb`/`maxDb`, `defaultTrackDb`/`defaultMasterDb`, ramp times).
+  Track volume is the **ceiling** for Layer Two.
 - **Mute:** ramp `trackGain` to 0 (short ramp), **source keeps running** so the loop stays
   phase-locked; unmute ramps back to the track's level. Mute never stops the source.
 - **Per-track Play/Pause:** pause stops/pauses that track; resume restarts a buffer source at
@@ -205,12 +213,53 @@ source ──→ trackGain ──→ masterGain ──→ masterAnalyser ──�
   `pause()` every media element and resume must `play()` them around the context toggle.
 - **Change / Regenerate:** swap a track's sample → rebuild that track's source node, preserving
   its volume/mute/lock. Locked tracks are skipped.
-- **Tuning (model only in Build 1):** when implemented, set `playbackRate = tuningHz/440` on
-  buffer sources and `<audio>` (`preservesPitch = false`). Resampling shifts pitch and nudges
+- **Tuning (model only in Build 1):** when implemented, set
+  `playbackRate = tuningHz / config.audio.tuning.baseHz` on buffer sources and `<audio>`
+  (`preservesPitch = false`). Resampling shifts pitch and nudges
   speed <2% — imperceptible for ambient loops, and works in both engine modes.
 
 The engine is an imperative class living **outside** React render; React components call its
 methods and read `sessionStore` for display.
+
+### 6.5 Configuration (config-driven constants)
+All tunable behavioral values live in **`config/ecosonic.config.json`** — **no magic numbers in
+code**. `src/config.ts` imports it, validates it against a **zod** schema (fails loudly at
+startup on bad config), and exports a typed `config` object consumed by the engine, builder,
+and UI. The loader is the single swap point: today it imports a static JSON; later it can fetch
+a remote/per-deployment config or merge user-settings overrides **without touching consumers**.
+
+```jsonc
+{
+  "audio": {
+    "hybridThresholdBytes": 8388608,         // decode below, stream above (~8 MB)
+    "volume": {
+      "minDb": -60, "maxDb": 0,
+      "defaultTrackDb": -6, "defaultMasterDb": 0,
+      "muteRampMs": 80, "changeRampMs": 200
+    },
+    "tuning": {                              // engine reads now; UI in Build 2
+      "baseHz": 440, "defaultHz": 440,
+      "presetsHz": [432.0, 432.69, 440.0, 444.0]
+    }
+  },
+  "selection": {                            // per-category track counts (the recipe)
+    "ISO":     { "min": 1, "max": 1 },
+    "PLANET":  { "min": 2, "max": 2 },
+    "NOISE":   { "min": 1, "max": 1 },
+    "ELEMENT": { "min": 2, "max": 3 },
+    "BASS":    { "min": 1, "max": 1 },
+    "PAD":     { "min": 1, "max": 1 },
+    "MELODY":  { "min": 1, "max": 1 },
+    "FX":      { "min": 1, "max": 2 }
+  },
+  "motion": { "durFastMs": 200, "durMs": 400, "durSlowMs": 800 }
+}
+```
+
+- **Behavioral constants** (numbers, ranges, counts, timings) live here.
+- **Visual tokens** (colors, radius, type) stay in CSS variables / the design system — the two
+  layers don't overlap. Behavior = JSON; appearance = CSS tokens.
+- Values are read through `config.*`; nothing references raw literals inline.
 
 ---
 
@@ -302,7 +351,7 @@ Tailwind, consumed only via semantic names.
 
 ## 9. Build plan (incremental — each step is runnable)
 
-1. **Skeleton** — Next.js + TS + Tailwind + shadcn init; design tokens in `globals.css`. *(blank themed page)*
+1. **Skeleton** — Next.js + TS + Tailwind + shadcn init; design tokens in `globals.css`; `config/ecosonic.config.json` + zod-validated `config.ts` loader. *(blank themed page)*
 2. **Manifest** — `build-manifest.mjs` + `manifest.json`; route handler streams samples with range. *(app "knows" all sounds; a sample plays via direct URL)*
 3. **Element chooser** — 5 glyphs, `data-element` swap, hero background. *(pick an element)*
 4. **Auto-builder** — selection rules → `Project.tracks`; Zustand store. *(chosen tracks listed)*
@@ -329,8 +378,9 @@ By **step 6** there is a working, evolving soundscape; everything after is contr
 ---
 
 ## 11. Assumptions & open questions
-- **Assumption:** base tuning of samples is 440 Hz (used for future tuning ratio).
-- **Assumption:** −60…0 dB volume range, −6 dB default per track, is acceptable; revisit in tuning.
+- **Assumption:** base tuning of samples is `config.audio.tuning.baseHz` (440 Hz default).
+- **Note:** volume range/defaults, hybrid threshold, selection counts, and timings are **not
+  hardcoded** — they live in `config/ecosonic.config.json` and change without code edits.
 - **Open (Build 2):** reverb impulse-response source (bundled IR vs generated).
 - **Open (distribution):** compression format (FLAC vs Ogg) when packaging — out of scope now.
 ```
