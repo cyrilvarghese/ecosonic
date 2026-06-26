@@ -1,4 +1,5 @@
 'use client';
+import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
 import { ElementChooser } from '@/components/ElementChooser';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 export function BuilderScreen() {
   const engine = useAudioEngine(); // create + keep the engine in sync with the store
   const element = useSession((s) => s.project.element);
-  const trackIds = useSession((s) => s.project.tracks.map((t) => t.id));
+  const trackIds = useSession(useShallow((s) => s.project.tracks.map((t) => t.id)));
   const backToChooser = useSession((s) => s.backToChooser);
 
   if (!element) return <ElementChooser />;
