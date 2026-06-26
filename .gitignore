@@ -1,0 +1,27 @@
+# Audio library — 5.8 GB of raw samples, never commit
+ECOSONIC FILES/
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Generated
+src/manifest.json
+
+# Env / secrets
+.env
+.env.local
+.env*.local
+
+# OS / editor cruft
+.DS_Store
+._*
+Thumbs.db
+*.log
+.vscode/
+.idea/
