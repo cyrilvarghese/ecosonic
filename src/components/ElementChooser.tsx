@@ -29,7 +29,7 @@ export function ElementChooser() {
             aria-label={el}
             onClick={() => selectElement(el)}
             data-element={el.toLowerCase()}
-            style={{ gridArea: AREA[el], color: 'var(--accent-ink)' }}
+            style={{ gridArea: AREA[el], color: `var(--ink-${el.toLowerCase()})` }}
             className="flex h-28 w-28 flex-col items-center justify-center gap-2 rounded-[var(--radius)]
                        bg-card backdrop-blur transition hover:scale-105 focus:outline-none
                        focus:ring-2 ring-ring"

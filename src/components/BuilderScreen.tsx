@@ -18,11 +18,21 @@ export function BuilderScreen() {
 
   return (
     <EngineProvider value={engine}>
-    <div data-element={element.toLowerCase()} className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+    <div
+      data-element={element.toLowerCase()}
+      className="flex min-h-screen flex-col"
+      style={{
+        background:
+          'radial-gradient(125% 70% at 50% 0%, color-mix(in oklch, var(--accent) 18%, var(--background)), var(--background) 55%)',
+      }}
+    >
+      <header
+        className="flex items-center justify-between border-b px-6 py-4"
+        style={{ borderColor: 'color-mix(in oklch, var(--accent) 40%, var(--border))' }}
+      >
         <div>
           <p className="label">Layer One — Sound Ecosystem Builder</p>
-          <h1 className="text-lg font-medium" style={{ color: 'var(--accent-ink)' }}>{element}</h1>
+          <h1 className="text-lg font-medium" style={{ color: `var(--ink-${element.toLowerCase()})` }}>{element}</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={backToChooser}>Change element</Button>
