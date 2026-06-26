@@ -31,7 +31,8 @@ that a future **Layer Two** will arrange into a timed 30-minute meditation journ
 ### In scope (Build 1 — Core)
 - Element selection screen (5 alchemical glyphs).
 - Automatic multitrack generation from selection rules.
-- DAW-style horizontal track lanes with **stylized placeholder** waveforms.
+- Horizontal track lanes that **function as channel strips** (mixer logic in a DAW-style look),
+  with **stylized placeholder** waveforms.
 - Per-track controls: **Play/Pause, Mute, Volume (dB), Change (random in-category), Lock**.
 - Global controls: **Master Volume, Global Play/Pause, Regenerate (re-roll unlocked)**.
 - Hybrid Web Audio engine (decode small files / stream large files), all tracks looping & mixed.
@@ -46,6 +47,11 @@ that a future **Layer Two** will arrange into a timed 30-minute meditation journ
 - **Real precomputed waveforms** (peak extraction at build time).
 - **Save/Load project** (the Layer Two handoff file).
 - Full sidebar navigation and Layers 2–5.
+- **iPad/touch-optimized UI** (responsive vertical channel strips, large hit targets),
+  **Capacitor** packaging, and **sample compression** — Build 1 targets the **desktop web
+  browser**. (Researched: iOS Safari limits concurrent `<audio>` elements and memory, so raw
+  5.8 GB files are risky on iPad; revisit with compression + Capacitor if iPad becomes a target.
+  Electron desktop remains a later wrap.)
 
 ### Explicitly dropped
 - **Per-track fade-in/out** — the detailed Layer One spec lists controls as
