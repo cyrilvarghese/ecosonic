@@ -1,4 +1,5 @@
 'use client';
+import type { CSSProperties } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
@@ -16,16 +17,20 @@ export function BuilderScreen() {
 
   if (!element) return <ElementChooser />;
 
+  const el = element.toLowerCase();
+  // Set the element theme inline on the wrapper so the whole subtree inherits the
+  // right accent — independent of the [data-element] stylesheet rule / hot-reload.
+  const themeStyle = {
+    '--accent': `var(--c-${el})`,
+    '--accent-ink': `var(--ink-${el})`,
+    '--ring': `var(--c-${el})`,
+    background:
+      'radial-gradient(125% 70% at 50% 0%, color-mix(in oklch, var(--accent) 18%, var(--background)), var(--background) 55%)',
+  } as CSSProperties;
+
   return (
     <EngineProvider value={engine}>
-    <div
-      data-element={element.toLowerCase()}
-      className="flex min-h-screen flex-col"
-      style={{
-        background:
-          'radial-gradient(125% 70% at 50% 0%, color-mix(in oklch, var(--accent) 18%, var(--background)), var(--background) 55%)',
-      }}
-    >
+    <div data-element={el} className="flex min-h-screen flex-col" style={themeStyle}>
       <header
         className="flex items-center justify-between border-b px-6 py-4"
         style={{ borderColor: 'color-mix(in oklch, var(--accent) 40%, var(--border))' }}
