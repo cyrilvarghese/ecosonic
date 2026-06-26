@@ -7,7 +7,7 @@ import { TransportBar } from '@/components/TransportBar';
 import { Button } from '@/components/ui/button';
 
 export function BuilderScreen() {
-  useAudioEngine(); // create + keep the engine in sync with the store
+  const engine = useAudioEngine(); // create + keep the engine in sync with the store
   const element = useSession((s) => s.project.element);
   const trackIds = useSession((s) => s.project.tracks.map((t) => t.id));
   const backToChooser = useSession((s) => s.backToChooser);
@@ -31,7 +31,7 @@ export function BuilderScreen() {
         {trackIds.map((id) => <TrackLane key={id} trackId={id} />)}
       </main>
 
-      <TransportBar />
+      <TransportBar getAnalyser={() => engine.getAnalyser()} />
     </div>
   );
 }

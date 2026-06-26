@@ -4,10 +4,11 @@ import { useSession } from '@/session/appStore';
 import { config } from '@/config';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Visualizer } from '@/components/Visualizer';
 
 const { minDb, maxDb } = config.audio.volume;
 
-export function TransportBar() {
+export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode | null }) {
   const globalPlaying = useSession((s) => s.globalPlaying);
   const toggleGlobalPlaying = useSession((s) => s.toggleGlobalPlaying);
   const masterVolumeDb = useSession((s) => s.project.masterVolumeDb);
@@ -31,6 +32,8 @@ export function TransportBar() {
         </div>
         <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
       </div>
+
+      {getAnalyser && <Visualizer getAnalyser={getAnalyser} />}
 
       <Button variant="outline" aria-label="Regenerate" onClick={regenerate}>
         <RefreshCw size={16} />
