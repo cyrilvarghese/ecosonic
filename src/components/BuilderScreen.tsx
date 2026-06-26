@@ -1,5 +1,6 @@
 'use client';
 import type { CSSProperties } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
@@ -35,12 +36,16 @@ export function BuilderScreen() {
         className="flex items-center justify-between border-b px-6 py-4"
         style={{ borderColor: 'color-mix(in oklch, var(--accent) 40%, var(--border))' }}
       >
-        <div>
-          <p className="label">Layer One — Sound Ecosystem Builder</p>
-          <h1 className="text-lg font-medium" style={{ color: `var(--ink-${element.toLowerCase()})` }}>{element}</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" aria-label="Back to element selection" onClick={backToChooser}>
+            <ArrowLeft size={18} />
+          </Button>
+          <div>
+            <p className="label">Layer One — Sound Ecosystem Builder</p>
+            <h1 className="text-lg font-medium" style={{ color: `var(--ink-${element.toLowerCase()})` }}>{element}</h1>
+          </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={backToChooser}>Change element</Button>
           <Button variant="outline" disabled>Continue to Layer Two</Button>
         </div>
       </header>
