@@ -24,51 +24,54 @@ export function TrackLane({ trackId }: { trackId: string }) {
         locked ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]' : 'border-border'
       }`}
     >
+      {/* Column 1: label */}
       <div className="w-28 shrink-0">
         <div className="label">{label}</div>
         <div className="truncate text-sm text-foreground">{sample.name}</div>
       </div>
 
-      {/* Waveform takes the flexible middle but yields so controls stay visible. */}
+      {/* Column 2: waveform (flexible, yields) */}
       <div className="min-w-0 flex-1">
         <LaneVisualizer trackId={trackId} />
       </div>
 
-      <Button variant="ghost" size="icon" className="shrink-0" aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}
-        onClick={() => toggleTrackPlaying(trackId)}>
-        {playing ? <Pause size={16} /> : <Play size={16} />}
-      </Button>
+      {/* Column 3: controls (fixed width — keeps waveforms aligned across rows) */}
+      <div className="flex w-96 shrink-0 items-center justify-end gap-2">
+        <Button variant="ghost" size="icon" className="shrink-0" aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}
+          onClick={() => toggleTrackPlaying(trackId)}>
+          {playing ? <Pause size={16} /> : <Play size={16} />}
+        </Button>
 
-      <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Mute ${label}`}
-        onClick={() => toggleMute(trackId)}>
-        {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-      </Button>
+        <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Mute ${label}`}
+          onClick={() => toggleMute(trackId)}>
+          {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        </Button>
 
-      {/* Individual volume — native range, always visible, themed via accent-color. */}
-      <input
-        type="range"
-        min={minDb}
-        max={maxDb}
-        step={1}
-        value={volumeDb}
-        onChange={(e) => setTrackVolumeDb(trackId, Number(e.target.value))}
-        aria-label={`Volume ${label}`}
-        className="w-28 shrink-0 cursor-pointer"
-        style={{ accentColor: 'var(--accent-ink)' }}
-      />
-      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{volumeDb} dB</span>
+        <input
+          type="range"
+          min={minDb}
+          max={maxDb}
+          step={1}
+          value={volumeDb}
+          onChange={(e) => setTrackVolumeDb(trackId, Number(e.target.value))}
+          aria-label={`Volume ${label}`}
+          className="w-28 shrink-0 cursor-pointer"
+          style={{ accentColor: 'var(--accent-ink)' }}
+        />
+        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{volumeDb} dB</span>
 
-      <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Change ${label}`}
-        disabled={locked} onClick={() => changeTrack(trackId)}>
-        <RefreshCw size={16} />
-      </Button>
+        <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Change ${label}`}
+          disabled={locked} onClick={() => changeTrack(trackId)}>
+          <RefreshCw size={16} />
+        </Button>
 
-      <Button variant="ghost" size="icon" aria-label={`Lock ${label}`}
-        onClick={() => toggleLock(trackId)}
-        className={`shrink-0 ${locked ? 'text-[var(--accent-ink)]' : 'text-muted-foreground'}`}
-        style={locked ? { background: 'color-mix(in oklch, var(--accent) 22%, transparent)' } : undefined}>
-        {locked ? <Lock size={16} /> : <Unlock size={16} />}
-      </Button>
+        <Button variant="ghost" size="icon" aria-label={`Lock ${label}`}
+          onClick={() => toggleLock(trackId)}
+          className={`shrink-0 ${locked ? 'text-[var(--accent-ink)]' : 'text-muted-foreground'}`}
+          style={locked ? { background: 'color-mix(in oklch, var(--accent) 22%, transparent)' } : undefined}>
+          {locked ? <Lock size={16} /> : <Unlock size={16} />}
+        </Button>
+      </div>
     </div>
   );
 }
