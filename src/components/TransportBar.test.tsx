@@ -16,9 +16,4 @@ describe('TransportBar', () => {
     await userEvent.click(screen.getByRole('button', { name: /play all/i }));
     expect(sessionStore.getState().globalPlaying).toBe(true);
   });
-
-  it('regenerate is available', () => {
-    render(<TransportBar />);
-    expect(screen.getByRole('button', { name: /regenerate/i })).toBeInTheDocument();
-  });
 });

@@ -1,6 +1,6 @@
 'use client';
 import type { CSSProperties } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
@@ -15,6 +15,7 @@ export function BuilderScreen() {
   const element = useSession((s) => s.project.element);
   const trackIds = useSession(useShallow((s) => s.project.tracks.map((t) => t.id)));
   const backToChooser = useSession((s) => s.backToChooser);
+  const regenerate = useSession((s) => s.regenerate);
 
   if (!element) return <ElementChooser />;
 
@@ -46,6 +47,10 @@ export function BuilderScreen() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" aria-label="Regenerate unlocked tracks" onClick={regenerate}>
+            <RefreshCw size={16} />
+            <span className="ml-2">Regenerate</span>
+          </Button>
           <Button variant="outline" disabled>Continue to Layer Two</Button>
         </div>
       </header>
