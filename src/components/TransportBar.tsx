@@ -52,7 +52,7 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
           value={masterVolumeDb}
           onChange={(e) => setMasterVolumeDb(Number(e.target.value))}
           aria-label="Master volume"
-          className="w-28 shrink-0 cursor-pointer"
+          className="min-w-0 flex-1 cursor-pointer"
           style={{ accentColor: 'var(--accent-ink)' }}
         />
         <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
