@@ -35,8 +35,8 @@ export function TrackLane({ trackId }: { trackId: string }) {
         <LaneVisualizer trackId={trackId} />
       </div>
 
-      {/* Column 3: controls (fixed width — keeps waveforms aligned across rows) */}
-      <div className="flex w-96 shrink-0 items-center justify-end gap-2">
+      {/* Column 3: controls — fixed grid so every row's controls line up in the same cells */}
+      <div className="grid shrink-0 grid-cols-[2.25rem_2.25rem_7rem_3.5rem_2.25rem_2.25rem] items-center gap-2">
         <Button variant="ghost" size="icon" className="shrink-0" aria-label={`${playing ? 'Pause' : 'Play'} ${label}`}
           onClick={() => toggleTrackPlaying(trackId)}>
           {playing ? <Pause size={16} /> : <Play size={16} />}
@@ -55,10 +55,10 @@ export function TrackLane({ trackId }: { trackId: string }) {
           value={volumeDb}
           onChange={(e) => setTrackVolumeDb(trackId, Number(e.target.value))}
           aria-label={`Volume ${label}`}
-          className="w-28 shrink-0 cursor-pointer"
+          className="w-full cursor-pointer"
           style={{ accentColor: 'var(--accent-ink)' }}
         />
-        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{volumeDb} dB</span>
+        <span className="text-right text-xs tabular-nums text-muted-foreground">{volumeDb} dB</span>
 
         <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Change ${label}`}
           disabled={locked} onClick={() => changeTrack(trackId)}>

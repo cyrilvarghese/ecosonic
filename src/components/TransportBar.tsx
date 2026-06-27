@@ -42,8 +42,9 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
         </button>
       </div>
 
-      {/* Column 3: master volume — same fixed-width control column as the track lanes */}
-      <div className="flex w-96 shrink-0 items-center justify-end gap-2">
+      {/* Column 3: master volume — same fixed grid as the track lanes; slider spans the
+          play/mute/volume cells and the dB lands in the same cell as the track dB */}
+      <div className="grid shrink-0 grid-cols-[2.25rem_2.25rem_7rem_3.5rem_2.25rem_2.25rem] items-center gap-2">
         <input
           type="range"
           min={minDb}
@@ -52,10 +53,10 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
           value={masterVolumeDb}
           onChange={(e) => setMasterVolumeDb(Number(e.target.value))}
           aria-label="Master volume"
-          className="min-w-0 flex-1 cursor-pointer"
+          className="col-span-3 w-full cursor-pointer"
           style={{ accentColor: 'var(--accent-ink)' }}
         />
-        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
+        <span className="text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
       </div>
     </div>
   );
