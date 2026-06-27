@@ -14,16 +14,28 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
 
   return (
     <div
-      className="sticky bottom-0 flex items-center gap-3 border-t bg-card px-10 py-4 backdrop-blur"
+      className="sticky bottom-0 flex items-center gap-6 border-t bg-card px-6 py-4 backdrop-blur"
       style={{ borderColor: 'color-mix(in oklch, var(--accent) 40%, var(--border))' }}
     >
-      {/* Label column — aligns under the track labels */}
-      <div className="w-28 shrink-0">
+      {/* Left: master volume */}
+      <div className="flex shrink-0 items-center gap-2">
         <span className="label">Master</span>
+        <input
+          type="range"
+          min={minDb}
+          max={maxDb}
+          step={1}
+          value={masterVolumeDb}
+          onChange={(e) => setMasterVolumeDb(Number(e.target.value))}
+          aria-label="Master volume"
+          className="w-40 cursor-pointer"
+          style={{ accentColor: 'var(--accent-ink)' }}
+        />
+        <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
       </div>
 
-      {/* Master analyser — aligns with the track waveforms; play floats on top */}
-      <div className="relative flex h-16 min-w-0 flex-1 items-center">
+      {/* Center: master analyser visualization with the play button floating on top */}
+      <div className="relative flex h-16 flex-1 items-center justify-center">
         {getAnalyser && (
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
             <Visualizer getAnalyser={getAnalyser} />
@@ -41,20 +53,6 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
           {globalPlaying ? <Pause size={26} fill="currentColor" /> : <Play size={26} fill="currentColor" className="translate-x-[2px]" />}
         </button>
       </div>
-
-      {/* Master volume — aligns under the per-track volume sliders */}
-      <input
-        type="range"
-        min={minDb}
-        max={maxDb}
-        step={1}
-        value={masterVolumeDb}
-        onChange={(e) => setMasterVolumeDb(Number(e.target.value))}
-        aria-label="Master volume"
-        className="w-28 shrink-0 cursor-pointer"
-        style={{ accentColor: 'var(--accent-ink)' }}
-      />
-      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
     </div>
   );
 }
