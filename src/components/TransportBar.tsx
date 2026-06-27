@@ -23,7 +23,7 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
       </div>
 
       {/* Column 2: master waveform — same column as the track waveforms; play floats on top */}
-      <div className="relative flex h-16 min-w-0 flex-1 items-center">
+      <div className="relative flex h-16 min-w-0 flex-1 items-center justify-center">
         {getAnalyser && (
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
             <Visualizer getAnalyser={getAnalyser} />
