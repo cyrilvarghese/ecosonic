@@ -128,6 +128,7 @@ export class Layer {
     this.gain.disconnect();
     if (this.audioEl) { this.audioEl.pause(); this.audioEl.src = ''; }
     if (this.objectUrl) { URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; }
+    if (this.objectUrl) { URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; }
   }
 
   private buildBufferSource(): AudioBufferSourceNode {
