@@ -3,7 +3,6 @@ import { Play, Pause, RefreshCw } from 'lucide-react';
 import { useSession } from '@/session/appStore';
 import { config } from '@/config';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Visualizer } from '@/components/Visualizer';
 
 const { minDb, maxDb } = config.audio.volume;
@@ -23,11 +22,17 @@ export function TransportBar({ getAnalyser }: { getAnalyser?: () => AnalyserNode
       {/* Left: master volume */}
       <div className="flex shrink-0 items-center gap-2">
         <span className="label">Master</span>
-        <div className="w-40">
-          <Slider min={minDb} max={maxDb} step={1} value={[masterVolumeDb]}
-            onValueChange={(v) => setMasterVolumeDb(Array.isArray(v) ? (v as number[])[0] : (v as number))}
-            aria-label="Master volume" />
-        </div>
+        <input
+          type="range"
+          min={minDb}
+          max={maxDb}
+          step={1}
+          value={masterVolumeDb}
+          onChange={(e) => setMasterVolumeDb(Number(e.target.value))}
+          aria-label="Master volume"
+          className="w-40 cursor-pointer"
+          style={{ accentColor: 'var(--accent-ink)' }}
+        />
         <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{masterVolumeDb} dB</span>
       </div>
 

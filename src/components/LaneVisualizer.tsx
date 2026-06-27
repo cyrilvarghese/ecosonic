@@ -92,7 +92,7 @@ export function LaneVisualizer({ trackId }: { trackId: string }) {
   }, [engine, trackId]);
 
   return (
-    <div className="relative h-8 flex-1">
+    <div className="relative h-8 w-full">
       <canvas ref={ref} className="h-full w-full" aria-hidden="true" />
       {duration != null && (
         <span
