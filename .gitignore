@@ -10,6 +10,9 @@ out/
 build/
 dist/
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Generated
 src/manifest.json
 
