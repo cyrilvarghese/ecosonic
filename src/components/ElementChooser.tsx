@@ -8,7 +8,7 @@ const AREA: Record<ElementName, string> = {
   AIR: 'air', WATER: 'water', ETHER: 'ether', FIRE: 'fire', EARTH: 'earth',
 };
 
-export function ElementChooser() {
+export function ElementChooser({ onSelected }: { onSelected?: (el: ElementName) => void }) {
   const selectElement = useSession((s) => s.selectElement);
 
   return (
@@ -27,7 +27,7 @@ export function ElementChooser() {
           <button
             key={el}
             aria-label={el}
-            onClick={() => selectElement(el)}
+            onClick={() => { selectElement(el); onSelected?.(el); }}
             data-element={el.toLowerCase()}
             style={{ gridArea: AREA[el], color: `var(--ink-${el.toLowerCase()})` }}
             className="flex h-28 w-28 flex-col items-center justify-center gap-2 rounded-[var(--radius)]

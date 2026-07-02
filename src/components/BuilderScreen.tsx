@@ -1,23 +1,25 @@
 'use client';
 import type { CSSProperties } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
 import { EngineProvider } from '@/audio/EngineContext';
-import { ElementChooser } from '@/components/ElementChooser';
 import { TrackLane } from '@/components/TrackLane';
 import { TransportBar } from '@/components/TransportBar';
 import { Button } from '@/components/ui/button';
 
 export function BuilderScreen() {
+  const router = useRouter();
   const engine = useAudioEngine(); // create + keep the engine in sync with the store
   const element = useSession((s) => s.project.element);
   const trackIds = useSession(useShallow((s) => s.project.tracks.map((t) => t.id)));
   const backToChooser = useSession((s) => s.backToChooser);
   const regenerate = useSession((s) => s.regenerate);
 
-  if (!element) return <ElementChooser />;
+  // The /layer1 route guards element presence; this is a defensive fallback.
+  if (!element) return null;
 
   const el = element.toLowerCase();
   // Set the element theme inline on the wrapper so the whole subtree inherits the
@@ -38,7 +40,7 @@ export function BuilderScreen() {
         style={{ borderColor: 'color-mix(in oklch, var(--accent) 40%, var(--border))' }}
       >
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" aria-label="Back to element selection" onClick={backToChooser}>
+          <Button variant="ghost" size="icon" aria-label="Back to element selection" onClick={() => { backToChooser(); router.push('/'); }}>
             <ArrowLeft size={18} />
           </Button>
           <div>

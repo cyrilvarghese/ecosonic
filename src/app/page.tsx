@@ -1,6 +1,9 @@
 'use client';
-import { BuilderScreen } from '@/components/BuilderScreen';
+import { useRouter } from 'next/navigation';
+import { ElementChooser } from '@/components/ElementChooser';
 
+// Home route: the element selector. Choosing an element navigates to the builder.
 export default function Page() {
-  return <BuilderScreen />;
+  const router = useRouter();
+  return <ElementChooser onSelected={() => router.push('/layer1')} />;
 }
