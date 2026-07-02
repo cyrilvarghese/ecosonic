@@ -49,15 +49,19 @@ describe('sessionStore', () => {
     expect(s.project.tracks.length).toBeGreaterThan(0);
   });
 
-  it('clamps track and master volume to the dB range', () => {
+  it('clamps track volume to the track range and master to the master range', () => {
     store.getState().selectElement('WATER');
     const id = store.getState().project.tracks[0].id;
-    store.getState().setTrackVolumeDb(id, 5);
-    expect(store.getState().project.tracks[0].volumeDb).toBe(config.audio.volume.maxDb);
+    // Track slider is a centered boost/cut span (trackMinDb..trackMaxDb).
+    store.getState().setTrackVolumeDb(id, 999);
+    expect(store.getState().project.tracks[0].volumeDb).toBe(config.audio.volume.trackMaxDb);
     store.getState().setTrackVolumeDb(id, -999);
-    expect(store.getState().project.tracks[0].volumeDb).toBe(config.audio.volume.minDb);
+    expect(store.getState().project.tracks[0].volumeDb).toBe(config.audio.volume.trackMinDb);
+    // Master keeps its own attenuation-only range (minDb..maxDb).
     store.getState().setMasterVolumeDb(99);
     expect(store.getState().project.masterVolumeDb).toBe(config.audio.volume.maxDb);
+    store.getState().setMasterVolumeDb(-999);
+    expect(store.getState().project.masterVolumeDb).toBe(config.audio.volume.minDb);
   });
 
   it('toggles mute, lock, and per-track play', () => {

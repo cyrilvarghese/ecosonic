@@ -5,7 +5,7 @@ import { config } from '@/config';
 import { Button } from '@/components/ui/button';
 import { LaneVisualizer } from '@/components/LaneVisualizer';
 
-const { minDb, maxDb } = config.audio.volume;
+const { trackMinDb, trackMaxDb } = config.audio.volume;
 
 export function TrackLane({ trackId }: { trackId: string }) {
   const track = useSession((s) => s.project.tracks.find((t) => t.id === trackId));
@@ -49,8 +49,8 @@ export function TrackLane({ trackId }: { trackId: string }) {
 
         <input
           type="range"
-          min={minDb}
-          max={maxDb}
+          min={trackMinDb}
+          max={trackMaxDb}
           step={1}
           value={volumeDb}
           onChange={(e) => setTrackVolumeDb(trackId, Number(e.target.value))}

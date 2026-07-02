@@ -26,7 +26,7 @@ export interface SessionDeps {
 }
 
 export function createSessionStore({ manifest, cfg, rng = Math.random }: SessionDeps) {
-  const { minDb, maxDb, defaultMasterDb } = cfg.audio.volume;
+  const { minDb, maxDb, trackMinDb, trackMaxDb, defaultMasterDb } = cfg.audio.volume;
 
   const initialProject = (): Project => ({
     element: null,
@@ -58,7 +58,7 @@ export function createSessionStore({ manifest, cfg, rng = Math.random }: Session
 
       toggleGlobalPlaying: () => set((s) => ({ globalPlaying: !s.globalPlaying })),
 
-      setTrackVolumeDb: (id, db) => mapTrack(id, (t) => ({ ...t, volumeDb: clampDb(db, minDb, maxDb) })),
+      setTrackVolumeDb: (id, db) => mapTrack(id, (t) => ({ ...t, volumeDb: clampDb(db, trackMinDb, trackMaxDb) })),
       toggleMute: (id) => mapTrack(id, (t) => ({ ...t, muted: !t.muted })),
       toggleLock: (id) => mapTrack(id, (t) => ({ ...t, locked: !t.locked })),
       toggleTrackPlaying: (id) => mapTrack(id, (t) => ({ ...t, playing: !t.playing })),

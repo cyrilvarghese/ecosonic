@@ -12,6 +12,10 @@ export const ConfigSchema = z.object({
     volume: z.object({
       minDb: z.number(),
       maxDb: z.number(),
+      // Per-track slider range: a boost/cut span centered on 0 dB (unity). Separate
+      // from minDb/maxDb, which stay the master range and the silence floor.
+      trackMinDb: z.number(),
+      trackMaxDb: z.number(),
       defaultTrackDb: z.number(),
       defaultMasterDb: z.number(),
       muteRampMs: z.number().nonnegative(),

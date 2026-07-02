@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import type p5 from 'p5';
-import { normalizeWaveform } from '@/audio/waveform';
+import { normalizeWaveform, amplitudeToY } from '@/audio/waveform';
 
 function readAccentRgb(container: HTMLElement): string {
   const probe = document.createElement('span');
@@ -47,7 +47,7 @@ export function Visualizer({ getAnalyser }: { getAnalyser: () => AnalyserNode | 
           p.beginShape();
           pts.forEach((v, i) => {
             const x = (i / (pts.length - 1)) * p.width;
-            const y = p.height / 2 + v * (p.height / 2) * 0.9;
+            const y = amplitudeToY(v, p.height);
             p.vertex(x, y);
           });
           p.endShape();
