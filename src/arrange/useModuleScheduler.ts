@@ -10,6 +10,7 @@ export function useModuleScheduler(engine: AudioEngine): void {
   useEffect(() => {
     let raf = 0;
     let last: number | null = null;
+    let wasScrubbing = false;
     const active = new Set<string>();
     const D = config.layerTwo.moduleSeconds;
 
@@ -26,17 +27,21 @@ export function useModuleScheduler(engine: AudioEngine): void {
           if (pos >= D) pos -= D;
           st.setPosition(pos);
         }
-        // Re-sync playback to `pos` — this makes scrubbing work: tracks whose clips now
-        // cover the position start from 0, tracks that no longer do stop.
+        // On release of the scrubber, restart the whole section from 0 so it re-auditions
+        // cleanly (otherwise mid-clip tracks — incl. the full-length bed — keep playing).
+        const justReleased = wasScrubbing && !st.scrubbing;
+        wasScrubbing = st.scrubbing;
+
         for (const track of st.tracks) {
           const region = st.moduleRegions.find((r) => r.trackId === track.id);
           const inside = !!region && pos >= region.enterSec && pos < region.exitSec;
           const was = active.has(track.id);
-          if (inside && !was) { active.add(track.id); engine.triggerTrack(track.id); }
+          if (inside && (!was || justReleased)) { active.add(track.id); engine.triggerTrack(track.id); }
           else if (!inside && was) { active.delete(track.id); engine.releaseTrack(track.id); }
         }
       } else {
         last = null; // freeze; ctx.suspend holds the sources, so keep `active` as-is
+        wasScrubbing = st.scrubbing;
       }
       raf = requestAnimationFrame(frame);
     };
