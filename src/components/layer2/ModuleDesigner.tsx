@@ -11,11 +11,13 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
 export function ModuleDesigner({
   tracks,
   regions,
+  trackDurations,
   positionSec,
   playing,
 }: {
   tracks: ArrTrack[];
   regions: TemplateRegion[];
+  trackDurations: Record<string, number>;
   positionSec: number;
   playing: boolean;
 }) {
@@ -24,14 +26,19 @@ export function ModuleDesigner({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex justify-between pl-[8.5rem] pr-4 text-[11px] tabular-nums text-muted-foreground">
-        <span>0:00</span><span>{clock(D / 2)}</span><span>{clock(D)}</span>
+      <div className="flex text-[11px] tabular-nums text-muted-foreground">
+        <span className="w-28 shrink-0" />
+        <span className="flex flex-1 justify-between px-1">
+          <span>0:00</span><span>{clock(D / 2)}</span><span>{clock(D)}</span>
+        </span>
+        <span className="w-24 shrink-0 pl-3">played / total</span>
       </div>
       {tracks.map((track) => (
         <ClipRow
           key={track.id}
           track={track}
           region={regions.find((r) => r.trackId === track.id) ?? null}
+          total={trackDurations[track.id]}
           D={D}
           playheadPct={playheadPct}
         />
@@ -43,11 +50,13 @@ export function ModuleDesigner({
 function ClipRow({
   track,
   region,
+  total,
   D,
   playheadPct,
 }: {
   track: ArrTrack;
   region: TemplateRegion | null;
+  total: number | undefined;
   D: number;
   playheadPct: number | null;
 }) {
@@ -85,6 +94,11 @@ function ClipRow({
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* noop */ }
   };
 
+  const clipDur = region ? region.exitSec - region.enterSec : 0;
+  const played = total ? Math.min(clipDur, total) : clipDur;
+  const partial = total != null && clipDur < total; // only part of the track is heard
+  const readout = total != null ? `${clock(played)} / ${clock(total)}` : `${clock(clipDur)} / …`;
+
   return (
     <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-2">
       <div className="w-28 shrink-0">
@@ -107,9 +121,7 @@ function ClipRow({
           >
             <span className="w-2.5 shrink-0 cursor-ew-resize rounded-l-[6px] bg-black/25"
               onPointerDown={begin('left')} onPointerMove={move} onPointerUp={end} />
-            <span className="flex flex-1 items-center justify-center overflow-hidden text-[10px] font-medium text-white/90 cursor-grab">
-              {clock(region.exitSec - region.enterSec)}
-            </span>
+            <span className="flex-1 cursor-grab" />
             <span className="w-2.5 shrink-0 cursor-ew-resize rounded-r-[6px] bg-black/25"
               onPointerDown={begin('right')} onPointerMove={move} onPointerUp={end} />
           </div>
@@ -118,6 +130,12 @@ function ClipRow({
           <div className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-foreground/70" style={{ left: `${playheadPct}%` }} />
         )}
       </div>
+      <span
+        className={`w-24 shrink-0 pl-3 text-right text-xs tabular-nums ${partial ? 'font-medium text-[var(--accent-ink)]' : 'text-muted-foreground'}`}
+        title={partial ? 'Clip is shorter than the track — only part plays' : 'Whole track plays (loops if the clip is longer)'}
+      >
+        {readout}
+      </span>
     </div>
   );
 }

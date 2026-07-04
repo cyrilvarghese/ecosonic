@@ -26,7 +26,22 @@ export function useLayer2Engine(): AudioEngine {
       volumeDb: t.ceilingDb, muted: false, playing: false, // loaded, not started; scheduler triggers from 0
     }));
     engine.setMasterVolume(st.masterDb);
-    void engine.setTracks(specs);
+
+    let cancelled = false;
+    void engine.setTracks(specs).then(() => {
+      // Sample durations only exist after load (esp. streamed <audio>); poll until known.
+      const collect = (attempt: number) => {
+        if (cancelled) return;
+        let missing = false;
+        for (const t of st.tracks) {
+          const dur = engine.getLayerDuration(t.id);
+          if (dur && dur > 0) arrangementStore.getState().setTrackDuration(t.id, dur);
+          else missing = true;
+        }
+        if (missing && attempt < 20) setTimeout(() => collect(attempt + 1), 300);
+      };
+      collect(0);
+    });
 
     let wasPlaying = false;
     const unsub = arrangementStore.subscribe((s) => {
@@ -35,7 +50,7 @@ export function useLayer2Engine(): AudioEngine {
       if (s.playing) engine.resumeContext();
       else engine.suspendContext();
     });
-    return () => { unsub(); engine.clear(); };
+    return () => { cancelled = true; unsub(); engine.clear(); };
   }, [engine]);
 
   return engine;

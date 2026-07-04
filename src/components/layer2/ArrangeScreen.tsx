@@ -17,6 +17,7 @@ export function ArrangeScreen() {
 
   const tracks = useArrangement((s) => s.tracks);
   const moduleRegions = useArrangement((s) => s.moduleRegions);
+  const trackDurations = useArrangement((s) => s.trackDurations);
   const playing = useArrangement((s) => s.playing);
   const positionSec = useArrangement((s) => s.positionSec);
   const play = useArrangement((s) => s.play);
@@ -59,7 +60,7 @@ export function ArrangeScreen() {
           On play, a track <b>starts from 0</b> when its clip begins (your baked fade-in plays) — it loops if the
           sample is shorter than the clip, or is cut if longer.
         </p>
-        <ModuleDesigner tracks={tracks} regions={moduleRegions} positionSec={positionSec} playing={playing} />
+        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} playing={playing} />
       </main>
     </div>
   );

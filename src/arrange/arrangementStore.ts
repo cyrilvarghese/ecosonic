@@ -11,6 +11,7 @@ export interface ArrangementState {
   // Phase 1 — a single module being designed: the handed-off tracks as clips on a timeline.
   tracks: ArrTrack[];
   moduleRegions: TemplateRegion[];
+  trackDurations: Record<string, number>; // real sample length (sec), filled once loaded
   playing: boolean;
   positionSec: number;
   masterDb: number;
@@ -28,6 +29,7 @@ export interface ArrangementState {
   setActiveMode: (mode: Mode) => void;
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
+  setTrackDuration: (trackId: string, sec: number) => void;
 }
 
 const clampModule = (sec: number) => Math.max(0, Math.min(config.layerTwo.moduleSeconds, sec));
@@ -45,6 +47,7 @@ export function createArrangementStore() {
     return {
       tracks: [],
       moduleRegions: [],
+      trackDurations: {},
       playing: false,
       positionSec: 0,
       masterDb: 0,
@@ -57,6 +60,7 @@ export function createArrangementStore() {
         set({
           tracks: sel.tracks,
           moduleRegions: seedFlatModule(sel.tracks),
+          trackDurations: {},
           masterDb: sel.masterDb,
           playing: false,
           positionSec: 0,
@@ -73,6 +77,8 @@ export function createArrangementStore() {
       seek: (sec) => set({ positionSec: clampModule(sec) }),
       setPosition: (sec) => set({ positionSec: clampModule(sec) }),
       setActiveMode: (mode) => set({ activeMode: mode }),
+      setTrackDuration: (trackId, sec) =>
+        set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
       updateModuleRegion: (trackId, next) =>
         set((s) => {
           const width = Math.max(0.001, next.exitSec - next.enterSec);

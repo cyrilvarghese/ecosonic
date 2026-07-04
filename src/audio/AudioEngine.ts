@@ -31,6 +31,9 @@ export class AudioEngine {
   /** Per-lane analyser for visualization, or null if the track isn't loaded. */
   getLayerAnalyser(id: string): AnalyserNode | null { return this.layers.get(id)?.getAnalyser() ?? null; }
 
+  /** A track's real sample length (seconds) once loaded, else null. */
+  getLayerDuration(id: string): number | null { return this.layers.get(id)?.getDuration() ?? null; }
+
   /** Per-lane loop position/duration, or null if unknown. */
   getLayerProgress(id: string): { position: number; duration: number } | null {
     return this.layers.get(id)?.getProgress() ?? null;

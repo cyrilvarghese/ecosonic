@@ -58,6 +58,13 @@ export class Layer {
   /** Passive analyser tapping this layer's output, for per-lane visualization. */
   getAnalyser(): AnalyserNode { return this.analyser; }
 
+  /** The sample's real length in seconds once loaded, else null. */
+  getDuration(): number | null {
+    if (this.kind === 'buffer') return this.buffer ? this.buffer.duration : null;
+    const el = this.audioEl;
+    return el && Number.isFinite(el.duration) && el.duration > 0 ? el.duration : null;
+  }
+
   /** Current loop position and loop duration (seconds), or null if not yet known. */
   getProgress(): { position: number; duration: number } | null {
     if (this.kind === 'buffer') {
