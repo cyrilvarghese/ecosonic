@@ -36,6 +36,7 @@ export class Layer {
   private started = false;
   private wantPlaying = false;
   private muted = false;
+  private envelope = 1; // Layer Two 0..1 modulation on top of the ceiling (targetGain)
 
   constructor(ctx: AudioContext, master: GainNode, init: LayerInit) {
     this.ctx = ctx;
@@ -113,11 +114,17 @@ export class Layer {
   suspendMedia() { if (this.kind === 'stream') this.audioEl?.pause(); }
 
   mute(rampMs: number) { this.muted = true; this.rampTo(0, rampMs); }
-  unmute(rampMs: number) { this.muted = false; if (this.started) this.rampTo(this.targetGain, rampMs); }
+  unmute(rampMs: number) { this.muted = false; if (this.started) this.rampTo(this.effectiveGain(), rampMs); }
 
   setVolumeDb(db: number, rampMs: number) {
     this.targetGain = dbToGain(db, this.minDb);
-    if (this.started && !this.muted) this.rampTo(this.targetGain, rampMs);
+    if (this.started && !this.muted) this.rampTo(this.effectiveGain(), rampMs);
+  }
+
+  /** Layer Two: modulate the ceiling gain by a 0..1 envelope scalar. */
+  setEnvelope(scalar: number, rampMs: number) {
+    this.envelope = Math.min(1, Math.max(0, scalar));
+    if (this.started && !this.muted) this.rampTo(this.effectiveGain(), rampMs);
   }
 
   dispose() {
@@ -166,7 +173,9 @@ export class Layer {
     this.started = false;
   }
 
-  private applyGain(rampMs: number) { this.rampTo(this.muted ? 0 : this.targetGain, rampMs); }
+  private effectiveGain(): number { return this.muted ? 0 : this.targetGain * this.envelope; }
+
+  private applyGain(rampMs: number) { this.rampTo(this.effectiveGain(), rampMs); }
 
   private rampTo(value: number, rampMs: number) {
     const now = this.ctx.currentTime;

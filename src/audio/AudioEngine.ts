@@ -67,6 +67,7 @@ export class AudioEngine {
   }
 
   setTrackVolume(id: string, db: number) { this.layers.get(id)?.setVolumeDb(db, this.cfg.changeRampMs); }
+  setTrackEnvelope(id: string, scalar: number) { this.layers.get(id)?.setEnvelope(scalar, this.cfg.changeRampMs); }
   setMute(id: string, muted: boolean) {
     const l = this.layers.get(id);
     if (!l) return;
