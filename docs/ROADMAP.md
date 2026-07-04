@@ -14,7 +14,7 @@ rest one by one)**, and the **drill-down hierarchy** of composition → modes �
 COMPOSITION  (the whole session — STRUCTURE view)
 │   a timeline of module instances; bridges/crossfades between them; one session playhead
 │
-├── MODULE / MODE  (a reusable 10-min template — Relaxation │ Immersion │ Return)
+├── MODULE / MODE  (a reusable 10-min template — Introduction │ Deep Relaxation │ Return)
 │     each mode is a "density table": which categories play, and how densely
 │
 └──── TRACKS PER MODE  (the DETAIL view — the Module Designer)
@@ -61,66 +61,57 @@ Layer One is complete. Layer Two ships a **single-module designer** for **one mo
 **Parked (built + tested, not wired):** `buildModeTemplate`, `buildSequence`, `buildComposition`,
 `trackScalar`, `crossfade`, `useArrangementScheduler`, and the `ModuleBand`/composition-as-track UI.
 
-## 4. Next — the other modes, one by one (Phase B)
+## 4. The modes — timing tables from the production brief (Phase B, partly done)
 
-Add **mode selection** so each mode is designed in turn: Relaxation → Immersion → Return. Each mode
-is a distinct **density table** and a distinct **template** the user refines.
+Each mode is a **10-min section** with an explicit **timing table** — transcribed from the
+production brief (`TRACK INFO`) — giving every layer an `enter / exit / fadeIn / fadeOut` in seconds.
+The three sections:
 
-What each mode should look like when you drill in (from `config.layerTwo.modeRules`):
+- **Introduction** — the build-up: layers enter staggered and hold, then fade near the end.
+- **Deep Relaxation** — stripped back: only the environmental bed (Sub-Elements¹ + Noise + ISO +
+  PLANETS); **no PAD / Bass / Melody / FX**; bed fades ~7:00; the final 2 min are elements only.
+- **Return** — mirrors Introduction, then a full fade-out finale.
 
-| Category | Relaxation | Immersion (deep/sparse) | Return (full) |
+**Introduction timings (`config.layerTwo.modeRules.INTRODUCTION`):**
+
+| Layer | enter | exit | notes |
 |---|---|---|---|
-| NOISE / ISO / PLANET (bed) | continuous | continuous | continuous |
-| ELEMENT | continuous | active (some movement) | continuous |
-| BASS | sparse | **absent** | active |
-| PAD | active | **absent** | active |
-| MELODY | sparse | **absent** | sparse |
-| FX | sparse | **absent** | active |
-| **feel** | settling, medium | inward, stripped-back | re-emergent, full |
+| NOISE | 0:00 | 10:00 | continuous, no fade-out |
+| ELEMENT / FX² | 0:00 | 10:00 | the soundscape identity |
+| ISO | 1:00 | 9:00 | 1-min fades |
+| PLANET | 2:00 | 9:00 | after ISO peaks |
+| PAD | 3:00 | 9:00 | 1-min fade-in |
+| BASS | 4:00 | 9:00 | **no fade-in** — enters directly |
+| MELODY | 6:30 | 9:00 | completes the harmony |
 
-### How the tables become clips
+¹ **Sub-Elements** and **ARP** are **stubbed** (their samples aren't wired): ELEMENT stands in for
+Sub-Elements in Deep Relaxation, and ARP (between Bass and Melody) is skipped.
+² Per the brief, **FX is Fire's Element**, so FX is treated as an element-type layer (present
+throughout), not a driver.
 
-The modes are **pure config** — two tables under `config.layerTwo` (in
-[config/ecosonic.config.json](../config/ecosonic.config.json)), validated by
-[src/config.ts](../src/config.ts):
+### How a mode becomes clips
 
-- **`modeRules[mode][category]`** → a **presence tier**: `continuous | active | sparse | absent`.
-- **`presenceBands[tier]`** → `[lo, hi]`, the fraction of the module the clip occupies:
+The tables are **pure config** (`config/ecosonic.config.json` → `layerTwo.modeRules`, validated by
+`src/config.ts`). Each entry is `{ enter, exit, fadeIn, fadeOut }` in seconds, or `null` = absent.
+[`buildModeTemplate(tracks, mode, cfg)`](../src/arrange/buildModeTemplate.ts): for each track, look
+up its category's timing; `null` → no clip; else a clip at `[enter, exit]` with the given fades
+(capped to half the clip width). Multiple tracks of a category share that category's timing.
 
-  | tier | band | meaning |
-  |---|---|---|
-  | `continuous` | `[0.0, 1.0]` | spans the whole module (the bed) |
-  | `active` | `[0.18, 0.82]` | wide, mid-module |
-  | `sparse` | `[0.4, 0.6]` | short, hugging the peak |
-  | `absent` | — | no clip (silent this mode) |
+The staggered enters/exits make density rise then fall — the growth→peak→decrease emerges from clip
+placement (no imposed curve; [ADR-0001](./adr/0001-density-is-the-arrangement.md)), and it's a
+**tunable table** ([ADR-0004](./adr/0004-mode-rules-as-config-data.md)).
 
-[`buildModeTemplate(tracks, mode, cfg)`](../src/arrange/buildModeTemplate.ts) reads them: for each
-track, look up its category's tier; `absent` → no clip; else place a clip at
-`[lo·moduleSeconds, hi·moduleSeconds]`. Bed clips are exact `[0, D]`; drivers get a tiny per-index
-jitter so equal tiers don't stack identically.
-
-**Worked example — RELAXATION at `moduleSeconds = 600`:**
-```
-NOISE / ISO / PLANET / ELEMENT   continuous → clip [0:00 – 10:00]   (the bed, spans the module)
-PAD                              active     → clip [1:48 – 8:12]     (wide, mid-module)
-BASS / MELODY / FX               sparse     → clip [4:00 – 6:00]     (short, hugging the peak)
-```
-Stack those and the overlap (density) peaks mid-module — the growth→peak→decrease, built purely from
-where the clips sit (no imposed curve; see [ADR-0001](./adr/0001-density-is-the-arrangement.md)).
-The tables are an explicit **tunable starter set** ([ADR-0004](./adr/0004-mode-rules-as-config-data.md)).
-
-Implementation notes (the store is already shaped for this):
-- `arrangementStore` already carries `activeMode` and a full `composition.templates[mode]` per mode.
-- Phase B adds a **mode picker** that sets `activeMode` and (re)seeds `moduleRegions` via
-  `buildModeTemplate(tracks, activeMode)` — i.e. "load this mode's density table."
-- Each mode's edits persist in its own template (**shared** across that mode's instances — repeats
-  are identical until sample regeneration lands; see Phase D).
+**Done:** a **mode picker** (Introduction / Deep Relaxation / Return) is wired — clicking reseeds
+`moduleRegions` via `buildModeTemplate(tracks, mode)`, so you watch a mode's tracks load.
+**Remaining (Phase B):** **per-mode edit persistence** — today switching modes reseeds from the table
+and discards drag-edits; storing edits back into `composition.templates[mode]` will let you design
+each mode independently and switch freely.
 
 ## 5. Then — sequence the modes (Phase C)
 
 Surface the **Composition** view:
 - Modules as blocks on a session timeline (duration-driven count; modes cycle
-  Relaxation→Immersion→Return).
+  Introduction→Deep Relaxation→Return).
 - **Adjustable bridges** (crossfade overlaps) between adjacent modules; continuity bed carries
   through, drivers crossfade.
 - One **session playhead**; play the whole session; click a module to drill into its Module Designer.

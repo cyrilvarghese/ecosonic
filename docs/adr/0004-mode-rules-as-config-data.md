@@ -15,15 +15,19 @@ policy that will change.
 ## Decision
 
 Separate **mechanism from policy**:
-- **Mechanism** (code): the envelope/region math and `buildModeTemplate`, which turns a mode's rules
-  into staggered `TemplateRegion[]` whose overlap peaks mid-module.
-- **Policy** (config data): `config.layerTwo.modeRules` maps `Mode → Category → Presence`
-  (`continuous | active | sparse | absent`), and `presenceBands` maps each presence tier to a
-  region band within the module. These are an explicit **starter "sample" set** to be tuned, not a
-  fixed spec.
+- **Mechanism** (code): `buildModeTemplate`, which turns a mode's table into `TemplateRegion[]`.
+- **Policy** (config data): `config.layerTwo.modeRules` maps `Mode → Category → { enter, exit,
+  fadeIn, fadeOut }` in seconds (or `null` = absent) — an explicit **per-layer timing table**,
+  tunable, not fixed in code.
 
-Bed categories (NOISE/ISO/PLANET/ELEMENT) default to `continuous` (the perceptual foundation);
-drivers (BASS/PAD/MELODY/FX) stagger to build the density peak.
+> **Update (2026-07-04):** the initial version used coarse presence *tiers*
+> (`continuous | active | sparse | absent`) + a `presenceBands` map. When the precise production
+> brief (`TRACK INFO`) arrived with exact per-layer timings (ISO@1:00, PLANETS@2:00, PAD@3:00,
+> Bass@4:00, Melody@6:30, exits ~9:00), the tiers were replaced by explicit timings. The
+> mechanism/policy split held — it was a config + schema change, no rework of the consuming code.
+
+The modes are the brief's three sections: **Introduction / Deep Relaxation / Return**. `ARP` and
+`ELEMENT_SUB` are stubbed; `FX` is treated as an element-type layer per the brief.
 
 ## Consequences
 

@@ -101,8 +101,9 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - **Element theme** inherited from the selection.
 
 ### 6.3 Roadmap (built underneath, not yet surfaced; or planned)
-- **Mode selection** — load the IMMERSION / RETURN density tables (IMMERSION strips drivers for a
-  deep/sparse section; RETURN is full). Modes are interchangeable module templates.
+- **Mode selection** — load a section's timing table (Introduction / Deep Relaxation / Return);
+  Deep Relaxation strips the drivers for a sparse/inward section, Return re-emerges full. A **mode
+  picker** is wired; per-mode edit persistence is the remaining Phase-B piece.
 - **Composition / sequencing** — arrange several module instances on a session timeline with
   adjustable **bridges** (crossfades) between them; the whole composition = the density curve over
   the full session. (The pure engine for this — templates, sequence, bridges, per-track scalar —
@@ -119,7 +120,8 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - **Wave Module** — a ~10-minute section with a growth→peak→decrease **density** shape.
 - **Clip / region** — a track's `[enter, exit]` window within a module.
 - **Density** — how many tracks overlap at a moment; *is* the arrangement ([ADR-0001]).
-- **Mode** — a behavioral preset (Relaxation / Immersion / Return) expressed as a density table.
+- **Mode / Section** — one of the brief's three 10-min sections (Introduction / Deep Relaxation /
+  Return), expressed as a per-layer timing table.
 - **Bridge** — the crossfade/overlap between two adjacent modules.
 
 ## 8. Constraints & principles

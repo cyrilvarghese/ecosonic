@@ -84,8 +84,7 @@ Two" button seeds the store and routes.
 
 ### 6.2 Arrangement types (`src/arrange/types.ts`)
 ```ts
-type Mode = 'RELAXATION'|'IMMERSION'|'RETURN';
-type Presence = 'continuous'|'active'|'sparse'|'absent';
+type Mode = 'INTRODUCTION'|'DEEP_RELAXATION'|'RETURN';   // the three 10-min sections
 const BED_CATEGORIES = ['NOISE','ISO','PLANET','ELEMENT'];   // isBed()
 interface ArrTrack { id; category; label; sample; ceilingDb; locked }
 interface RegionTiming { enterSec; exitSec; fadeInSec; fadeOutSec }
@@ -101,10 +100,10 @@ interface Composition { tracks; templates: Record<Mode,ModeTemplate>; sequence; 
 - **`arrangementStore`** holds: `element`, `tracks`, `moduleRegions: TemplateRegion[]`,
   `trackDurations`, `playing`, `positionSec`, `scrubbing`, `masterDb` (+ the parked `composition`,
   `durationMin`, `activeMode`). Actions: `initFrom`, `play/pause/seek/setPosition/setScrubbing`,
-  `updateModuleRegion`, `setTrackDuration`, …
-- **Seed:** `initFrom` seeds `moduleRegions` via `buildModeTemplate(tracks, modes[0], cfg)` — the
-  **density table**: continuous bed spans `[0, D]`; active/sparse drivers use `presenceBands`,
-  peaking mid-module.
+  `updateModuleRegion`, `setTrackDuration`, `loadMode`, …
+- **Seed / mode picker:** `initFrom` seeds `moduleRegions` via `buildModeTemplate(tracks, modes[0])`;
+  `loadMode(mode)` reseeds from a chosen mode's **timing table** (§6.3.1). NOISE spans `[0, D]`;
+  other layers enter/exit per the table, so density peaks mid-module.
 - **`ArrangeScreen`** — header (Return, play/pause, **scrub slider**, `mm:ss/mm:ss`), element theme,
   and `ModuleDesigner`.
 - **`ModuleDesigner`** — one lane per track: a draggable clip (edges = enter/exit via pointer +
@@ -122,34 +121,34 @@ interface Composition { tracks; templates: Record<Mode,ModeTemplate>; sequence; 
 
 ### 6.3.1 Loading a mode into clips (the density pipeline)
 
-A mode is loaded from the config **density tables** (see `config.layerTwo`, §7) into draggable clips:
+A mode is loaded from its config **timing table** (see `config.layerTwo`, §7) into draggable clips:
 
 ```
-config.layerTwo.modeRules[mode]     Mode × Category → Presence ('continuous'|'active'|'sparse'|'absent')
-config.layerTwo.presenceBands       Presence → [lo, hi]  (fraction of the module)
-        │
+config.layerTwo.modeRules[mode][category]   → { enter, exit, fadeIn, fadeOut } (seconds) | null
+        │                                       (null = the category is absent in this mode)
         ▼  buildModeTemplate(tracks, mode, cfg)          [src/arrange/buildModeTemplate.ts]
-   for each track:  tier = modeRules[mode][track.category]
-                    'absent'         → no region
-                    else             → region [lo·moduleSeconds, hi·moduleSeconds]
-                                       (bed = exact [0, D]; drivers get a small per-index jitter)
+   for each track:  t = modeRules[mode][track.category]
+                    null → no region
+                    else → region [t.enter, t.exit] with fades capped to half the clip width
         │
         ▼  TemplateRegion[]
-   arrangementStore.initFrom → seedModuleFromTable(tracks) = buildModeTemplate(tracks, modes[0], cfg)
-        │                                                    (modes[0] = RELAXATION today)
+   arrangementStore.initFrom → seedModuleFromTable(tracks, modes[0])   (modes[0] = INTRODUCTION)
+   arrangementStore.loadMode(mode) → reseed from that mode's table       (the mode picker)
+        │
         ▼  moduleRegions
    ModuleDesigner renders one draggable clip per region;
    useModuleScheduler triggers each track from its playhead offset during playback.
 ```
 
-- **Where the tables are:** `config/ecosonic.config.json` → `layerTwo.modeRules` + `presenceBands`;
-  Zod-validated in `src/config.ts` (`ModeRule` / `Presence` / `LayerTwo`).
-- **Reload / swap mode (Phase B):** call `buildModeTemplate(tracks, activeMode, cfg)` with a
-  different `activeMode`. IMMERSION drops the driver categories (`absent`) → sparse/deep; RETURN
-  makes them `active` → full.
-- **Bed vs drivers:** `isBed(category)` (`NOISE/ISO/PLANET/ELEMENT`) → jitter-free full-module clip;
-  drivers are jittered so equal tiers don't overlap identically.
-- The tables are a **tunable starter set** (ADR-0004); the density peak is emergent from clip overlap
+- **Where the tables are:** `config/ecosonic.config.json` → `layerTwo.modeRules`; Zod-validated in
+  `src/config.ts` (`Timing` / `ModeRule` / `LayerTwo`). Timings are transcribed from the production
+  brief (`TRACK INFO`).
+- **Swap mode (mode picker):** `loadMode(mode)` → `buildModeTemplate(tracks, mode, cfg)`.
+  `DEEP_RELAXATION` sets the driver categories to `null` → stripped-back bed; `INTRODUCTION`/`RETURN`
+  stagger PAD/Bass/Melody in.
+- **Stubs:** `ARP` and `ELEMENT_SUB` (Sub-Elements) are not modeled yet; `ELEMENT` stands in for
+  Sub-Elements, and per the brief `FX` is treated as an element-type layer (present throughout).
+- The tables are a **tunable set** (ADR-0004); the density peak is emergent from clip overlap
   (ADR-0001), not an imposed curve.
 
 ### 6.4 Composition machinery (built + tested, parked)
@@ -169,11 +168,12 @@ Pure functions ready for the multi-module phase, all unit-tested:
 Relevant to Layer Two (`config.layerTwo`):
 ```jsonc
 moduleSeconds, bridgeSeconds, regionFadeSeconds, peakFrac, schedulerTickMs,
-durationPresetsMin, modes: ['RELAXATION','IMMERSION','RETURN'],
-presenceBands: { continuous:[0,1], active:[0.18,0.82], sparse:[0.4,0.6] },
-modeRules: { <MODE>: { <Category>: 'continuous'|'active'|'sparse'|'absent' } }  // the density table
+durationPresetsMin, modes: ['INTRODUCTION','DEEP_RELAXATION','RETURN'],
+modeRules: {                                     // per-layer timing table, transcribed from the brief
+  <MODE>: { <Category>: { enter, exit, fadeIn, fadeOut } | null }   // seconds; null = absent
+}
 ```
-The `modeRules`/`presenceBands` are an explicit **tunable starter set** (ADR-0004).
+The `modeRules` are an explicit **tunable set** (ADR-0004).
 
 ## 8. Testing strategy
 
