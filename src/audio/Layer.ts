@@ -134,24 +134,28 @@ export class Layer {
     if (this.started && !this.muted) this.rampTo(this.effectiveGain(), rampMs);
   }
 
-  /** Layer Two: (re)start the sample from position 0 so its baked fade-in plays. Loops
-   *  (short samples repeat to fill the clip; long ones get cut when release() is called). */
-  trigger() {
+  /** Layer Two: (re)start the sample at `offsetSec` into itself (wrapped into the loop).
+   *  offset 0 = the sample's start (baked fade-in); a mid value = mid-sample, for scrubbing. */
+  trigger(offsetSec = 0) {
     if (this.kind === 'buffer') {
       if (this.bufferSource) { try { this.bufferSource.stop(); } catch { /* noop */ } this.bufferSource = null; }
       if (!this.buffer) return;
+      const dur = this.buffer.duration;
+      const off = dur > 0 ? ((offsetSec % dur) + dur) % dur : 0;
       const src = this.buildBufferSource(); // loop = true
-      src.start(0, 0);
+      src.start(0, off);
       this.bufferSource = src;
       this.startedAt = this.ctx.currentTime;
-      this.offset = 0;
+      this.offset = off;
     } else if (this.audioEl) {
-      try { this.audioEl.currentTime = 0; } catch { /* not seekable yet */ }
+      const dur = this.audioEl.duration;
+      const off = Number.isFinite(dur) && dur > 0 ? ((offsetSec % dur) + dur) % dur : 0;
+      try { this.audioEl.currentTime = off; } catch { /* not seekable yet */ }
       this.audioEl.loop = true;
       void this.audioEl.play();
     }
     this.started = true;
-    this.rampTo(this.targetGain, 8); // sample starts at ~0 amplitude (baked fade-in) → no click
+    this.rampTo(this.targetGain, 8); // sample fades from ~0 at offset 0; short ramp guards mid-sample seeks
   }
 
   /** Layer Two: stop playback with a short anti-click ramp (no musical fade — baked in). */

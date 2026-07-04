@@ -11,6 +11,7 @@ export function useModuleScheduler(engine: AudioEngine): void {
     let raf = 0;
     let last: number | null = null;
     let wasScrubbing = false;
+    let wasPlaying = false;
     const active = new Set<string>();
     const D = config.layerTwo.moduleSeconds;
 
@@ -27,21 +28,29 @@ export function useModuleScheduler(engine: AudioEngine): void {
           if (pos >= D) pos -= D;
           st.setPosition(pos);
         }
-        // On release of the scrubber, restart the whole section from 0 so it re-auditions
-        // cleanly (otherwise mid-clip tracks — incl. the full-length bed — keep playing).
-        const justReleased = wasScrubbing && !st.scrubbing;
+        // On a position jump (scrub released, or playback (re)started after a seek), re-seek
+        // every present track to the SAMPLE OFFSET for `pos` — so a mid-clip playhead plays
+        // mid-sample, not from 0. During normal forward play, sources stay in sync on their own.
+        const resync = (wasScrubbing && !st.scrubbing) || !wasPlaying;
         wasScrubbing = st.scrubbing;
+        wasPlaying = true;
 
         for (const track of st.tracks) {
           const region = st.moduleRegions.find((r) => r.trackId === track.id);
           const inside = !!region && pos >= region.enterSec && pos < region.exitSec;
           const was = active.has(track.id);
-          if (inside && (!was || justReleased)) { active.add(track.id); engine.triggerTrack(track.id); }
-          else if (!inside && was) { active.delete(track.id); engine.releaseTrack(track.id); }
+          if (inside && region && (!was || resync)) {
+            active.add(track.id);
+            engine.triggerTrack(track.id, pos - region.enterSec);
+          } else if (!inside && was) {
+            active.delete(track.id);
+            engine.releaseTrack(track.id);
+          }
         }
       } else {
         last = null; // freeze; ctx.suspend holds the sources, so keep `active` as-is
         wasScrubbing = st.scrubbing;
+        wasPlaying = false;
       }
       raf = requestAnimationFrame(frame);
     };
