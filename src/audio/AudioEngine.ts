@@ -55,12 +55,16 @@ export class AudioEngine {
         continue;
       }
       if (existing) { existing.dispose(); this.layers.delete(s.id); }
-      const layer = new Layer(this.ctx!, this.master!, {
+      const ctx = this.ctx;
+      const master = this.master;
+      if (!ctx || !master) return; // context cleared (e.g. navigation/unmount) mid-load
+      const layer = new Layer(ctx, master, {
         id: s.id, path: s.path, bytes: s.bytes,
         thresholdBytes: this.cfg.thresholdBytes, volumeDb: s.volumeDb, minDb: this.cfg.minDb,
       });
       this.layers.set(s.id, layer);
       await layer.load();
+      if (!this.ctx) { layer.dispose(); this.layers.delete(s.id); return; } // cleared during the await
       layer.setMutedInitial(s.muted);
       layer.setWantPlaying(s.playing, this.running, this.cfg.muteRampMs);
     }
