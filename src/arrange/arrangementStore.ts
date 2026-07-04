@@ -1,14 +1,17 @@
 'use client';
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
+import type { ElementName } from '@/types';
 import type { ArrTrack, Composition, Mode, TemplateRegion } from '@/arrange/types';
 import { buildComposition } from '@/arrange/buildComposition';
+import { buildModeTemplate } from '@/arrange/buildModeTemplate';
 import { config } from '@/config';
 
-type Selection = { tracks: ArrTrack[]; tuningHz: number; masterDb: number };
+type Selection = { element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number };
 
 export interface ArrangementState {
   // Phase 1 — a single module being designed: the handed-off tracks as clips on a timeline.
+  element: ElementName | null;
   tracks: ArrTrack[];
   moduleRegions: TemplateRegion[];
   trackDurations: Record<string, number>; // real sample length (sec), filled once loaded
@@ -34,17 +37,17 @@ export interface ArrangementState {
 
 const clampModule = (sec: number) => Math.max(0, Math.min(config.layerTwo.moduleSeconds, sec));
 
-/** Seed: every handed-off track present for the whole module (like Layer One), draggable from there. */
-function seedFlatModule(tracks: ArrTrack[]): TemplateRegion[] {
-  const D = config.layerTwo.moduleSeconds;
-  const fade = Math.min(config.layerTwo.regionFadeSeconds, D / 2);
-  return tracks.map((t) => ({ trackId: t.id, enterSec: 0, exitSec: D, fadeInSec: fade, fadeOutSec: fade }));
+/** Seed the module from the mode-rules table (preconfigured density): the continuity bed
+ *  spans the module, active/sparse drivers stagger toward the peak. Uses the first mode. */
+function seedModuleFromTable(tracks: ArrTrack[]): TemplateRegion[] {
+  return buildModeTemplate(tracks, config.layerTwo.modes[0], config).regions;
 }
 
 export function createArrangementStore() {
   return createStore<ArrangementState>((set) => {
     let selection: Selection | null = null;
     return {
+      element: null,
       tracks: [],
       moduleRegions: [],
       trackDurations: {},
@@ -58,8 +61,9 @@ export function createArrangementStore() {
       initFrom: (sel, durationMin) => {
         selection = sel;
         set({
+          element: sel.element,
           tracks: sel.tracks,
-          moduleRegions: seedFlatModule(sel.tracks),
+          moduleRegions: seedModuleFromTable(sel.tracks),
           trackDurations: {},
           masterDb: sel.masterDb,
           playing: false,

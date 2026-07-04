@@ -1,4 +1,5 @@
 'use client';
+import type { CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Play, Pause } from 'lucide-react';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -15,6 +16,7 @@ export function ArrangeScreen() {
   const engine = useLayer2Engine();
   useModuleScheduler(engine);
 
+  const element = useArrangement((s) => s.element);
   const tracks = useArrangement((s) => s.tracks);
   const moduleRegions = useArrangement((s) => s.moduleRegions);
   const trackDurations = useArrangement((s) => s.trackDurations);
@@ -24,9 +26,20 @@ export function ArrangeScreen() {
   const pause = useArrangement((s) => s.pause);
 
   const D = config.layerTwo.moduleSeconds;
+  const el = element ? element.toLowerCase() : undefined;
+  // Inherit the chosen element's accent theme, same tokens as Layer One's builder.
+  const themeStyle = el
+    ? ({
+        '--accent': `var(--c-${el})`,
+        '--accent-ink': `var(--ink-${el})`,
+        '--ring': `var(--c-${el})`,
+        background:
+          'radial-gradient(125% 70% at 50% 0%, color-mix(in oklch, var(--accent) 14%, var(--background)), var(--background) 60%)',
+      } as CSSProperties)
+    : undefined;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div data-element={el} className="flex min-h-screen flex-col bg-background" style={themeStyle}>
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" aria-label="Return to Layer One" onClick={() => router.push('/layer1')}>

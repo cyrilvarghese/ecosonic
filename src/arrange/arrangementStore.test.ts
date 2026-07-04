@@ -6,7 +6,7 @@ import { config } from '@/config';
 const t = (id: string, category: ArrTrack['category']): ArrTrack => ({
   id, category, label: id, sample: { name: id, path: id, bytes: 1 }, ceilingDb: 0, locked: false,
 });
-const sel = { tracks: [t('n', 'NOISE'), t('pad', 'PAD')], tuningHz: 440, masterDb: 0 };
+const sel = { element: 'WATER' as const, tracks: [t('n', 'NOISE'), t('pad', 'PAD')], tuningHz: 440, masterDb: 0 };
 const D = config.layerTwo.moduleSeconds;
 
 describe('arrangementStore', () => {
@@ -19,12 +19,16 @@ describe('arrangementStore', () => {
     expect(s.playing).toBe(false);
     expect(s.positionSec).toBe(0);
   });
-  it('initFrom seeds every track full-length (present the whole module)', () => {
+  it('initFrom seeds the module from the mode table (bed spans it, drivers stagger)', () => {
     store.getState().initFrom(sel, 30);
     const regions = store.getState().moduleRegions;
     expect(regions).toHaveLength(2);
-    expect(regions[0].enterSec).toBe(0);
-    expect(regions[0].exitSec).toBe(D);
+    const noise = regions.find((r) => r.trackId === 'n')!; // continuity bed
+    const pad = regions.find((r) => r.trackId === 'pad')!; // driver
+    expect(noise.enterSec).toBe(0);
+    expect(noise.exitSec).toBe(D);
+    expect(pad.exitSec - pad.enterSec).toBeLessThan(D); // staggered, not full-length
+    expect(store.getState().element).toBe('WATER');
   });
   it('updateModuleRegion drags a clip and keeps fades within the width', () => {
     store.getState().initFrom(sel, 30);

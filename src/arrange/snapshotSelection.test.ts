@@ -15,9 +15,10 @@ describe('snapshotSelection', () => {
   it('keeps only non-muted tracks', () => {
     expect(snapshotSelection(project).tracks.map((t) => t.id)).toEqual(['a', 'c']);
   });
-  it('maps volumeDb to ceilingDb and passes tuning/master through', () => {
+  it('maps volumeDb to ceilingDb and passes element/tuning/master through', () => {
     const s = snapshotSelection(project);
     expect(s.tracks[0].ceilingDb).toBe(-6);
+    expect(s.element).toBe('WATER');
     expect(s.tuningHz).toBe(432);
     expect(s.masterDb).toBe(-3);
   });

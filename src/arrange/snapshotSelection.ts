@@ -1,9 +1,9 @@
-import type { Project } from '@/types';
+import type { ElementName, Project } from '@/types';
 import type { ArrTrack } from '@/arrange/types';
 
 /** Freeze the Layer One selection into Layer Two input: non-muted tracks, volumeDb→ceilingDb. */
 export function snapshotSelection(project: Project): {
-  tracks: ArrTrack[]; tuningHz: number; masterDb: number;
+  element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number;
 } {
   const tracks: ArrTrack[] = project.tracks
     .filter((t) => !t.muted)
@@ -11,5 +11,5 @@ export function snapshotSelection(project: Project): {
       id: t.id, category: t.category, label: t.label, sample: t.sample,
       ceilingDb: t.volumeDb, locked: t.locked,
     }));
-  return { tracks, tuningHz: project.tuningHz, masterDb: project.masterVolumeDb };
+  return { element: project.element, tracks, tuningHz: project.tuningHz, masterDb: project.masterVolumeDb };
 }
