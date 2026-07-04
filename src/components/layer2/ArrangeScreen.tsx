@@ -1,11 +1,14 @@
 'use client';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Play, Pause } from 'lucide-react';
+import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useArrangementScheduler } from '@/arrange/useArrangementScheduler';
 import { trackScalarAt } from '@/arrange/trackScalar';
 import { ModuleBand } from '@/components/layer2/ModuleBand';
+import { ModuleDesigner } from '@/components/layer2/ModuleDesigner';
 import { Button } from '@/components/ui/button';
 import { config } from '@/config';
 
@@ -15,6 +18,7 @@ export function ArrangeScreen() {
   const router = useRouter();
   const engine = useLayer2Engine();
   useArrangementScheduler(engine);
+  const [viewMode, setViewMode] = useState<Mode | null>(null);
 
   const composition = useArrangement((s) => s.composition);
   const playing = useArrangement((s) => s.playing);
@@ -70,9 +74,29 @@ export function ArrangeScreen() {
       </header>
 
       <div className="p-6">
-        <ModuleBand sequence={composition.sequence} totalSec={total} positionSec={positionSec} />
+        <ModuleBand
+          sequence={composition.sequence}
+          totalSec={total}
+          positionSec={positionSec}
+          onSelect={(mode) => setViewMode(mode)}
+          selectedMode={viewMode}
+        />
       </div>
 
+      {viewMode ? (
+        <main className="flex flex-1 flex-col gap-1.5 overflow-y-auto px-6 pb-6">
+          <div className="mb-1 flex items-center gap-3">
+            <button
+              onClick={() => setViewMode(null)}
+              className="rounded-full bg-card px-3 py-1 text-xs text-muted-foreground transition-calm hover:text-foreground"
+            >
+              ← Overview
+            </button>
+            <span className="label">Designing · {viewMode}</span>
+          </div>
+          <ModuleDesigner composition={composition} mode={viewMode} />
+        </main>
+      ) : (
       <main className="flex flex-1 flex-col gap-1.5 overflow-y-auto px-6 pb-6">
         {composition.tracks.map((track) => {
           const scalar = trackScalarAt(composition, track, positionSec);
@@ -95,6 +119,7 @@ export function ArrangeScreen() {
           );
         })}
       </main>
+      )}
     </div>
   );
 }

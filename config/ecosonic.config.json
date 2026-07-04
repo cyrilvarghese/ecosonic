@@ -37,9 +37,9 @@
       "sparse": [0.4, 0.6]
     },
     "modeRules": {
-      "RELAXATION": { "NOISE": "continuous", "ISO": "active", "PLANET": "active", "ELEMENT": "active", "BASS": "sparse", "PAD": "active", "MELODY": "sparse", "FX": "sparse" },
-      "IMMERSION":  { "NOISE": "continuous", "ISO": "sparse", "PLANET": "sparse", "ELEMENT": "sparse", "BASS": "absent", "PAD": "absent", "MELODY": "absent", "FX": "absent" },
-      "RETURN":     { "NOISE": "continuous", "ISO": "active", "PLANET": "active", "ELEMENT": "active", "BASS": "active", "PAD": "active", "MELODY": "sparse", "FX": "active" }
+      "RELAXATION": { "NOISE": "continuous", "ISO": "continuous", "PLANET": "continuous", "ELEMENT": "continuous", "BASS": "sparse", "PAD": "active", "MELODY": "sparse", "FX": "sparse" },
+      "IMMERSION":  { "NOISE": "continuous", "ISO": "continuous", "PLANET": "continuous", "ELEMENT": "active", "BASS": "absent", "PAD": "absent", "MELODY": "absent", "FX": "absent" },
+      "RETURN":     { "NOISE": "continuous", "ISO": "continuous", "PLANET": "continuous", "ELEMENT": "continuous", "BASS": "active", "PAD": "active", "MELODY": "sparse", "FX": "active" }
     }
   }
 }
