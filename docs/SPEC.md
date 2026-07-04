@@ -34,7 +34,7 @@ src/app/api/samples/[...path]/route.ts   streams audio files
 
 ```ts
 type ElementName = 'EARTH'|'WATER'|'AIR'|'FIRE'|'ETHER';
-type Category    = 'ISO'|'PLANET'|'NOISE'|'ELEMENT'|'BASS'|'PAD'|'MELODY'|'FX';
+type Category    = 'ISO'|'PLANET'|'NOISE'|'ELEMENT'|'ELEMENT_SUB'|'BASS'|'PAD'|'ARP'|'MELODY'|'FX';
 
 interface Track {              // Layer One track
   id; category: Category; label; sample: {name;path;bytes};
@@ -146,8 +146,11 @@ config.layerTwo.modeRules[mode][category]   → { enter, exit, fadeIn, fadeOut }
 - **Swap mode (mode picker):** `loadMode(mode)` → `buildModeTemplate(tracks, mode, cfg)`.
   `DEEP_RELAXATION` sets the driver categories to `null` → stripped-back bed; `INTRODUCTION`/`RETURN`
   stagger PAD/Bass/Melody in.
-- **Stubs:** `ARP` and `ELEMENT_SUB` (Sub-Elements) are not modeled yet; `ELEMENT` stands in for
-  Sub-Elements, and per the brief `FX` is treated as an element-type layer (present throughout).
+- **Categories:** `ARP` and `ELEMENT_SUB` (Sub-Elements) are real categories, selected in Layer One
+  (`SELECTION_ORDER`) and placed by the timing tables — ARP in Introduction/Return, Sub-Elements only
+  in Deep Relaxation. A 2nd Element/Sub-Element enters at `secondElementEnterSec` (~5:00). Per the
+  brief `FX` is an element-type layer (present throughout). *(Sub-Elements exist in the manifest for
+  EARTH/AIR/FIRE only; WATER/ETHER fall back to ELEMENT.)*
 - The tables are a **tunable set** (ADR-0004); the density peak is emergent from clip overlap
   (ADR-0001), not an imposed curve.
 

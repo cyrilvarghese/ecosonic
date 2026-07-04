@@ -64,7 +64,8 @@ memory; a hard refresh returns to `/`.
 
 - **Element selection** — five elements, each with its own accent theme (oklch tokens).
 - **Auto-selection** — from a manifest of samples per element × category, build a set of tracks
-  per configurable count rules. Categories: `ISO, PLANET, NOISE, ELEMENT, BASS, PAD, MELODY, FX`.
+  per configurable count rules. Categories: `ISO, PLANET, NOISE, ELEMENT, ELEMENT_SUB, BASS, PAD,
+  ARP, MELODY, FX`.
 - **Per-track controls** — volume (**centered ±20 dB**, 0 dB = unity), mute, play/pause, lock,
   change (swap to another sample in the same category).
 - **Session controls** — master volume, global tuning, regenerate (re-roll unlocked tracks),
@@ -114,7 +115,8 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 ## 7. Glossary
 
 - **Element** — EARTH/WATER/AIR/FIRE/ETHER; drives sample set + theme.
-- **Category** — a track's role (ISO, PLANET, NOISE, ELEMENT, BASS, PAD, MELODY, FX).
+- **Category** — a track's role (ISO, PLANET, NOISE, ELEMENT, ELEMENT_SUB/Sub-Elements, BASS, PAD,
+  ARP, MELODY, FX).
 - **Bed / continuity layers** — NOISE/ISO/PLANET/ELEMENT; the always-present perceptual foundation.
 - **Drivers** — BASS/PAD/MELODY/FX; come and go to shape density.
 - **Wave Module** — a ~10-minute section with a growth→peak→decrease **density** shape.

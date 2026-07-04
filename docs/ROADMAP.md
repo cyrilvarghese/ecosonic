@@ -82,12 +82,15 @@ The three sections:
 | PLANET | 2:00 | 9:00 | after ISO peaks |
 | PAD | 3:00 | 9:00 | 1-min fade-in |
 | BASS | 4:00 | 9:00 | **no fade-in** — enters directly |
+| ARP | 4:30 | 9:00 | arpeggiator, between Bass and Melody |
 | MELODY | 6:30 | 9:00 | completes the harmony |
 
-¹ **Sub-Elements** and **ARP** are **stubbed** (their samples aren't wired): ELEMENT stands in for
-Sub-Elements in Deep Relaxation, and ARP (between Bass and Melody) is skipped.
+¹ **Sub-Elements** (`ELEMENT_SUB`) are now real: selected in Layer One and present only in Deep
+Relaxation. Caveat — the sample library has Sub-Elements for EARTH/AIR/FIRE but **not WATER/ETHER**;
+for those, ELEMENT carries the environmental base in Deep Relaxation.
 ² Per the brief, **FX is Fire's Element**, so FX is treated as an element-type layer (present
-throughout), not a driver.
+throughout), not a driver. A **2nd Element / Sub-Element** enters late (`secondElementEnterSec`,
+~5:00) per the brief.
 
 ### How a mode becomes clips
 

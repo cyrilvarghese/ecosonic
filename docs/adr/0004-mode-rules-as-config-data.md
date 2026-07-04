@@ -27,7 +27,8 @@ Separate **mechanism from policy**:
 > mechanism/policy split held — it was a config + schema change, no rework of the consuming code.
 
 The modes are the brief's three sections: **Introduction / Deep Relaxation / Return**. `ARP` and
-`ELEMENT_SUB` are stubbed; `FX` is treated as an element-type layer per the brief.
+`ELEMENT_SUB` (Sub-Elements) are real categories (selected in Layer One, placed by the tables);
+`FX` is treated as an element-type layer per the brief; a 2nd Element/Sub-Element enters ~5:00.
 
 ## Consequences
 
