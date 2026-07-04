@@ -1,7 +1,7 @@
 # ECOSONIC — Product Requirements Document
 
 **Status:** Living document · **Last updated:** 2026-07-04
-**Related:** [SPEC.md](./SPEC.md) · [ADRs](./adr/README.md)
+**Related:** [SPEC.md](./SPEC.md) · [ROADMAP.md](./ROADMAP.md) · [ADRs](./adr/README.md)
 
 ---
 
