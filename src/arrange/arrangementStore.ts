@@ -17,6 +17,7 @@ export interface ArrangementState {
   trackDurations: Record<string, number>; // real sample length (sec), filled once loaded
   playing: boolean;
   positionSec: number;
+  scrubbing: boolean; // true while dragging the position slider — holds the clock
   masterDb: number;
   // Phase 2 machinery (built + tested, not yet surfaced in the UI).
   composition: Composition | null;
@@ -29,6 +30,7 @@ export interface ArrangementState {
   pause: () => void;
   seek: (sec: number) => void;
   setPosition: (sec: number) => void;
+  setScrubbing: (b: boolean) => void;
   setActiveMode: (mode: Mode) => void;
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
@@ -53,6 +55,7 @@ export function createArrangementStore() {
       trackDurations: {},
       playing: false,
       positionSec: 0,
+      scrubbing: false,
       masterDb: 0,
       composition: null,
       durationMin: 30,
@@ -80,6 +83,7 @@ export function createArrangementStore() {
       pause: () => set({ playing: false }),
       seek: (sec) => set({ positionSec: clampModule(sec) }),
       setPosition: (sec) => set({ positionSec: clampModule(sec) }),
+      setScrubbing: (b) => set({ scrubbing: b }),
       setActiveMode: (mode) => set({ activeMode: mode }),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),

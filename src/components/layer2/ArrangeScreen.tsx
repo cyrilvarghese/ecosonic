@@ -24,6 +24,8 @@ export function ArrangeScreen() {
   const positionSec = useArrangement((s) => s.positionSec);
   const play = useArrangement((s) => s.play);
   const pause = useArrangement((s) => s.pause);
+  const seek = useArrangement((s) => s.seek);
+  const setScrubbing = useArrangement((s) => s.setScrubbing);
 
   const D = config.layerTwo.moduleSeconds;
   const el = element ? element.toLowerCase() : undefined;
@@ -61,6 +63,20 @@ export function ArrangeScreen() {
           >
             {playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="translate-x-[1px]" />}
           </button>
+          <input
+            type="range"
+            min={0}
+            max={D}
+            step={1}
+            value={positionSec}
+            onChange={(e) => seek(Number(e.target.value))}
+            onPointerDown={() => setScrubbing(true)}
+            onPointerUp={() => setScrubbing(false)}
+            onPointerCancel={() => setScrubbing(false)}
+            aria-label="Scrub playback position"
+            className="w-64 cursor-pointer"
+            style={{ accentColor: 'var(--accent-ink)' }}
+          />
           <span className="w-24 text-right text-sm tabular-nums text-muted-foreground">
             {clock(positionSec)} / {clock(D)}
           </span>
@@ -73,7 +89,7 @@ export function ArrangeScreen() {
           On play, a track <b>starts from 0</b> when its clip begins (your baked fade-in plays) — it loops if the
           sample is shorter than the clip, or is cut if longer.
         </p>
-        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} playing={playing} />
+        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} />
       </main>
     </div>
   );

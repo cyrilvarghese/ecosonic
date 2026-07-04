@@ -19,13 +19,18 @@ export function useModuleScheduler(engine: AudioEngine): void {
         const t = now / 1000;
         const dt = last === null ? 0 : t - last;
         last = t;
-        let next = st.positionSec + dt;
-        if (next >= D) next -= D; // loop the module
-        st.setPosition(next);
-
+        // While scrubbing, hold the position the slider set; otherwise advance & loop.
+        let pos = st.positionSec;
+        if (!st.scrubbing) {
+          pos += dt;
+          if (pos >= D) pos -= D;
+          st.setPosition(pos);
+        }
+        // Re-sync playback to `pos` — this makes scrubbing work: tracks whose clips now
+        // cover the position start from 0, tracks that no longer do stop.
         for (const track of st.tracks) {
           const region = st.moduleRegions.find((r) => r.trackId === track.id);
-          const inside = !!region && next >= region.enterSec && next < region.exitSec;
+          const inside = !!region && pos >= region.enterSec && pos < region.exitSec;
           const was = active.has(track.id);
           if (inside && !was) { active.add(track.id); engine.triggerTrack(track.id); }
           else if (!inside && was) { active.delete(track.id); engine.releaseTrack(track.id); }

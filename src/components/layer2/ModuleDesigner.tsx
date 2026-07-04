@@ -14,13 +14,11 @@ export function ModuleDesigner({
   regions,
   trackDurations,
   positionSec,
-  playing,
 }: {
   tracks: ArrTrack[];
   regions: TemplateRegion[];
   trackDurations: Record<string, number>;
   positionSec: number;
-  playing: boolean;
 }) {
   const D = config.layerTwo.moduleSeconds;
 
@@ -45,20 +43,18 @@ export function ModuleDesigner({
       ))}
 
       {/* single playhead across every lane — aligned to the timeline column */}
-      {playing && (
-        <div className="pointer-events-none absolute inset-0 z-20 flex px-4">
-          <div className="w-28 shrink-0" />
-          <div className="relative mx-3 flex-1">
-            <div
-              className="absolute top-0 bottom-0 w-[2px] -translate-x-1/2 rounded bg-[var(--accent-ink)]"
-              style={{ left: `${Math.min(100, (positionSec / D) * 100)}%` }}
-            >
-              <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--accent-ink)]" />
-            </div>
+      <div className="pointer-events-none absolute inset-0 z-20 flex px-4">
+        <div className="w-28 shrink-0" />
+        <div className="relative mx-3 flex-1">
+          <div
+            className="absolute top-0 bottom-0 w-[2px] -translate-x-1/2 rounded bg-[var(--accent-ink)]"
+            style={{ left: `${Math.min(100, (positionSec / D) * 100)}%` }}
+          >
+            <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--accent-ink)]" />
           </div>
-          <div className="w-24 shrink-0" />
         </div>
-      )}
+        <div className="w-24 shrink-0" />
+      </div>
     </div>
   );
 }
