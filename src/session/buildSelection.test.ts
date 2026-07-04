@@ -76,9 +76,11 @@ describe('buildSelection', () => {
     expect(byCat('ISO')[0].label).toBe('ISO');
   });
 
-  it('never selects ARP or ELEMENT/SUB samples', () => {
-    expect(tracks.some((t) => t.sample.path.includes('/ARP/'))).toBe(false);
-    expect(tracks.some((t) => t.sample.path.includes('/SUB/'))).toBe(false);
+  it('selects ARP and ELEMENT/SUB samples', () => {
+    expect(byCat('ARP')).toHaveLength(1);
+    expect(byCat('ELEMENT_SUB').length).toBeGreaterThanOrEqual(1);
+    expect(tracks.some((t) => t.sample.path.includes('/ARP/'))).toBe(true);
+    expect(tracks.some((t) => t.sample.path.includes('/SUB/'))).toBe(true);
   });
 
   it('applies default volume and unique ids', () => {

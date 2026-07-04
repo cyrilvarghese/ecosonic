@@ -13,51 +13,59 @@
     }
   },
   "selection": {
-    "ISO":     { "min": 1, "max": 1 },
-    "PLANET":  { "min": 2, "max": 2 },
-    "NOISE":   { "min": 1, "max": 1 },
-    "ELEMENT": { "min": 2, "max": 3 },
-    "BASS":    { "min": 1, "max": 1 },
-    "PAD":     { "min": 1, "max": 1 },
-    "MELODY":  { "min": 1, "max": 1 },
-    "FX":      { "min": 1, "max": 2 }
+    "ISO":         { "min": 1, "max": 1 },
+    "PLANET":      { "min": 2, "max": 2 },
+    "NOISE":       { "min": 1, "max": 1 },
+    "ELEMENT":     { "min": 2, "max": 3 },
+    "ELEMENT_SUB": { "min": 1, "max": 2 },
+    "BASS":        { "min": 1, "max": 1 },
+    "PAD":         { "min": 1, "max": 1 },
+    "ARP":         { "min": 1, "max": 1 },
+    "MELODY":      { "min": 1, "max": 1 },
+    "FX":          { "min": 1, "max": 2 }
   },
   "motion": { "durFastMs": 200, "durMs": 400, "durSlowMs": 800 },
   "layerTwo": {
     "moduleSeconds": 600,
     "bridgeSeconds": 120,
     "regionFadeSeconds": 12,
+    "secondElementEnterSec": 300,
     "peakFrac": 0.5,
     "schedulerTickMs": 250,
     "durationPresetsMin": [10, 20, 30, 40],
     "modes": ["INTRODUCTION", "DEEP_RELAXATION", "RETURN"],
     "modeRules": {
       "INTRODUCTION": {
-        "NOISE":   { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 0 },
-        "ELEMENT": { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
-        "FX":      { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
-        "ISO":     { "enter": 60,  "exit": 540, "fadeIn": 60, "fadeOut": 120 },
-        "PLANET":  { "enter": 120, "exit": 540, "fadeIn": 60, "fadeOut": 120 },
-        "PAD":     { "enter": 180, "exit": 540, "fadeIn": 60, "fadeOut": 60 },
-        "BASS":    { "enter": 240, "exit": 540, "fadeIn": 0,  "fadeOut": 60 },
-        "MELODY":  { "enter": 390, "exit": 540, "fadeIn": 60, "fadeOut": 60 }
+        "NOISE":       { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 0 },
+        "ELEMENT":     { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ELEMENT_SUB": null,
+        "FX":          { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ISO":         { "enter": 60,  "exit": 540, "fadeIn": 60, "fadeOut": 120 },
+        "PLANET":      { "enter": 120, "exit": 540, "fadeIn": 60, "fadeOut": 120 },
+        "PAD":         { "enter": 180, "exit": 540, "fadeIn": 60, "fadeOut": 60 },
+        "BASS":        { "enter": 240, "exit": 540, "fadeIn": 0,  "fadeOut": 60 },
+        "ARP":         { "enter": 270, "exit": 540, "fadeIn": 60, "fadeOut": 60 },
+        "MELODY":      { "enter": 390, "exit": 540, "fadeIn": 60, "fadeOut": 60 }
       },
       "DEEP_RELAXATION": {
-        "NOISE":   { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
-        "ELEMENT": { "enter": 0, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
-        "ISO":     { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
-        "PLANET":  { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
-        "PAD": null, "BASS": null, "MELODY": null, "FX": null
+        "NOISE":       { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
+        "ELEMENT":     { "enter": 0, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "ELEMENT_SUB": { "enter": 0, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "ISO":         { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
+        "PLANET":      { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
+        "PAD": null, "BASS": null, "ARP": null, "MELODY": null, "FX": null
       },
       "RETURN": {
-        "NOISE":   { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
-        "ELEMENT": { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
-        "FX":      { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
-        "ISO":     { "enter": 60,  "exit": 600, "fadeIn": 60, "fadeOut": 60 },
-        "PLANET":  { "enter": 120, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
-        "PAD":     { "enter": 180, "exit": 570, "fadeIn": 60, "fadeOut": 60 },
-        "BASS":    { "enter": 240, "exit": 570, "fadeIn": 0,  "fadeOut": 60 },
-        "MELODY":  { "enter": 390, "exit": 570, "fadeIn": 60, "fadeOut": 60 }
+        "NOISE":       { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "ELEMENT":     { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ELEMENT_SUB": null,
+        "FX":          { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ISO":         { "enter": 60,  "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "PLANET":      { "enter": 120, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "PAD":         { "enter": 180, "exit": 570, "fadeIn": 60, "fadeOut": 60 },
+        "BASS":        { "enter": 240, "exit": 570, "fadeIn": 0,  "fadeOut": 60 },
+        "ARP":         { "enter": 270, "exit": 570, "fadeIn": 60, "fadeOut": 60 },
+        "MELODY":      { "enter": 390, "exit": 570, "fadeIn": 60, "fadeOut": 60 }
       }
     }
   }

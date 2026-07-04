@@ -1,7 +1,9 @@
 export type ElementName = 'EARTH' | 'WATER' | 'AIR' | 'FIRE' | 'ETHER';
 export const ELEMENTS: ElementName[] = ['EARTH', 'WATER', 'AIR', 'FIRE', 'ETHER'];
 
-export type Category = 'ISO' | 'PLANET' | 'NOISE' | 'ELEMENT' | 'BASS' | 'PAD' | 'MELODY' | 'FX';
+export type Category =
+  | 'ISO' | 'PLANET' | 'NOISE' | 'ELEMENT' | 'ELEMENT_SUB'
+  | 'BASS' | 'PAD' | 'ARP' | 'MELODY' | 'FX';
 
 export interface SampleEntry {
   name: string;   // filename without extension
@@ -19,8 +21,8 @@ export interface ElementManifest {
   PAD: SampleEntry[];
   MELODY: SampleEntry[];
   FX: SampleEntry[];
-  ARP: SampleEntry[];          // recorded for future, NOT used by builder
-  ELEMENT_SUB: SampleEntry[];  // recorded for future, NOT used by builder
+  ARP: SampleEntry[];          // arpeggiator — musical layer between Bass and Melody
+  ELEMENT_SUB: SampleEntry[];  // sub-elements — the environmental base of Deep Relaxation
 }
 
 export type Manifest = Record<ElementName, ElementManifest>;

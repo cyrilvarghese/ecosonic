@@ -14,13 +14,16 @@ const Timing = z.object({
   fadeOut: z.number().nonnegative(),
 });
 const ModeRule = z.object({
-  NOISE: Timing.nullable(), ISO: Timing.nullable(), PLANET: Timing.nullable(), ELEMENT: Timing.nullable(),
-  BASS: Timing.nullable(), PAD: Timing.nullable(), MELODY: Timing.nullable(), FX: Timing.nullable(),
+  NOISE: Timing.nullable(), ISO: Timing.nullable(), PLANET: Timing.nullable(),
+  ELEMENT: Timing.nullable(), ELEMENT_SUB: Timing.nullable(),
+  BASS: Timing.nullable(), PAD: Timing.nullable(), ARP: Timing.nullable(),
+  MELODY: Timing.nullable(), FX: Timing.nullable(),
 });
 const LayerTwo = z.object({
   moduleSeconds: z.number().positive(),
   bridgeSeconds: z.number().nonnegative(),
   regionFadeSeconds: z.number().nonnegative(),
+  secondElementEnterSec: z.number().nonnegative(), // a 2nd Element/Sub-Element enters this late
   peakFrac: z.number().min(0).max(1),
   schedulerTickMs: z.number().positive(),
   durationPresetsMin: z.array(z.number().positive()),
@@ -50,8 +53,8 @@ export const ConfigSchema = z.object({
     }),
   }),
   selection: z.object({
-    ISO: Count, PLANET: Count, NOISE: Count, ELEMENT: Count,
-    BASS: Count, PAD: Count, MELODY: Count, FX: Count,
+    ISO: Count, PLANET: Count, NOISE: Count, ELEMENT: Count, ELEMENT_SUB: Count,
+    BASS: Count, PAD: Count, ARP: Count, MELODY: Count, FX: Count,
   }),
   motion: z.object({
     durFastMs: z.number(),

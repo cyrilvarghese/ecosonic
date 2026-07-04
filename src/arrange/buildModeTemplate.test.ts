@@ -48,4 +48,19 @@ describe('buildModeTemplate', () => {
       expect(r.fadeOutSec).toBeLessThanOrEqual(half);
     }
   });
+  it('places ARP in Introduction and Sub-Elements only in Deep Relaxation', () => {
+    const pair: ArrTrack[] = [t('arp', 'ARP'), t('sub', 'ELEMENT_SUB')];
+    const intro = buildModeTemplate(pair, 'INTRODUCTION');
+    expect(byTrack(intro, 'arp')).toBeDefined();
+    expect(byTrack(intro, 'sub')).toBeUndefined();
+    const deep = buildModeTemplate(pair, 'DEEP_RELAXATION');
+    expect(byTrack(deep, 'arp')).toBeUndefined();
+    expect(byTrack(deep, 'sub')).toBeDefined();
+  });
+  it('staggers a 2nd Element later than the 1st', () => {
+    const tpl = buildModeTemplate([t('e0', 'ELEMENT'), t('e1', 'ELEMENT')], 'INTRODUCTION');
+    const e0 = byTrack(tpl, 'e0')!, e1 = byTrack(tpl, 'e1')!;
+    expect(e0.enterSec).toBe(0);
+    expect(e1.enterSec).toBeGreaterThan(e0.enterSec);
+  });
 });
