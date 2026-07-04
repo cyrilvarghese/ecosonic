@@ -26,6 +26,8 @@ export function ArrangeScreen() {
   const pause = useArrangement((s) => s.pause);
   const seek = useArrangement((s) => s.seek);
   const setScrubbing = useArrangement((s) => s.setScrubbing);
+  const activeMode = useArrangement((s) => s.activeMode);
+  const loadMode = useArrangement((s) => s.loadMode);
 
   const D = config.layerTwo.moduleSeconds;
   const el = element ? element.toLowerCase() : undefined;
@@ -84,10 +86,28 @@ export function ArrangeScreen() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="label mr-1">Mode</span>
+          {config.layerTwo.modes.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => loadMode(m)}
+              aria-pressed={activeMode === m}
+              className={`rounded-full px-3.5 py-1 text-xs transition-calm ${
+                activeMode === m ? 'text-white' : 'bg-card text-muted-foreground hover:text-foreground'
+              }`}
+              style={activeMode === m ? { background: 'var(--accent-ink)' } : undefined}
+            >
+              {m.charAt(0) + m.slice(1).toLowerCase()}
+            </button>
+          ))}
+          <span className="ml-1 text-xs text-muted-foreground">— clicking loads that mode&apos;s tracks from its density table</span>
+        </div>
         <p className="mb-4 text-sm text-muted-foreground">
           Drag a clip's <b>edges</b> to set when each track enters/exits, or its <b>body</b> to move it.
-          On play, a track <b>starts from 0</b> when its clip begins (your baked fade-in plays) — it loops if the
-          sample is shorter than the clip, or is cut if longer.
+          On play, a track plays from the <b>playhead position</b> into its sample — it loops if the sample is
+          shorter than the clip, or is cut if longer. Scrub to re-audition a section.
         </p>
         <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} />
       </main>

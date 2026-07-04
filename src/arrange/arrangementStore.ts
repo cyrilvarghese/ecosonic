@@ -32,6 +32,8 @@ export interface ArrangementState {
   setPosition: (sec: number) => void;
   setScrubbing: (b: boolean) => void;
   setActiveMode: (mode: Mode) => void;
+  /** Pick a mode: reseed the module's clips from that mode's density table. */
+  loadMode: (mode: Mode) => void;
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
   setTrackDuration: (trackId: string, sec: number) => void;
@@ -39,14 +41,14 @@ export interface ArrangementState {
 
 const clampModule = (sec: number) => Math.max(0, Math.min(config.layerTwo.moduleSeconds, sec));
 
-/** Seed the module from the mode-rules table (preconfigured density): the continuity bed
- *  spans the module, active/sparse drivers stagger toward the peak. Uses the first mode. */
-function seedModuleFromTable(tracks: ArrTrack[]): TemplateRegion[] {
-  return buildModeTemplate(tracks, config.layerTwo.modes[0], config).regions;
+/** Seed the module from a mode's density table (continuity bed spans the module; active/sparse
+ *  drivers stagger toward the peak). */
+function seedModuleFromTable(tracks: ArrTrack[], mode: Mode): TemplateRegion[] {
+  return buildModeTemplate(tracks, mode, config).regions;
 }
 
 export function createArrangementStore() {
-  return createStore<ArrangementState>((set) => {
+  return createStore<ArrangementState>((set, get) => {
     let selection: Selection | null = null;
     return {
       element: null,
@@ -66,7 +68,8 @@ export function createArrangementStore() {
         set({
           element: sel.element,
           tracks: sel.tracks,
-          moduleRegions: seedModuleFromTable(sel.tracks),
+          activeMode: config.layerTwo.modes[0],
+          moduleRegions: seedModuleFromTable(sel.tracks, config.layerTwo.modes[0]),
           trackDurations: {},
           masterDb: sel.masterDb,
           playing: false,
@@ -85,6 +88,8 @@ export function createArrangementStore() {
       setPosition: (sec) => set({ positionSec: clampModule(sec) }),
       setScrubbing: (b) => set({ scrubbing: b }),
       setActiveMode: (mode) => set({ activeMode: mode }),
+      loadMode: (mode) =>
+        set({ activeMode: mode, moduleRegions: seedModuleFromTable(get().tracks, mode), positionSec: 0 }),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
       updateModuleRegion: (trackId, next) =>
