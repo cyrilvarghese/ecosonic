@@ -6,6 +6,9 @@ import { useShallow } from 'zustand/react/shallow';
 import { useSession } from '@/session/appStore';
 import { useAudioEngine } from '@/audio/useAudioEngine';
 import { EngineProvider } from '@/audio/EngineContext';
+import { arrangementStore } from '@/arrange/arrangementStore';
+import { snapshotSelection } from '@/arrange/snapshotSelection';
+import { config } from '@/config';
 import { TrackLane } from '@/components/TrackLane';
 import { TransportBar } from '@/components/TransportBar';
 import { Button } from '@/components/ui/button';
@@ -17,6 +20,7 @@ export function BuilderScreen() {
   const trackIds = useSession(useShallow((s) => s.project.tracks.map((t) => t.id)));
   const backToChooser = useSession((s) => s.backToChooser);
   const regenerate = useSession((s) => s.regenerate);
+  const project = useSession((s) => s.project);
 
   // The /layer1 route guards element presence; this is a defensive fallback.
   if (!element) return null;
@@ -53,7 +57,13 @@ export function BuilderScreen() {
             <RefreshCw size={16} />
             <span className="ml-2">Regenerate</span>
           </Button>
-          <Button variant="outline" disabled>Continue to Layer Two</Button>
+          <Button variant="outline" aria-label="Continue to Layer Two"
+            onClick={() => {
+              arrangementStore.getState().initFrom(snapshotSelection(project), config.layerTwo.durationPresetsMin[2]);
+              router.push('/layer2');
+            }}>
+            Continue to Layer Two
+          </Button>
         </div>
       </header>
 
