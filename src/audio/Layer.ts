@@ -127,6 +127,39 @@ export class Layer {
     if (this.started && !this.muted) this.rampTo(this.effectiveGain(), rampMs);
   }
 
+  /** Layer Two: (re)start the sample from position 0 so its baked fade-in plays. Loops
+   *  (short samples repeat to fill the clip; long ones get cut when release() is called). */
+  trigger() {
+    if (this.kind === 'buffer') {
+      if (this.bufferSource) { try { this.bufferSource.stop(); } catch { /* noop */ } this.bufferSource = null; }
+      if (!this.buffer) return;
+      const src = this.buildBufferSource(); // loop = true
+      src.start(0, 0);
+      this.bufferSource = src;
+      this.startedAt = this.ctx.currentTime;
+      this.offset = 0;
+    } else if (this.audioEl) {
+      try { this.audioEl.currentTime = 0; } catch { /* not seekable yet */ }
+      this.audioEl.loop = true;
+      void this.audioEl.play();
+    }
+    this.started = true;
+    this.rampTo(this.targetGain, 8); // sample starts at ~0 amplitude (baked fade-in) → no click
+  }
+
+  /** Layer Two: stop playback with a short anti-click ramp (no musical fade — baked in). */
+  release(rampMs: number) {
+    this.rampTo(0, rampMs);
+    if (this.kind === 'buffer' && this.bufferSource) {
+      const src = this.bufferSource;
+      this.bufferSource = null;
+      setTimeout(() => { try { src.stop(); } catch { /* noop */ } }, rampMs + 30);
+    } else if (this.audioEl) {
+      setTimeout(() => this.audioEl?.pause(), rampMs + 30);
+    }
+    this.started = false;
+  }
+
   dispose() {
     try { this.bufferSource?.stop(); } catch { /* already stopped */ }
     this.bufferSource?.disconnect();

@@ -55,8 +55,9 @@ export function ArrangeScreen() {
 
       <main className="flex-1 overflow-y-auto p-6">
         <p className="mb-4 text-sm text-muted-foreground">
-          Every track starts playing the whole module. Drag a clip's <b>edges</b> to set when it enters/exits,
-          or drag its <b>body</b> to move it. Press play to loop and hear it.
+          Drag a clip's <b>edges</b> to set when each track enters/exits, or its <b>body</b> to move it.
+          On play, a track <b>starts from 0</b> when its clip begins (your baked fade-in plays) — it loops if the
+          sample is shorter than the clip, or is cut if longer.
         </p>
         <ModuleDesigner tracks={tracks} regions={moduleRegions} positionSec={positionSec} playing={playing} />
       </main>

@@ -68,6 +68,14 @@ export class AudioEngine {
 
   setTrackVolume(id: string, db: number) { this.layers.get(id)?.setVolumeDb(db, this.cfg.changeRampMs); }
   setTrackEnvelope(id: string, scalar: number) { this.layers.get(id)?.setEnvelope(scalar, this.cfg.changeRampMs); }
+
+  /** Layer Two: start a track's sample from position 0 (baked fade-in plays). */
+  triggerTrack(id: string) { this.layers.get(id)?.trigger(); }
+  /** Layer Two: stop a track (short anti-click ramp), ready to re-trigger from 0. */
+  releaseTrack(id: string) { this.layers.get(id)?.release(this.cfg.muteRampMs); }
+  /** Layer Two: resume/suspend the audio context without touching per-track playback. */
+  resumeContext() { this.ensure(); this.running = true; void this.ctx!.resume(); }
+  suspendContext() { if (this.ctx) { this.running = false; void this.ctx.suspend(); } }
   setMute(id: string, muted: boolean) {
     const l = this.layers.get(id);
     if (!l) return;
