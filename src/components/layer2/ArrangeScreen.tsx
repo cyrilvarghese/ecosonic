@@ -1,13 +1,9 @@
 'use client';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Play, Pause } from 'lucide-react';
-import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
-import { useArrangementScheduler } from '@/arrange/useArrangementScheduler';
-import { trackScalarAt } from '@/arrange/trackScalar';
-import { ModuleBand } from '@/components/layer2/ModuleBand';
+import { useModuleScheduler } from '@/arrange/useModuleScheduler';
 import { ModuleDesigner } from '@/components/layer2/ModuleDesigner';
 import { Button } from '@/components/ui/button';
 import { config } from '@/config';
@@ -17,19 +13,16 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
 export function ArrangeScreen() {
   const router = useRouter();
   const engine = useLayer2Engine();
-  useArrangementScheduler(engine);
-  const [viewMode, setViewMode] = useState<Mode | null>(null);
+  useModuleScheduler(engine);
 
-  const composition = useArrangement((s) => s.composition);
+  const tracks = useArrangement((s) => s.tracks);
+  const moduleRegions = useArrangement((s) => s.moduleRegions);
   const playing = useArrangement((s) => s.playing);
   const positionSec = useArrangement((s) => s.positionSec);
-  const durationMin = useArrangement((s) => s.durationMin);
   const play = useArrangement((s) => s.play);
   const pause = useArrangement((s) => s.pause);
-  const setDurationMin = useArrangement((s) => s.setDurationMin);
 
-  if (!composition) return null;
-  const total = composition.totalSec;
+  const D = config.layerTwo.moduleSeconds;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -39,25 +32,12 @@ export function ArrangeScreen() {
             <ArrowLeft size={18} />
           </Button>
           <div>
-            <p className="label">Layer Two — Arrangement Engine</p>
-            <h1 className="text-lg font-medium">Generative Wave Module Sequencing</h1>
+            <p className="label">Layer Two — Module Designer</p>
+            <h1 className="text-lg font-medium">Orchestrate when each track comes in &amp; out</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex gap-1">
-            {config.layerTwo.durationPresetsMin.map((min) => (
-              <button
-                key={min}
-                onClick={() => setDurationMin(min)}
-                className={`rounded-full px-3 py-1 text-xs tabular-nums transition-calm ${
-                  durationMin === min ? 'bg-[var(--accent-ink)] text-white' : 'bg-card text-muted-foreground'
-                }`}
-              >
-                {min}m
-              </button>
-            ))}
-          </div>
           <button
             type="button"
             aria-label={playing ? 'Pause' : 'Play'}
@@ -68,58 +48,18 @@ export function ArrangeScreen() {
             {playing ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="translate-x-[1px]" />}
           </button>
           <span className="w-24 text-right text-sm tabular-nums text-muted-foreground">
-            {clock(positionSec)} / {clock(total)}
+            {clock(positionSec)} / {clock(D)}
           </span>
         </div>
       </header>
 
-      <div className="p-6">
-        <ModuleBand
-          sequence={composition.sequence}
-          totalSec={total}
-          positionSec={positionSec}
-          onSelect={(mode) => setViewMode(mode)}
-          selectedMode={viewMode}
-        />
-      </div>
-
-      {viewMode ? (
-        <main className="flex flex-1 flex-col gap-1.5 overflow-y-auto px-6 pb-6">
-          <div className="mb-1 flex items-center gap-3">
-            <button
-              onClick={() => setViewMode(null)}
-              className="rounded-full bg-card px-3 py-1 text-xs text-muted-foreground transition-calm hover:text-foreground"
-            >
-              ← Overview
-            </button>
-            <span className="label">Designing · {viewMode}</span>
-          </div>
-          <ModuleDesigner composition={composition} mode={viewMode} />
-        </main>
-      ) : (
-      <main className="flex flex-1 flex-col gap-1.5 overflow-y-auto px-6 pb-6">
-        {composition.tracks.map((track) => {
-          const scalar = trackScalarAt(composition, track, positionSec);
-          return (
-            <div key={track.id} className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-2.5">
-              <div className="w-28 shrink-0">
-                <div className="label">{track.category}</div>
-                <div className="truncate text-sm text-foreground">{track.sample.name}</div>
-              </div>
-              <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-200"
-                  style={{ width: `${scalar * 100}%`, background: 'var(--accent-ink)' }}
-                />
-              </div>
-              <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
-                {Math.round(scalar * 100)}
-              </span>
-            </div>
-          );
-        })}
+      <main className="flex-1 overflow-y-auto p-6">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Every track starts playing the whole module. Drag a clip's <b>edges</b> to set when it enters/exits,
+          or drag its <b>body</b> to move it. Press play to loop and hear it.
+        </p>
+        <ModuleDesigner tracks={tracks} regions={moduleRegions} positionSec={positionSec} playing={playing} />
       </main>
-      )}
     </div>
   );
 }
