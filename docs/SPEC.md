@@ -120,6 +120,38 @@ interface Composition { tracks; templates: Record<Mode,ModeTemplate>; sequence; 
     `pos − enter` (sample-accurate, ADR-0003);
   - normal forward playback re-seeks nothing (sources stay in sync).
 
+### 6.3.1 Loading a mode into clips (the density pipeline)
+
+A mode is loaded from the config **density tables** (see `config.layerTwo`, §7) into draggable clips:
+
+```
+config.layerTwo.modeRules[mode]     Mode × Category → Presence ('continuous'|'active'|'sparse'|'absent')
+config.layerTwo.presenceBands       Presence → [lo, hi]  (fraction of the module)
+        │
+        ▼  buildModeTemplate(tracks, mode, cfg)          [src/arrange/buildModeTemplate.ts]
+   for each track:  tier = modeRules[mode][track.category]
+                    'absent'         → no region
+                    else             → region [lo·moduleSeconds, hi·moduleSeconds]
+                                       (bed = exact [0, D]; drivers get a small per-index jitter)
+        │
+        ▼  TemplateRegion[]
+   arrangementStore.initFrom → seedModuleFromTable(tracks) = buildModeTemplate(tracks, modes[0], cfg)
+        │                                                    (modes[0] = RELAXATION today)
+        ▼  moduleRegions
+   ModuleDesigner renders one draggable clip per region;
+   useModuleScheduler triggers each track from its playhead offset during playback.
+```
+
+- **Where the tables are:** `config/ecosonic.config.json` → `layerTwo.modeRules` + `presenceBands`;
+  Zod-validated in `src/config.ts` (`ModeRule` / `Presence` / `LayerTwo`).
+- **Reload / swap mode (Phase B):** call `buildModeTemplate(tracks, activeMode, cfg)` with a
+  different `activeMode`. IMMERSION drops the driver categories (`absent`) → sparse/deep; RETURN
+  makes them `active` → full.
+- **Bed vs drivers:** `isBed(category)` (`NOISE/ISO/PLANET/ELEMENT`) → jitter-free full-module clip;
+  drivers are jittered so equal tiers don't overlap identically.
+- The tables are a **tunable starter set** (ADR-0004); the density peak is emergent from clip overlap
+  (ADR-0001), not an imposed curve.
+
 ### 6.4 Composition machinery (built + tested, parked)
 Pure functions ready for the multi-module phase, all unit-tested:
 - `buildModeTemplate(tracks, mode, cfg)` — density table → staggered regions (bed jitter-free).

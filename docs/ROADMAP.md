@@ -78,6 +78,37 @@ What each mode should look like when you drill in (from `config.layerTwo.modeRul
 | FX | sparse | **absent** | active |
 | **feel** | settling, medium | inward, stripped-back | re-emergent, full |
 
+### How the tables become clips
+
+The modes are **pure config** — two tables under `config.layerTwo` (in
+[config/ecosonic.config.json](../config/ecosonic.config.json)), validated by
+[src/config.ts](../src/config.ts):
+
+- **`modeRules[mode][category]`** → a **presence tier**: `continuous | active | sparse | absent`.
+- **`presenceBands[tier]`** → `[lo, hi]`, the fraction of the module the clip occupies:
+
+  | tier | band | meaning |
+  |---|---|---|
+  | `continuous` | `[0.0, 1.0]` | spans the whole module (the bed) |
+  | `active` | `[0.18, 0.82]` | wide, mid-module |
+  | `sparse` | `[0.4, 0.6]` | short, hugging the peak |
+  | `absent` | — | no clip (silent this mode) |
+
+[`buildModeTemplate(tracks, mode, cfg)`](../src/arrange/buildModeTemplate.ts) reads them: for each
+track, look up its category's tier; `absent` → no clip; else place a clip at
+`[lo·moduleSeconds, hi·moduleSeconds]`. Bed clips are exact `[0, D]`; drivers get a tiny per-index
+jitter so equal tiers don't stack identically.
+
+**Worked example — RELAXATION at `moduleSeconds = 600`:**
+```
+NOISE / ISO / PLANET / ELEMENT   continuous → clip [0:00 – 10:00]   (the bed, spans the module)
+PAD                              active     → clip [1:48 – 8:12]     (wide, mid-module)
+BASS / MELODY / FX               sparse     → clip [4:00 – 6:00]     (short, hugging the peak)
+```
+Stack those and the overlap (density) peaks mid-module — the growth→peak→decrease, built purely from
+where the clips sit (no imposed curve; see [ADR-0001](./adr/0001-density-is-the-arrangement.md)).
+The tables are an explicit **tunable starter set** ([ADR-0004](./adr/0004-mode-rules-as-config-data.md)).
+
 Implementation notes (the store is already shaped for this):
 - `arrangementStore` already carries `activeMode` and a full `composition.templates[mode]` per mode.
 - Phase B adds a **mode picker** that sets `activeMode` and (re)seeds `moduleRegions` via
