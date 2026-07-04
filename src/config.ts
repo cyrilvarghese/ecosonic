@@ -6,6 +6,24 @@ const Count = z.object({
   max: z.number().int().min(0),
 });
 
+const Presence = z.enum(['continuous', 'active', 'sparse', 'absent']);
+const Band = z.tuple([z.number(), z.number()]);
+const ModeRule = z.object({
+  NOISE: Presence, ISO: Presence, PLANET: Presence, ELEMENT: Presence,
+  BASS: Presence, PAD: Presence, MELODY: Presence, FX: Presence,
+});
+const LayerTwo = z.object({
+  moduleSeconds: z.number().positive(),
+  bridgeSeconds: z.number().nonnegative(),
+  regionFadeSeconds: z.number().nonnegative(),
+  peakFrac: z.number().min(0).max(1),
+  schedulerTickMs: z.number().positive(),
+  durationPresetsMin: z.array(z.number().positive()),
+  modes: z.array(z.enum(['RELAXATION', 'IMMERSION', 'RETURN'])),
+  presenceBands: z.object({ continuous: Band, active: Band, sparse: Band }),
+  modeRules: z.object({ RELAXATION: ModeRule, IMMERSION: ModeRule, RETURN: ModeRule }),
+});
+
 export const ConfigSchema = z.object({
   audio: z.object({
     hybridThresholdBytes: z.number().int().positive(),
@@ -36,6 +54,7 @@ export const ConfigSchema = z.object({
     durMs: z.number(),
     durSlowMs: z.number(),
   }),
+  layerTwo: LayerTwo,
 });
 
 export type EcosonicConfig = z.infer<typeof ConfigSchema>;

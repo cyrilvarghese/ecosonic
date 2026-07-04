@@ -13,6 +13,17 @@ const valid = {
     MELODY: { min: 1, max: 1 }, FX: { min: 1, max: 2 },
   },
   motion: { durFastMs: 200, durMs: 400, durSlowMs: 800 },
+  layerTwo: {
+    moduleSeconds: 600, bridgeSeconds: 120, regionFadeSeconds: 12, peakFrac: 0.5,
+    schedulerTickMs: 250, durationPresetsMin: [10, 20, 30, 40],
+    modes: ['RELAXATION', 'IMMERSION', 'RETURN'],
+    presenceBands: { continuous: [0, 1], active: [0.18, 0.82], sparse: [0.4, 0.6] },
+    modeRules: {
+      RELAXATION: { NOISE: 'continuous', ISO: 'active', PLANET: 'active', ELEMENT: 'active', BASS: 'sparse', PAD: 'active', MELODY: 'sparse', FX: 'sparse' },
+      IMMERSION:  { NOISE: 'continuous', ISO: 'sparse', PLANET: 'sparse', ELEMENT: 'sparse', BASS: 'absent', PAD: 'absent', MELODY: 'absent', FX: 'absent' },
+      RETURN:     { NOISE: 'continuous', ISO: 'active', PLANET: 'active', ELEMENT: 'active', BASS: 'active', PAD: 'active', MELODY: 'sparse', FX: 'active' },
+    },
+  },
 };
 
 describe('config', () => {
@@ -25,5 +36,16 @@ describe('config', () => {
   });
   it('loads the real config file', () => {
     expect(config.selection.ELEMENT.max).toBe(3);
+  });
+  it('rejects a layerTwo config with a bad presence value', () => {
+    const bad = {
+      ...valid,
+      layerTwo: {
+        ...valid.layerTwo,
+        modeRules: { ...valid.layerTwo.modeRules,
+          RELAXATION: { ...valid.layerTwo.modeRules.RELAXATION, NOISE: 'loud' } },
+      },
+    };
+    expect(ConfigSchema.safeParse(bad).success).toBe(false);
   });
 });
