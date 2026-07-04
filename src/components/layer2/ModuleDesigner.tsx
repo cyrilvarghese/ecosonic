@@ -7,7 +7,8 @@ import { config } from '@/config';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-/** One module: every handed-off track as a draggable clip on a [0, moduleSeconds] timeline. */
+/** One module: every handed-off track as a draggable clip on a [0, moduleSeconds] timeline,
+ *  with a single playhead sweeping across all lanes. */
 export function ModuleDesigner({
   tracks,
   regions,
@@ -22,17 +23,17 @@ export function ModuleDesigner({
   playing: boolean;
 }) {
   const D = config.layerTwo.moduleSeconds;
-  const playheadPct = playing ? (positionSec / D) * 100 : null;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex text-[11px] tabular-nums text-muted-foreground">
+    <div className="relative flex flex-col gap-1.5">
+      <div className="flex px-4 text-[11px] tabular-nums text-muted-foreground">
         <span className="w-28 shrink-0" />
-        <span className="flex flex-1 justify-between px-1">
+        <span className="mx-3 flex flex-1 justify-between">
           <span>0:00</span><span>{clock(D / 2)}</span><span>{clock(D)}</span>
         </span>
         <span className="w-24 shrink-0 pl-3">played / total</span>
       </div>
+
       {tracks.map((track) => (
         <ClipRow
           key={track.id}
@@ -40,9 +41,24 @@ export function ModuleDesigner({
           region={regions.find((r) => r.trackId === track.id) ?? null}
           total={trackDurations[track.id]}
           D={D}
-          playheadPct={playheadPct}
         />
       ))}
+
+      {/* single playhead across every lane — aligned to the timeline column */}
+      {playing && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex px-4">
+          <div className="w-28 shrink-0" />
+          <div className="relative mx-3 flex-1">
+            <div
+              className="absolute top-0 bottom-0 w-[2px] -translate-x-1/2 rounded bg-[var(--accent-ink)]"
+              style={{ left: `${Math.min(100, (positionSec / D) * 100)}%` }}
+            >
+              <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--accent-ink)]" />
+            </div>
+          </div>
+          <div className="w-24 shrink-0" />
+        </div>
+      )}
     </div>
   );
 }
@@ -52,13 +68,11 @@ function ClipRow({
   region,
   total,
   D,
-  playheadPct,
 }: {
   track: ArrTrack;
   region: TemplateRegion | null;
   total: number | undefined;
   D: number;
-  playheadPct: number | null;
 }) {
   const laneRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ kind: 'left' | 'right' | 'move'; startX: number; enter: number; exit: number; pxPerSec: number } | null>(null);
@@ -96,7 +110,7 @@ function ClipRow({
 
   const clipDur = region ? region.exitSec - region.enterSec : 0;
   const played = total ? Math.min(clipDur, total) : clipDur;
-  const partial = total != null && clipDur < total; // only part of the track is heard
+  const partial = total != null && clipDur < total;
   const readout = total != null ? `${clock(played)} / ${clock(total)}` : `${clock(clipDur)} / …`;
 
   return (
@@ -125,9 +139,6 @@ function ClipRow({
             <span className="w-2.5 shrink-0 cursor-ew-resize rounded-r-[6px] bg-black/25"
               onPointerDown={begin('right')} onPointerMove={move} onPointerUp={end} />
           </div>
-        )}
-        {playheadPct != null && (
-          <div className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-foreground/70" style={{ left: `${playheadPct}%` }} />
         )}
       </div>
       <span
