@@ -14,32 +14,38 @@ const byTrack = (tpl: ReturnType<typeof buildModeTemplate>, id: string) =>
   tpl.regions.find((r) => r.trackId === id);
 
 describe('buildModeTemplate', () => {
-  it('gives continuous (bed) tracks a full-module region', () => {
-    const tpl = buildModeTemplate(tracks, 'RETURN');
+  it('NOISE (bed) spans the module in INTRODUCTION', () => {
+    const tpl = buildModeTemplate(tracks, 'INTRODUCTION');
     const noise = byTrack(tpl, 'n')!;
-    expect(noise.enterSec).toBeCloseTo(0, 6);
-    expect(noise.exitSec).toBeCloseTo(D, 6);
+    expect(noise.enterSec).toBe(0);
+    expect(noise.exitSec).toBe(D);
   });
-  it('omits absent categories (IMMERSION drops BASS/PAD/FX)', () => {
-    const tpl = buildModeTemplate(tracks, 'IMMERSION');
+  it('staggers entries per the timing table (ISO before PAD before BASS)', () => {
+    const tpl = buildModeTemplate(tracks, 'INTRODUCTION');
+    const iso = byTrack(tpl, 'i')!, pad = byTrack(tpl, 'pad')!, bass = byTrack(tpl, 'bass')!;
+    expect(iso.enterSec).toBeLessThan(pad.enterSec);
+    expect(pad.enterSec).toBeLessThan(bass.enterSec);
+  });
+  it('drops absent categories in DEEP_RELAXATION (no musical layers)', () => {
+    const tpl = buildModeTemplate(tracks, 'DEEP_RELAXATION');
     expect(byTrack(tpl, 'pad')).toBeUndefined();
     expect(byTrack(tpl, 'bass')).toBeUndefined();
     expect(byTrack(tpl, 'fx')).toBeUndefined();
-    expect(byTrack(tpl, 'n')).toBeDefined(); // bed stays
+    expect(byTrack(tpl, 'n')).toBeDefined();
+    expect(byTrack(tpl, 'i')).toBeDefined();
   });
-  it('places sparse regions narrower than active', () => {
-    const tpl = buildModeTemplate(tracks, 'RETURN');
-    const pad = byTrack(tpl, 'pad')!;   // active
-    const widthPad = pad.exitSec - pad.enterSec;
-    const relax = buildModeTemplate([t('mel', 'MELODY'), t('n', 'NOISE')], 'RELAXATION');
-    const mel = relax.regions.find((r) => r.trackId === 'mel')!; // sparse
-    expect(mel.exitSec - mel.enterSec).toBeLessThan(widthPad);
-  });
-  it('density (overlapping regions) peaks near the module midpoint', () => {
-    const tpl = buildModeTemplate(tracks, 'RETURN');
-    const count = (s: number) =>
-      tpl.regions.filter((r) => s > r.enterSec && s < r.exitSec).length;
+  it('density (overlapping regions) peaks near the module midpoint in INTRODUCTION', () => {
+    const tpl = buildModeTemplate(tracks, 'INTRODUCTION');
+    const count = (s: number) => tpl.regions.filter((r) => s > r.enterSec && s < r.exitSec).length;
     expect(count(D / 2)).toBeGreaterThan(count(D * 0.05));
     expect(count(D / 2)).toBeGreaterThan(count(D * 0.95));
+  });
+  it('caps a clip fade to half its width', () => {
+    const tpl = buildModeTemplate(tracks, 'INTRODUCTION');
+    for (const r of tpl.regions) {
+      const half = (r.exitSec - r.enterSec) / 2;
+      expect(r.fadeInSec).toBeLessThanOrEqual(half);
+      expect(r.fadeOutSec).toBeLessThanOrEqual(half);
+    }
   });
 });

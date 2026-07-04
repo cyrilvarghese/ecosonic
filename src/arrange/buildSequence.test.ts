@@ -14,7 +14,7 @@ describe('buildSequence', () => {
   });
   it('cycles the mode palette', () => {
     const { sequence } = buildSequence(40 * 60); // 4 modules
-    expect(sequence.map((m) => m.mode)).toEqual(['RELAXATION', 'IMMERSION', 'RETURN', 'RELAXATION']);
+    expect(sequence.map((m) => m.mode)).toEqual(['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN', 'INTRODUCTION']);
   });
   it('overlaps consecutive modules by bridgeSeconds and reports totalSec', () => {
     const { sequence, bridges, totalSec } = buildSequence(30 * 60);

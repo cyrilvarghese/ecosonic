@@ -1,7 +1,6 @@
 import type { Category } from '@/types';
 
-export type Mode = 'RELAXATION' | 'IMMERSION' | 'RETURN';
-export type Presence = 'continuous' | 'active' | 'sparse' | 'absent';
+export type Mode = 'INTRODUCTION' | 'DEEP_RELAXATION' | 'RETURN';
 
 export const BED_CATEGORIES: Category[] = ['NOISE', 'ISO', 'PLANET', 'ELEMENT'];
 export const isBed = (c: Category): boolean => BED_CATEGORIES.includes(c);

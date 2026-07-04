@@ -2,8 +2,8 @@
 import type { Mode, ModuleInstance } from '@/arrange/types';
 
 const MODE_GRADIENT: Record<Mode, string> = {
-  RELAXATION: 'linear-gradient(160deg,#d9ccf6,#c3b0ec)',
-  IMMERSION: 'linear-gradient(160deg,#c6b6ef,#a992e2)',
+  INTRODUCTION: 'linear-gradient(160deg,#d9ccf6,#c3b0ec)',
+  DEEP_RELAXATION: 'linear-gradient(160deg,#c6b6ef,#a992e2)',
   RETURN: 'linear-gradient(160deg,#bfe6d6,#a6d3c4)',
 };
 

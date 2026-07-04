@@ -6,11 +6,16 @@ const Count = z.object({
   max: z.number().int().min(0),
 });
 
-const Presence = z.enum(['continuous', 'active', 'sparse', 'absent']);
-const Band = z.tuple([z.number(), z.number()]);
+// Each layer's timing within a module (seconds). `null` = the category is absent in that mode.
+const Timing = z.object({
+  enter: z.number().nonnegative(),
+  exit: z.number().nonnegative(),
+  fadeIn: z.number().nonnegative(),
+  fadeOut: z.number().nonnegative(),
+});
 const ModeRule = z.object({
-  NOISE: Presence, ISO: Presence, PLANET: Presence, ELEMENT: Presence,
-  BASS: Presence, PAD: Presence, MELODY: Presence, FX: Presence,
+  NOISE: Timing.nullable(), ISO: Timing.nullable(), PLANET: Timing.nullable(), ELEMENT: Timing.nullable(),
+  BASS: Timing.nullable(), PAD: Timing.nullable(), MELODY: Timing.nullable(), FX: Timing.nullable(),
 });
 const LayerTwo = z.object({
   moduleSeconds: z.number().positive(),
@@ -19,9 +24,8 @@ const LayerTwo = z.object({
   peakFrac: z.number().min(0).max(1),
   schedulerTickMs: z.number().positive(),
   durationPresetsMin: z.array(z.number().positive()),
-  modes: z.array(z.enum(['RELAXATION', 'IMMERSION', 'RETURN'])),
-  presenceBands: z.object({ continuous: Band, active: Band, sparse: Band }),
-  modeRules: z.object({ RELAXATION: ModeRule, IMMERSION: ModeRule, RETURN: ModeRule }),
+  modes: z.array(z.enum(['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN'])),
+  modeRules: z.object({ INTRODUCTION: ModeRule, DEEP_RELAXATION: ModeRule, RETURN: ModeRule }),
 });
 
 export const ConfigSchema = z.object({

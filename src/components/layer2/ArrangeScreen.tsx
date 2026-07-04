@@ -99,7 +99,7 @@ export function ArrangeScreen() {
               }`}
               style={activeMode === m ? { background: 'var(--accent-ink)' } : undefined}
             >
-              {m.charAt(0) + m.slice(1).toLowerCase()}
+              {m.split('_').map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
             </button>
           ))}
           <span className="ml-1 text-xs text-muted-foreground">— clicking loads that mode&apos;s tracks from its density table</span>

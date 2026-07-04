@@ -30,16 +30,35 @@
     "peakFrac": 0.5,
     "schedulerTickMs": 250,
     "durationPresetsMin": [10, 20, 30, 40],
-    "modes": ["RELAXATION", "IMMERSION", "RETURN"],
-    "presenceBands": {
-      "continuous": [0.0, 1.0],
-      "active": [0.18, 0.82],
-      "sparse": [0.4, 0.6]
-    },
+    "modes": ["INTRODUCTION", "DEEP_RELAXATION", "RETURN"],
     "modeRules": {
-      "RELAXATION": { "NOISE": "continuous", "ISO": "continuous", "PLANET": "continuous", "ELEMENT": "continuous", "BASS": "sparse", "PAD": "active", "MELODY": "sparse", "FX": "sparse" },
-      "IMMERSION":  { "NOISE": "continuous", "ISO": "continuous", "PLANET": "continuous", "ELEMENT": "active", "BASS": "absent", "PAD": "absent", "MELODY": "absent", "FX": "absent" },
-      "RETURN":     { "NOISE": "continuous", "ISO": "continuous", "PLANET": "continuous", "ELEMENT": "continuous", "BASS": "active", "PAD": "active", "MELODY": "sparse", "FX": "active" }
+      "INTRODUCTION": {
+        "NOISE":   { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 0 },
+        "ELEMENT": { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "FX":      { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ISO":     { "enter": 60,  "exit": 540, "fadeIn": 60, "fadeOut": 120 },
+        "PLANET":  { "enter": 120, "exit": 540, "fadeIn": 60, "fadeOut": 120 },
+        "PAD":     { "enter": 180, "exit": 540, "fadeIn": 60, "fadeOut": 60 },
+        "BASS":    { "enter": 240, "exit": 540, "fadeIn": 0,  "fadeOut": 60 },
+        "MELODY":  { "enter": 390, "exit": 540, "fadeIn": 60, "fadeOut": 60 }
+      },
+      "DEEP_RELAXATION": {
+        "NOISE":   { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
+        "ELEMENT": { "enter": 0, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "ISO":     { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
+        "PLANET":  { "enter": 0, "exit": 480, "fadeIn": 60, "fadeOut": 60 },
+        "PAD": null, "BASS": null, "MELODY": null, "FX": null
+      },
+      "RETURN": {
+        "NOISE":   { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "ELEMENT": { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "FX":      { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ISO":     { "enter": 60,  "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "PLANET":  { "enter": 120, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
+        "PAD":     { "enter": 180, "exit": 570, "fadeIn": 60, "fadeOut": 60 },
+        "BASS":    { "enter": 240, "exit": 570, "fadeIn": 0,  "fadeOut": 60 },
+        "MELODY":  { "enter": 390, "exit": 570, "fadeIn": 60, "fadeOut": 60 }
+      }
     }
   }
 }

@@ -61,7 +61,7 @@ export function createArrangementStore() {
       masterDb: 0,
       composition: null,
       durationMin: 30,
-      activeMode: 'RELAXATION',
+      activeMode: 'INTRODUCTION',
 
       initFrom: (sel, durationMin) => {
         selection = sel;

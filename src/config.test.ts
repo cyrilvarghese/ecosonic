@@ -16,12 +16,35 @@ const valid = {
   layerTwo: {
     moduleSeconds: 600, bridgeSeconds: 120, regionFadeSeconds: 12, peakFrac: 0.5,
     schedulerTickMs: 250, durationPresetsMin: [10, 20, 30, 40],
-    modes: ['RELAXATION', 'IMMERSION', 'RETURN'],
-    presenceBands: { continuous: [0, 1], active: [0.18, 0.82], sparse: [0.4, 0.6] },
+    modes: ['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN'],
     modeRules: {
-      RELAXATION: { NOISE: 'continuous', ISO: 'active', PLANET: 'active', ELEMENT: 'active', BASS: 'sparse', PAD: 'active', MELODY: 'sparse', FX: 'sparse' },
-      IMMERSION:  { NOISE: 'continuous', ISO: 'sparse', PLANET: 'sparse', ELEMENT: 'sparse', BASS: 'absent', PAD: 'absent', MELODY: 'absent', FX: 'absent' },
-      RETURN:     { NOISE: 'continuous', ISO: 'active', PLANET: 'active', ELEMENT: 'active', BASS: 'active', PAD: 'active', MELODY: 'sparse', FX: 'active' },
+      INTRODUCTION: {
+        NOISE: { enter: 0, exit: 600, fadeIn: 60, fadeOut: 0 },
+        ELEMENT: { enter: 0, exit: 600, fadeIn: 30, fadeOut: 60 },
+        FX: { enter: 0, exit: 600, fadeIn: 30, fadeOut: 60 },
+        ISO: { enter: 60, exit: 540, fadeIn: 60, fadeOut: 120 },
+        PLANET: { enter: 120, exit: 540, fadeIn: 60, fadeOut: 120 },
+        PAD: { enter: 180, exit: 540, fadeIn: 60, fadeOut: 60 },
+        BASS: { enter: 240, exit: 540, fadeIn: 0, fadeOut: 60 },
+        MELODY: { enter: 390, exit: 540, fadeIn: 60, fadeOut: 60 },
+      },
+      DEEP_RELAXATION: {
+        NOISE: { enter: 0, exit: 480, fadeIn: 60, fadeOut: 60 },
+        ELEMENT: { enter: 0, exit: 600, fadeIn: 60, fadeOut: 60 },
+        ISO: { enter: 0, exit: 480, fadeIn: 60, fadeOut: 60 },
+        PLANET: { enter: 0, exit: 480, fadeIn: 60, fadeOut: 60 },
+        PAD: null, BASS: null, MELODY: null, FX: null,
+      },
+      RETURN: {
+        NOISE: { enter: 0, exit: 600, fadeIn: 60, fadeOut: 60 },
+        ELEMENT: { enter: 0, exit: 600, fadeIn: 30, fadeOut: 60 },
+        FX: { enter: 0, exit: 600, fadeIn: 30, fadeOut: 60 },
+        ISO: { enter: 60, exit: 600, fadeIn: 60, fadeOut: 60 },
+        PLANET: { enter: 120, exit: 600, fadeIn: 60, fadeOut: 60 },
+        PAD: { enter: 180, exit: 570, fadeIn: 60, fadeOut: 60 },
+        BASS: { enter: 240, exit: 570, fadeIn: 0, fadeOut: 60 },
+        MELODY: { enter: 390, exit: 570, fadeIn: 60, fadeOut: 60 },
+      },
     },
   },
 };
@@ -37,13 +60,13 @@ describe('config', () => {
   it('loads the real config file', () => {
     expect(config.selection.ELEMENT.max).toBe(3);
   });
-  it('rejects a layerTwo config with a bad presence value', () => {
+  it('rejects a layerTwo config with a bad timing value', () => {
     const bad = {
       ...valid,
       layerTwo: {
         ...valid.layerTwo,
         modeRules: { ...valid.layerTwo.modeRules,
-          RELAXATION: { ...valid.layerTwo.modeRules.RELAXATION, NOISE: 'loud' } },
+          INTRODUCTION: { ...valid.layerTwo.modeRules.INTRODUCTION, NOISE: 'loud' } },
       },
     };
     expect(ConfigSchema.safeParse(bad).success).toBe(false);

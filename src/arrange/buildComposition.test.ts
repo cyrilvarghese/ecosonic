@@ -14,7 +14,7 @@ const input = {
 describe('buildComposition', () => {
   it('builds a template for every mode', () => {
     const c = buildComposition(input, 30 * 60);
-    expect(Object.keys(c.templates).sort()).toEqual(['IMMERSION', 'RELAXATION', 'RETURN']);
+    expect(Object.keys(c.templates).sort()).toEqual(['DEEP_RELAXATION', 'INTRODUCTION', 'RETURN']);
   });
   it('carries the selection and passthrough values', () => {
     const c = buildComposition(input, 30 * 60);

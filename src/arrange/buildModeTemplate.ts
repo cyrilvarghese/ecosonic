@@ -1,33 +1,31 @@
 import { config as defaultConfig, type EcosonicConfig } from '@/config';
-import type { ArrTrack, Mode, ModeTemplate, Presence, TemplateRegion } from '@/arrange/types';
+import type { ArrTrack, Mode, ModeTemplate, TemplateRegion } from '@/arrange/types';
 
-/** Build one reusable Wave Module template from the config mode rules. Regions are
- *  module-relative [0, moduleSeconds]; overlap peaks near the midpoint by construction. */
+/** Build a Wave Module template from a mode's timing table: each category has an explicit
+ *  enter/exit/fade (transcribed from the production brief); a `null` entry = the category is
+ *  absent in that mode. Multiple tracks of a category share that category's timing. */
 export function buildModeTemplate(
   tracks: ArrTrack[],
   mode: Mode,
   cfg: EcosonicConfig = defaultConfig,
 ): ModeTemplate {
-  const { moduleSeconds: D, presenceBands, modeRules, regionFadeSeconds } = cfg.layerTwo;
-  const rule = modeRules[mode];
+  const D = cfg.layerTwo.moduleSeconds;
+  const rule = cfg.layerTwo.modeRules[mode];
   const regions: TemplateRegion[] = [];
 
-  tracks.forEach((track, i) => {
-    const presence = rule[track.category] as Presence;
-    if (presence === 'absent') return;
-    const [lo, hi] = presenceBands[presence];
-    // Small per-index offset so equal-tier drivers don't stack identically (deterministic).
-    // Continuity (bed) regions must span the full module exactly — never jitter them.
-    const jitter = presence === 'continuous' ? 0 : (((i % 5) - 2) / 2) * 0.02 * D; // ±2% of D
-    let enterSec = Math.max(0, lo * D + jitter);
-    let exitSec = Math.min(D, hi * D + jitter);
-    if (exitSec <= enterSec) {
-      enterSec = lo * D;
-      exitSec = hi * D;
-    }
-    const width = exitSec - enterSec;
-    const fade = Math.min(regionFadeSeconds, width / 2);
-    regions.push({ trackId: track.id, enterSec, exitSec, fadeInSec: fade, fadeOutSec: fade });
+  tracks.forEach((track) => {
+    const t = rule[track.category];
+    if (!t) return; // absent in this mode
+    const enterSec = Math.max(0, Math.min(t.enter, D));
+    const exitSec = Math.max(enterSec, Math.min(t.exit, D));
+    const halfWidth = (exitSec - enterSec) / 2;
+    regions.push({
+      trackId: track.id,
+      enterSec,
+      exitSec,
+      fadeInSec: Math.min(t.fadeIn, halfWidth),
+      fadeOutSec: Math.min(t.fadeOut, halfWidth),
+    });
   });
 
   return { mode, regions };
