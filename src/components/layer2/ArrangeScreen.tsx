@@ -1,5 +1,5 @@
 'use client';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Play, Pause } from 'lucide-react';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -32,6 +32,7 @@ export function ArrangeScreen() {
   const drift = useArrangement((s) => s.drift);
   const setDrift = useArrangement((s) => s.setDrift);
   const generateModule = useArrangement((s) => s.generateModule);
+  const [showVolume, setShowVolume] = useState(true);
 
   const D = config.layerTwo.moduleSeconds;
   const el = element ? element.toLowerCase() : undefined;
@@ -130,13 +131,22 @@ export function ArrangeScreen() {
           >
             Generate
           </button>
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+            <input
+              type="checkbox"
+              checked={showVolume}
+              onChange={(e) => setShowVolume(e.target.checked)}
+              style={{ accentColor: 'var(--accent-ink)' }}
+            />
+            Volume
+          </label>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
           Drag a clip's <b>edges</b> to set when each track enters/exits, or its <b>body</b> to move it.
           On play, a track plays from the <b>playhead position</b> into its sample — it loops if the sample is
           shorter than the clip, or is cut if longer. Scrub to re-audition a section.
         </p>
-        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} />
+        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} showVolume={showVolume} />
       </main>
     </div>
   );

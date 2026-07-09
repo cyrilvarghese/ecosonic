@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { ArrTrack, TemplateRegion } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { clampRegion } from '@/arrange/geometry';
+import { regionEnvAt } from '@/arrange/regionEnv';
 import { heights } from '@/components/WaveformStrip';
 import { config } from '@/config';
 
@@ -15,11 +16,14 @@ export function ModuleDesigner({
   regions,
   trackDurations,
   positionSec,
+  showVolume = false,
 }: {
   tracks: ArrTrack[];
   regions: TemplateRegion[];
   trackDurations: Record<string, number>;
   positionSec: number;
+  /** Show each clip's volume automation line and dim the waveform texture under it. */
+  showVolume?: boolean;
 }) {
   const D = config.layerTwo.moduleSeconds;
 
@@ -40,6 +44,7 @@ export function ModuleDesigner({
           region={regions.find((r) => r.trackId === track.id) ?? null}
           total={trackDurations[track.id]}
           D={D}
+          showVolume={showVolume}
         />
       ))}
 
@@ -65,11 +70,13 @@ function ClipRow({
   region,
   total,
   D,
+  showVolume,
 }: {
   track: ArrTrack;
   region: TemplateRegion | null;
   total: number | undefined;
   D: number;
+  showVolume: boolean;
 }) {
   const laneRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ kind: 'left' | 'right' | 'move'; startX: number; enter: number; exit: number; pxPerSec: number } | null>(null);
@@ -146,7 +153,11 @@ function ClipRow({
           >
             {/* Texture: the sample's stylized waveform, repeated once per loop — identical shapes
                 show it looping N×; the last repeat is a partial (prefix) when it doesn't fit evenly. */}
-            <div className="pointer-events-none absolute inset-0 flex overflow-hidden rounded-[6px]">
+            <div
+              className={`pointer-events-none absolute inset-0 flex overflow-hidden rounded-[6px] transition-opacity duration-300 ${
+                showVolume ? 'opacity-20' : 'opacity-100'
+              }`}
+            >
               {Array.from({ length: segmented ? loops : 1 }).map((_, i) => {
                 const segSec = Math.min(unit, clipDur - i * unit);
                 const pts = Math.max(16, Math.min(240, Math.round(segSec / 1.5)));
@@ -185,6 +196,7 @@ function ClipRow({
                 );
               })}
             </div>
+            {showVolume && <FadeEnvelope region={region} />}
             <span className="relative z-10 w-2.5 shrink-0 cursor-ew-resize rounded-l-[6px] bg-black/25"
               onPointerDown={begin('left')} onPointerMove={move} onPointerUp={end} />
             <span className="relative z-10 flex-1 cursor-grab" />
@@ -206,5 +218,59 @@ function ClipRow({
         {readout}
       </span>
     </div>
+  );
+}
+
+/** DAW-style volume automation over a clip: the region's actual audible envelope (regionEnvAt —
+ *  cosine rise over fadeIn, hold at the ceiling, cosine fall over fadeOut), with breakpoint dots
+ *  at the four automation corners. Pointer-transparent; sits under the drag handles. */
+function FadeEnvelope({ region }: { region: TemplateRegion }) {
+  const dur = region.exitSec - region.enterSec;
+  if (dur <= 0) return null;
+  const Y = (env: number) => (90 - env * 80).toFixed(1); // env 0 → y90 (bottom), 1 → y10 (top)
+  // Piecewise, with exact breakpoints: cosine samples across each fade, straight hold between,
+  // and a true vertical edge when a fade is 0 (BASS enter, spanning NOISE exit) — so the line
+  // is exactly what the audio does, not a uniform-sampling approximation.
+  const X = (s: number) => (((s - region.enterSec) / dur) * 100).toFixed(2);
+  const K = 24;
+  const pts: string[] = [`0 ${Y(0)}`];
+  if (region.fadeInSec > 0) {
+    for (let j = 1; j <= K; j++) {
+      const s = region.enterSec + (j / K) * region.fadeInSec;
+      pts.push(`${X(s)} ${Y(regionEnvAt(region, Math.min(s, region.exitSec)))}`);
+    }
+  } else {
+    pts.push(`0 ${Y(1)}`); // no fade-in: vertical rise at the left edge
+  }
+  const foStart = region.exitSec - region.fadeOutSec;
+  if (region.fadeOutSec > 0) {
+    pts.push(`${X(Math.max(foStart, region.enterSec))} ${Y(1)}`);
+    for (let j = 1; j <= K; j++) {
+      const s = foStart + (j / K) * region.fadeOutSec;
+      pts.push(`${X(s)} ${Y(regionEnvAt(region, Math.min(s, region.exitSec - 1e-6)))}`);
+    }
+    pts.push(`100 ${Y(0)}`);
+  } else {
+    pts.push(`100 ${Y(1)}`, `100 ${Y(0)}`); // no fade-out: vertical drop at the right edge
+  }
+  const bps: Array<[number, number]> = [
+    [0, 0],
+    [Math.min(1, region.fadeInSec / dur) * 100, 1],
+    [(1 - Math.min(1, region.fadeOutSec / dur)) * 100, 1],
+    [100, 0],
+  ];
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <path d={`M${pts.join(' L')}`} fill="none" stroke="rgba(255,95,95,0.95)"
+        strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      {/* zero-length round-cap subpaths render as circular dots even under non-uniform scale */}
+      <path d={bps.map(([x, e]) => `M${x.toFixed(2)} ${Y(e)} l0.01 0`).join(' ')} fill="none"
+        stroke="rgba(255,95,95,0.95)" strokeWidth={5.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
