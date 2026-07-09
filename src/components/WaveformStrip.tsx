@@ -1,5 +1,7 @@
 // Stylized placeholder waveform: deterministic bar heights derived from a seed string.
-function heights(seed: string, count: number): number[] {
+// Cumulative hash → heights(seed, k) is a prefix of heights(seed, K) for k < K, so a partial
+// repeat can render the first k bars and honestly show the start of the sample being cut.
+export function heights(seed: string, count: number): number[] {
   let h = 2166136261;
   const out: number[] = [];
   for (let i = 0; i < count; i++) {

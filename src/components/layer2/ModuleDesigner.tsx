@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { ArrTrack, TemplateRegion } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { clampRegion } from '@/arrange/geometry';
+import { heights } from '@/components/WaveformStrip';
 import { config } from '@/config';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -107,7 +108,17 @@ function ClipRow({
   const clipDur = region ? region.exitSec - region.enterSec : 0;
   const played = total ? Math.min(clipDur, total) : clipDur;
   const partial = total != null && clipDur < total;
-  const readout = total != null ? `${clock(played)} / ${clock(total)}` : `${clock(clipDur)} / …`;
+  // Sample shorter than the clip → it loops. Show the repeats as segments so the engineer
+  // can see how many times it plays (the last segment is a partial repeat when it doesn't fit evenly).
+  const loops = total != null && total > 0 && clipDur > total + 0.5 ? Math.ceil(clipDur / total) : 1;
+  // Draw one waveform per loop (identical shapes = it loops). Cap the divider count so a very short
+  // sample in a long clip doesn't become a picket fence — the ×N readout still carries the count.
+  const segmented = loops > 1 && loops <= 40;
+  const unit = segmented ? total! : clipDur;
+  const readout =
+    total == null ? `${clock(clipDur)} / …`
+    : loops > 1 ? `${clock(total)} ×${loops}`
+    : `${clock(played)} / ${clock(total)}`;
 
   return (
     <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-2">
@@ -127,19 +138,70 @@ function ClipRow({
             onPointerDown={begin('move')}
             onPointerMove={move}
             onPointerUp={end}
-            title={`${clock(region.enterSec)} – ${clock(region.exitSec)}`}
+            title={
+              loops > 1
+                ? `${clock(region.enterSec)} – ${clock(region.exitSec)} · loops ${loops}× (${clock(total!)} each)`
+                : `${clock(region.enterSec)} – ${clock(region.exitSec)}`
+            }
           >
-            <span className="w-2.5 shrink-0 cursor-ew-resize rounded-l-[6px] bg-black/25"
+            {/* Texture: the sample's stylized waveform, repeated once per loop — identical shapes
+                show it looping N×; the last repeat is a partial (prefix) when it doesn't fit evenly. */}
+            <div className="pointer-events-none absolute inset-0 flex overflow-hidden rounded-[6px]">
+              {Array.from({ length: segmented ? loops : 1 }).map((_, i) => {
+                const segSec = Math.min(unit, clipDur - i * unit);
+                const pts = Math.max(16, Math.min(240, Math.round(segSec / 1.5)));
+                // Audio-editor look: a filled envelope mirrored around the mid-line. Smooth the
+                // hash noise into an organic contour and ride it on a slow loudness swell.
+                const raw = heights(track.sample.name, pts);
+                const amps = raw.map((_, j) => {
+                  let s = 0, n = 0;
+                  for (let k = -2; k <= 2; k++) {
+                    if (j + k >= 0 && j + k < raw.length) { s += raw[j + k]; n++; }
+                  }
+                  const swell = 0.55 + 0.45 * Math.abs(Math.sin((j / raw.length) * Math.PI * 2.5 + raw[0] * 9));
+                  return Math.max(0.06, (s / n) * swell);
+                });
+                const top = amps.map((a, x) => `L${x} ${(50 - a * 45).toFixed(1)}`).join(' ');
+                const bottom = amps
+                  .map((_, x) => {
+                    const j = amps.length - 1 - x;
+                    return `L${j} ${(50 + amps[j] * 45).toFixed(1)}`;
+                  })
+                  .join(' ');
+                const d = `M0 50 ${top} ${bottom} Z`;
+                return (
+                  <div
+                    key={i}
+                    style={{ width: `${(segSec / clipDur) * 100}%` }}
+                    className={`h-full ${i > 0 ? 'border-l-2 border-white/90' : ''} ${i % 2 === 1 ? 'bg-black/30' : ''}`}
+                  >
+                    <svg className="h-full w-full" viewBox={`0 0 ${amps.length - 1} 100`} preserveAspectRatio="none">
+                      <path d={d} fill="color-mix(in oklch, var(--accent) 35%, white)" fillOpacity={0.85} />
+                      <line x1={0} y1={50} x2={amps.length - 1} y2={50}
+                        stroke="color-mix(in oklch, var(--accent) 25%, white)" strokeWidth={0.75}
+                        vectorEffect="non-scaling-stroke" strokeOpacity={0.6} />
+                    </svg>
+                  </div>
+                );
+              })}
+            </div>
+            <span className="relative z-10 w-2.5 shrink-0 cursor-ew-resize rounded-l-[6px] bg-black/25"
               onPointerDown={begin('left')} onPointerMove={move} onPointerUp={end} />
-            <span className="flex-1 cursor-grab" />
-            <span className="w-2.5 shrink-0 cursor-ew-resize rounded-r-[6px] bg-black/25"
+            <span className="relative z-10 flex-1 cursor-grab" />
+            <span className="relative z-10 w-2.5 shrink-0 cursor-ew-resize rounded-r-[6px] bg-black/25"
               onPointerDown={begin('right')} onPointerMove={move} onPointerUp={end} />
           </div>
         )}
       </div>
       <span
         className={`w-24 shrink-0 pl-3 text-right text-xs tabular-nums ${partial ? 'font-medium text-[var(--accent-ink)]' : 'text-muted-foreground'}`}
-        title={partial ? 'Clip is shorter than the track — only part plays' : 'Whole track plays (loops if the clip is longer)'}
+        title={
+          partial
+            ? 'Clip is shorter than the track — only part plays'
+            : loops > 1
+              ? `Track loops ${loops}× (${clock(total!)} each) to fill the clip`
+              : 'Whole track plays once'
+        }
       >
         {readout}
       </span>
