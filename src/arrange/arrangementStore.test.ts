@@ -49,4 +49,21 @@ describe('arrangementStore', () => {
     store.getState().pause();
     expect(store.getState().playing).toBe(false);
   });
+  it('generateModule reseeds the module for the active mode and defaults drift to MODERATE', () => {
+    store.getState().initFrom(sel, 30);
+    expect(store.getState().drift).toBe('MODERATE');
+    store.getState().generateModule();
+    const regions = store.getState().moduleRegions;
+    expect(regions.length).toBeGreaterThan(0);
+    const noise = regions.find((r) => r.trackId === 'n')!;
+    expect(noise.enterSec).toBe(0); // NOISE still spans as the continuity bed
+    expect(noise.exitSec).toBe(D);
+  });
+  it('setDrift changes the drift used by generateModule', () => {
+    store.getState().initFrom(sel, 30);
+    store.getState().setDrift('STRICT');
+    expect(store.getState().drift).toBe('STRICT');
+    store.getState().generateModule();
+    expect(store.getState().moduleRegions.length).toBeGreaterThan(0);
+  });
 });

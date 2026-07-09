@@ -5,6 +5,7 @@ import { ArrowLeft, Play, Pause } from 'lucide-react';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
+import { DRIFTS } from '@/arrange/types';
 import { ModuleDesigner } from '@/components/layer2/ModuleDesigner';
 import { Button } from '@/components/ui/button';
 import { config } from '@/config';
@@ -28,6 +29,9 @@ export function ArrangeScreen() {
   const setScrubbing = useArrangement((s) => s.setScrubbing);
   const activeMode = useArrangement((s) => s.activeMode);
   const loadMode = useArrangement((s) => s.loadMode);
+  const drift = useArrangement((s) => s.drift);
+  const setDrift = useArrangement((s) => s.setDrift);
+  const generateModule = useArrangement((s) => s.generateModule);
 
   const D = config.layerTwo.moduleSeconds;
   const el = element ? element.toLowerCase() : undefined;
@@ -103,6 +107,29 @@ export function ArrangeScreen() {
             </button>
           ))}
           <span className="ml-1 text-xs text-muted-foreground">— clicking loads that mode&apos;s tracks from its density table</span>
+          <span className="mx-2 h-4 w-px bg-border" aria-hidden />
+          <span className="label mr-1">Variation</span>
+          {DRIFTS.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDrift(d)}
+              aria-pressed={drift === d}
+              className={`rounded-full px-3 py-1 text-xs transition-calm ${
+                drift === d ? 'text-white' : 'bg-card text-muted-foreground hover:text-foreground'
+              }`}
+              style={drift === d ? { background: 'var(--accent-ink)' } : undefined}
+            >
+              {d.charAt(0) + d.slice(1).toLowerCase()}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => generateModule()}
+            className="ml-2 rounded-full border border-border px-3.5 py-1 text-xs transition-calm hover:text-foreground"
+          >
+            Generate
+          </button>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
           Drag a clip's <b>edges</b> to set when each track enters/exits, or its <b>body</b> to move it.

@@ -2,9 +2,10 @@
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
 import type { ElementName } from '@/types';
-import type { ArrTrack, Composition, Mode, TemplateRegion } from '@/arrange/types';
+import type { ArrTrack, Composition, Drift, Mode, TemplateRegion } from '@/arrange/types';
 import { buildComposition } from '@/arrange/buildComposition';
 import { buildModeTemplate } from '@/arrange/buildModeTemplate';
+import { generateModeTemplate } from '@/arrange/generate/generateModeTemplate';
 import { config } from '@/config';
 
 type Selection = { element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number };
@@ -23,6 +24,7 @@ export interface ArrangementState {
   composition: Composition | null;
   durationMin: number;
   activeMode: Mode;
+  drift: Drift;
 
   initFrom: (sel: Selection, durationMin: number) => void;
   setDurationMin: (min: number) => void;
@@ -34,6 +36,9 @@ export interface ArrangementState {
   setActiveMode: (mode: Mode) => void;
   /** Pick a mode: reseed the module's clips from that mode's density table. */
   loadMode: (mode: Mode) => void;
+  setDrift: (d: Drift) => void;
+  /** Reseed the module's clips from the generative grammar for the active mode. */
+  generateModule: () => void;
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
   setTrackDuration: (trackId: string, sec: number) => void;
@@ -50,6 +55,7 @@ function seedModuleFromTable(tracks: ArrTrack[], mode: Mode): TemplateRegion[] {
 export function createArrangementStore() {
   return createStore<ArrangementState>((set, get) => {
     let selection: Selection | null = null;
+    let genSeed = 1;
     return {
       element: null,
       tracks: [],
@@ -62,6 +68,7 @@ export function createArrangementStore() {
       composition: null,
       durationMin: 30,
       activeMode: 'INTRODUCTION',
+      drift: 'MODERATE',
 
       initFrom: (sel, durationMin) => {
         selection = sel;
@@ -90,6 +97,12 @@ export function createArrangementStore() {
       setActiveMode: (mode) => set({ activeMode: mode }),
       loadMode: (mode) =>
         set({ activeMode: mode, moduleRegions: seedModuleFromTable(get().tracks, mode), positionSec: 0 }),
+      setDrift: (d) => set({ drift: d }),
+      generateModule: () =>
+        set((s) => ({
+          moduleRegions: generateModeTemplate(s.tracks, s.activeMode, s.drift, genSeed++, config).regions,
+          positionSec: 0,
+        })),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
       updateModuleRegion: (trackId, next) =>
