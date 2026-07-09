@@ -10,12 +10,19 @@ designer treats a clip as playback trigger/release, with the sample's baked fade
 
 ## Decision
 
-Generated **composition** playback applies a ~1-min cosine **volume envelope** per region via
-`regionEnvAt` / `trackScalarAt`. The shipping **single-module** designer is unchanged (still
-trigger/release, ADR-0002). The two paths coexist: baked fades for single-module audition, volume
-envelopes for composition playback.
+Layer Two playback applies a ~1-min cosine **volume envelope** per region via `regionEnvAt`,
+scaling the track's Layer One **ceiling** (`effectiveGain = ceilingGain × envelope`, never above it):
+
+- **Composition** playback: `trackScalarAt` → `useArrangementScheduler` → `setTrackEnvelope`.
+- **Single-module designer** (extended same day): `useModuleScheduler` drives
+  `regionEnvAt(region, pos)` each tick, so clips audibly fade 0 → ceiling over `fadeInSec` and
+  ceiling → 0 over `fadeOutSec`. Trigger/release still governs *playback* (ADR-0002); the envelope
+  governs *gain on top of it*. Baked sample fades still play — the region fade shapes the volume.
 
 ## Consequences
 
 - The generator only needs to emit good `fadeIn/fadeOut` values; no new fade code.
-- Hearing the envelope fades in-app depends on surfacing the composition scheduler (ROADMAP Phase C).
+- `Layer.trigger()` ramps to the envelope-scaled gain (not the raw ceiling), so an entry under a
+  fade-in starts quiet instead of blasting then dipping.
+- Exceptions carry through the data: BASS (`fadeIn: 0`) still enters directly; a spanning NOISE
+  (`fadeOut: 0`) never fades out.

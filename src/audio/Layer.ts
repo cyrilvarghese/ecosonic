@@ -155,7 +155,9 @@ export class Layer {
       void this.audioEl.play();
     }
     this.started = true;
-    this.rampTo(this.targetGain, 8); // sample fades from ~0 at offset 0; short ramp guards mid-sample seeks
+    // Ramp to the envelope-scaled ceiling (not raw targetGain): under a region fade-in the
+    // scheduler sets a small envelope before triggering, so the track starts quiet and rises.
+    this.rampTo(this.effectiveGain(), 8);
   }
 
   /** Layer Two: stop playback with a short anti-click ramp (no musical fade — baked in). */
