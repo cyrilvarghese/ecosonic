@@ -128,10 +128,11 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
   `generateComposition` (a distinct generated arrangement per section on the module sequence).
   Wired into the designer via Generate + drift. See the
   [framework spec](./generative/03-generation-framework.md).
-- **Live generative scheduler (next — own session)** — the framework's **Part B**: decisions made
-  *during* playback from the same grammar rules. Purpose decided in brainstorm:
-  **live-steerable playback** (change drift/steer upcoming entrances mid-session without stopping).
-  Design not yet specced; resume at the framework doc §Part B.
+- **Live generative scheduler (deprioritized 2026-07-09)** — the framework's **Part B**: decisions
+  made *during* playback from the same grammar rules. Its one purpose (decided in brainstorm) is
+  **live-steerable playback** — a listener-facing feature; deprioritized below per-mode edit
+  persistence and the composition view, which serve the designer
+  ([rationale](./generative/04-gen-b-scheduler-rationale.md)).
 - **Per-mode edit persistence** — the mode picker is wired, but switching modes reseeds from the
   table and discards drag-edits. Storing each mode's edits (so you design them independently and
   switch freely) is the remaining ROADMAP Phase-B piece.
