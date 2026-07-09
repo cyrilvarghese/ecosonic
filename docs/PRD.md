@@ -87,9 +87,12 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - The handed-off tracks appear as **lanes** on a single **Wave Module** timeline (~10 min).
 - Each track is a **draggable clip** `[enter, exit]`: drag edges to set when it enters/exits, drag
   the body to move it.
-- The module is **seeded from a density table** (config mode rules): the continuity **bed**
-  (NOISE/ISO/PLANET/ELEMENT) spans the module; **drivers** (BASS/PAD/MELODY/FX) come in as shorter
-  clips staggered toward a **mid-module density peak**. The designer edits from there.
+- The module is **seeded from the chosen mode's timing table** (transcribed from the production
+  brief `TRACK INFO`). In **Introduction**: NOISE and the Element(s)/FX span the module, while ISO
+  (1:00), PLANETS (2:00), PAD (3:00), Bass (4:00), ARP (4:30) and Melody (6:30) enter staggered, and
+  a **2nd Element** enters ~5:00. The designer edits from there.
+- A **mode picker** (Introduction / Deep Relaxation / Return) reloads the tracks from each section's
+  table — Deep Relaxation strips the musical layers to just the bed + Sub-Elements.
 - **A clip controls playback, not volume** ([ADR-0002]): entering a clip *starts the actual
   sample*; leaving *stops* it. The sample loops if shorter than the clip, is cut if longer. The
   sample's own baked fades are the only fades.
@@ -102,9 +105,9 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - **Element theme** inherited from the selection.
 
 ### 6.3 Roadmap (built underneath, not yet surfaced; or planned)
-- **Mode selection** — load a section's timing table (Introduction / Deep Relaxation / Return);
-  Deep Relaxation strips the drivers for a sparse/inward section, Return re-emerges full. A **mode
-  picker** is wired; per-mode edit persistence is the remaining Phase-B piece.
+- **Per-mode edit persistence** — the mode picker is wired, but switching modes reseeds from the
+  table and discards drag-edits. Storing each mode's edits (so you design them independently and
+  switch freely) is the remaining Phase-B piece.
 - **Composition / sequencing** — arrange several module instances on a session timeline with
   adjustable **bridges** (crossfades) between them; the whole composition = the density curve over
   the full session. (The pure engine for this — templates, sequence, bridges, per-track scalar —
@@ -118,7 +121,7 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - **Category** — a track's role (ISO, PLANET, NOISE, ELEMENT, ELEMENT_SUB/Sub-Elements, BASS, PAD,
   ARP, MELODY, FX).
 - **Bed / continuity layers** — NOISE/ISO/PLANET/ELEMENT; the always-present perceptual foundation.
-- **Drivers** — BASS/PAD/MELODY/FX; come and go to shape density.
+- **Drivers** — BASS/PAD/ARP/MELODY/FX; come and go to shape density.
 - **Wave Module** — a ~10-minute section with a growth→peak→decrease **density** shape.
 - **Clip / region** — a track's `[enter, exit]` window within a module.
 - **Density** — how many tracks overlap at a moment; *is* the arrangement ([ADR-0001]).

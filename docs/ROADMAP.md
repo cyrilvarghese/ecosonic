@@ -15,7 +15,7 @@ COMPOSITION  (the whole session — STRUCTURE view)
 │   a timeline of module instances; bridges/crossfades between them; one session playhead
 │
 ├── MODULE / MODE  (a reusable 10-min template — Introduction │ Deep Relaxation │ Return)
-│     each mode is a "density table": which categories play, and how densely
+│     each mode is a timing table: which layers play, and when (enter / exit / fade)
 │
 └──── TRACKS PER MODE  (the DETAIL view — the Module Designer)
         every handed-off track as a clip [enter, exit] on the module timeline
@@ -45,14 +45,14 @@ composition/sequencing around it. Rationale (see [ADR-0005]):
 
 So the order is **inside-out**: perfect one mode → add the other modes one by one → sequence them.
 
-## 3. Where we are now (Phase A — done)
+## 3. Where we are now
 
-Layer One is complete. Layer Two ships a **single-module designer** for **one mode at a time**
-(currently seeded from `modes[0]` = Relaxation):
+**Layer One** is complete — and now also selects **ARP** and **Sub-Elements** (see §4).
+**Layer Two** ships a **single-module designer** with a **mode picker** (Introduction / Deep
+Relaxation / Return); it opens on Introduction (`modes[0]`):
 
 - Handoff from Layer One (non-muted tracks + ceilings + element + tuning + master).
-- Every track is a **draggable clip**; seeded from the **density table** (bed spans the module,
-  drivers stagger to the mid-module peak).
+- Every track is a **draggable clip**, seeded from the chosen mode's **timing table** (§4).
 - **Clips control playback** (trigger/release), honoring baked fades — loop if shorter, cut if
   longer ([ADR-0002]).
 - **Sample-accurate scrub** + single playhead + `played/total` readout ([ADR-0003]).
@@ -136,6 +136,6 @@ composition scheduler.
 | Phase | Scope | Status |
 |---|---|---|
 | **A** | Single mode's Module Designer (drag clips, playback, scrub) | ✅ done |
-| **B** | Mode selection — design each mode's tracks one by one | ⏭ next |
+| **B** | Mode picker + per-mode edit persistence | ◐ picker done; persistence next |
 | **C** | Composition — sequence modules + bridges + session playhead | 🅿 engine built, UI parked |
 | **D** | Regeneration, density dynamics, tuning, effects, persistence | ⏳ later |
