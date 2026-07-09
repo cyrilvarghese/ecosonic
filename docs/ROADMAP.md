@@ -125,16 +125,16 @@ has two parts with their own ledger — **distinct from this doc's Phase A–D l
 | Part | Scope | Status |
 |---|---|---|
 | **Gen-A · Grammar → tables** | `layerTwo.generation` config (`canon ± half` ranges, `after` ordering, presence); seeded PRNG; `generateModeTemplate` (drift-scaled draw, bottom-up order enforced); `validateTemplate` (invariants I1–I6); `generateComposition`; Generate + drift UI | ✅ **done 2026-07-09** (plan: [2026-07-09-generative-grammar-phase-a](./superpowers/plans/2026-07-09-generative-grammar-phase-a.md)) |
-| **Gen-B · Live scheduler** | Decisions made *during* playback from the same rules (incremental resolver) | 🅿 **deprioritized below Phases B & C (2026-07-09)** — [rationale](./generative/04-gen-b-scheduler-rationale.md) |
+| **Gen-B · Live scheduler** | Decisions made *during* playback from the same rules (incremental resolver) | ▶ **in design — brainstorm resumed 2026-07-10** ([provenance & assessment](./generative/04-gen-b-scheduler-rationale.md)) |
 
-**Gen-B status:** deprioritized on 2026-07-09 — it solves exactly one problem (steering a session
-without stopping), which serves the *eventual listener*, not the designer the product has today;
-full provenance + assessment in
-[04-gen-b-scheduler-rationale.md](./generative/04-gen-b-scheduler-rationale.md). If revisited: the
-one decision made in the parked brainstorm — primary purpose is **live-steerable playback** (not
-endless-radio, not fixed-length-replay) — still stands; resume at the framework doc **§Part B**
-(open questions: how far ahead to draw, live bridges, what's shown on the timeline while playing,
-regeneration between modules).
+**Gen-B status:** proceeding. A deprioritization was recommended on 2026-07-09 (the scheduler's one
+problem — steering a session without stopping — serves the *eventual listener*, not the designer)
+and **declined on 2026-07-10**: building the scheduler is the priority. Provenance + assessment in
+[04-gen-b-scheduler-rationale.md](./generative/04-gen-b-scheduler-rationale.md). The one decision
+already made — primary purpose is **live-steerable playback** (steer drift / upcoming entrances
+mid-session without stopping; not endless-radio, not fixed-length-replay) — stands; the brainstorm
+resumes at the framework doc **§Part B** (open questions: how far ahead to draw, live bridges,
+what's shown on the timeline while playing, regeneration between modules).
 
 Decisions already locked that Gen-B inherits: envelope-path fades ([ADR-0007]), drift names
 (STRICT/MODERATE/EXPLORATORY), fades keep slight jitter (brief says "average ~1 min"), seed internal.
@@ -167,8 +167,8 @@ composition scheduler.
 | Phase | Scope | Status |
 |---|---|---|
 | **A** | Single mode's Module Designer (drag clips, playback, scrub) | ✅ done |
-| **B** | Mode picker + per-mode edit persistence | ◐ picker done; persistence next |
+| **B** | Mode picker + per-mode edit persistence | ◐ picker done; persistence [spec approved 2026-07-10](./superpowers/specs/2026-07-10-per-mode-edit-persistence-design.md), parked |
 | **C** | Composition — sequence modules + bridges + session playhead | 🅿 engine built, UI parked |
 | **D** | Regeneration, density dynamics, tuning, effects, persistence | ⏳ later |
 | **Gen-A** | Generative grammar → timing tables + Generate/drift UI (§5) | ✅ done 2026-07-09 |
-| **Gen-B** | Live generative scheduler (live-steerable playback) | 🅿 deprioritized below B & C (see §5) |
+| **Gen-B** | Live generative scheduler (live-steerable playback) | ▶ in design — brainstorm resumed 2026-07-10 (§5) |

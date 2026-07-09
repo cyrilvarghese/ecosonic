@@ -1,13 +1,14 @@
-# Gen-B (Live Scheduler) — Rationale, Provenance & Deprioritization
+# Gen-B (Live Scheduler) — Rationale, Provenance & Assessment
 
-**Status:** Decision record · **Created:** 2026-07-09
+**Status:** Decision record · **Created:** 2026-07-09 · **Updated:** 2026-07-10
 **Related:** [03-generation-framework.md](./03-generation-framework.md) (§Part B) ·
 [01-brief-analysis.md](./01-brief-analysis.md) · [ROADMAP §5](../ROADMAP.md) · [PRD §6.3](../PRD.md)
 
 This note answers four questions raised on 2026-07-09 — *why did the live-scheduler path exist, what
 does it add, what in the source material led to it, and how is a system with no LLM "live" or
-"varying"* — and records the resulting decision: **Gen-B is deprioritized below ROADMAP Phases B and
-C.** It stays in the docs as an option, not a "next."
+"varying"* — and records the assessment that followed: a recommendation to deprioritize Gen-B,
+**declined on 2026-07-10** — building the scheduler is the priority, and Gen-B proceeds as the next
+feature (§4). The analysis stands as context.
 
 ---
 
@@ -68,9 +69,9 @@ decision-maker. Concretely, in this codebase:
   moment the wind blows. Both are equally unintelligent. Gen-A is the music box (with dice at
   build time); Gen-B would be the wind chime (dice during playback).
 
-## 4. Assessment & decision
+## 4. Assessment & outcome
 
-The case for Gen-B is thin *for the current product*:
+The assessment argued the case for Gen-B is thin *for the current product*:
 
 - The **designer flow** (the primary user, PRD §3) is better served by Gen-A: precomputed tables
   are scrubbable, auditionable, repeatable — the re-audition loop the PRD names as a success
@@ -80,9 +81,11 @@ The case for Gen-B is thin *for the current product*:
 - **Nothing built depends on Gen-B.** It is design-only, parked, and cleanly droppable; the §B.1
   seam was kept deliberately so Part A is complete without it.
 
-> **Decision (2026-07-09):** Gen-B is **deprioritized below ROADMAP Phase B** (per-mode edit
-> persistence) **and Phase C** (composition view) — both serve the designer that exists today.
-> Gen-B remains recorded (here and in [03 §Part B](./03-generation-framework.md)) as an option to
-> revisit if/when a listener-facing, steer-while-listening use case becomes a real goal. Its one
-> locked purpose (live-steerable playback) and inherited decisions (envelope fades, drift names,
-> internal seed) carry forward unchanged.
+> **Outcome (2026-07-10):** the deprioritization recommendation was **declined** — building the
+> live scheduler is the priority, and **Gen-B proceeds next** (brainstorm resumed 2026-07-10 from
+> [03 §Part B](./03-generation-framework.md)'s open questions: how far ahead to draw, live
+> bridges, what the timeline shows during live play, regeneration between modules). The locked
+> purpose (**live-steerable playback**) and inherited decisions (envelope fades, drift names,
+> internal seed) carry forward unchanged. ROADMAP Phase B (per-mode edit persistence) has an
+> approved design spec, parked and ready
+> ([2026-07-10 spec](../superpowers/specs/2026-07-10-per-mode-edit-persistence-design.md)).
