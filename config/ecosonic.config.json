@@ -37,9 +37,9 @@
     "modeRules": {
       "INTRODUCTION": {
         "NOISE":       { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 0 },
-        "ELEMENT":     { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ELEMENT":     { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
         "ELEMENT_SUB": null,
-        "FX":          { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "FX":          { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
         "ISO":         { "enter": 60,  "exit": 540, "fadeIn": 60, "fadeOut": 120 },
         "PLANET":      { "enter": 120, "exit": 540, "fadeIn": 60, "fadeOut": 120 },
         "PAD":         { "enter": 180, "exit": 540, "fadeIn": 60, "fadeOut": 60 },
@@ -57,9 +57,9 @@
       },
       "RETURN": {
         "NOISE":       { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
-        "ELEMENT":     { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "ELEMENT":     { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
         "ELEMENT_SUB": null,
-        "FX":          { "enter": 0,   "exit": 600, "fadeIn": 30, "fadeOut": 60 },
+        "FX":          { "enter": 0,   "exit": 600, "fadeIn": 60, "fadeOut": 60 },
         "ISO":         { "enter": 60,  "exit": 600, "fadeIn": 60, "fadeOut": 60 },
         "PLANET":      { "enter": 120, "exit": 600, "fadeIn": 60, "fadeOut": 60 },
         "PAD":         { "enter": 180, "exit": 570, "fadeIn": 60, "fadeOut": 60 },
@@ -74,8 +74,8 @@
       "modeRules": {
         "INTRODUCTION": {
           "NOISE":   { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 0 },  "fadeOut": { "canon": 0,   "half": 0 } },
-          "ELEMENT": { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 30, "half": 10 }, "fadeOut": { "canon": 60,  "half": 15 } },
-          "FX":      { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 30, "half": 10 }, "fadeOut": { "canon": 60,  "half": 15 } },
+          "ELEMENT": { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60,  "half": 15 } },
+          "FX":      { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60,  "half": 15 } },
           "ISO":     { "present": 1,    "enter": { "canon": 60,  "half": 20 }, "exit": { "canon": 540, "half": 30 }, "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 120, "half": 20 }, "after": "ELEMENT" },
           "PLANET":  { "present": 1,    "enter": { "canon": 120, "half": 25 }, "exit": { "canon": 540, "half": 30 }, "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 120, "half": 20 }, "after": "ISO" },
           "PAD":     { "present": 1,    "enter": { "canon": 180, "half": 30 }, "exit": { "canon": 540, "half": 30 }, "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60,  "half": 15 }, "after": "PLANET" },
@@ -92,8 +92,8 @@
         },
         "RETURN": {
           "NOISE":   { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60, "half": 15 } },
-          "ELEMENT": { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 30, "half": 10 }, "fadeOut": { "canon": 60, "half": 15 } },
-          "FX":      { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 30, "half": 10 }, "fadeOut": { "canon": 60, "half": 15 } },
+          "ELEMENT": { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60, "half": 15 } },
+          "FX":      { "present": 1,    "enter": { "canon": 0,   "half": 0 },  "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60, "half": 15 } },
           "ISO":     { "present": 1,    "enter": { "canon": 60,  "half": 20 }, "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60, "half": 15 }, "after": "ELEMENT" },
           "PLANET":  { "present": 1,    "enter": { "canon": 120, "half": 25 }, "exit": "MODULE_END",                 "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60, "half": 15 }, "after": "ISO" },
           "PAD":     { "present": 1,    "enter": { "canon": 180, "half": 30 }, "exit": { "canon": 570, "half": 20 }, "fadeIn": { "canon": 60, "half": 15 }, "fadeOut": { "canon": 60, "half": 15 }, "after": "PLANET" },
