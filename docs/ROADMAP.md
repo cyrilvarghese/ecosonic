@@ -1,7 +1,8 @@
 # ECOSONIC Layer Two — Build Roadmap & Mode/Track Model
 
-**Status:** Living document · **Last updated:** 2026-07-04
-**Related:** [PRD](./PRD.md) · [SPEC](./SPEC.md) · [ADR-0005 (single-module-first)](./adr/0005-single-module-first.md)
+**Status:** Living document · **Last updated:** 2026-07-09
+**Related:** [PRD](./PRD.md) · [SPEC](./SPEC.md) · [ADR-0005 (single-module-first)](./adr/0005-single-module-first.md) ·
+[Generative framework](./generative/03-generation-framework.md)
 
 This document records **what has been built**, **how we chose to build it (one mode first, then the
 rest one by one)**, and the **drill-down hierarchy** of composition → modes → tracks-per-mode.
@@ -52,10 +53,15 @@ So the order is **inside-out**: perfect one mode → add the other modes one by 
 Relaxation / Return); it opens on Introduction (`modes[0]`):
 
 - Handoff from Layer One (non-muted tracks + ceilings + element + tuning + master).
-- Every track is a **draggable clip**, seeded from the chosen mode's **timing table** (§4).
-- **Clips control playback** (trigger/release), honoring baked fades — loop if shorter, cut if
-  longer ([ADR-0002]).
-- **Sample-accurate scrub** + single playhead + `played/total` readout ([ADR-0003]).
+- Every track is a **draggable clip**, seeded from the chosen mode's **timing table** (§4) — or
+  **generated** from the grammar (§5) via the Generate button + drift picker.
+- **Clips control playback** (trigger/release) — loop if shorter, cut if longer ([ADR-0002]) —
+  and the scheduler drives each region's **~1-min volume envelope** (0 → ceiling → 0,
+  [ADR-0007](./adr/0007-generated-playback-uses-volume-envelope.md)); baked fades play underneath.
+- **Sample-accurate scrub** + single playhead + `played/total` readout (`×N` when looping)
+  ([ADR-0003]).
+- **Loop visualization** (per-repeat waveform segments + dividers) and a **Volume view**
+  (DAW-style envelope line per clip, waveform dimmed under it).
 - Element theme inherited.
 
 **Parked (built + tested, not wired):** `buildModeTemplate`, `buildSequence`, `buildComposition`,
@@ -110,7 +116,27 @@ placement (no imposed curve; [ADR-0001](./adr/0001-density-is-the-arrangement.md
 and discards drag-edits; storing edits back into `composition.templates[mode]` will let you design
 each mode independently and switch freely.
 
-## 5. Then — sequence the modes (Phase C)
+## 5. The generative engine — grammar (built) and live scheduler (next session)
+
+The [generative framework](./generative/03-generation-framework.md) (from the
+[brief analysis](./generative/01-brief-analysis.md) + [domain research](./generative/02-domain-research.md))
+has two parts with their own ledger — **distinct from this doc's Phase A–D letters**:
+
+| Part | Scope | Status |
+|---|---|---|
+| **Gen-A · Grammar → tables** | `layerTwo.generation` config (`canon ± half` ranges, `after` ordering, presence); seeded PRNG; `generateModeTemplate` (drift-scaled draw, bottom-up order enforced); `validateTemplate` (invariants I1–I6); `generateComposition`; Generate + drift UI | ✅ **done 2026-07-09** (plan: [2026-07-09-generative-grammar-phase-a](./superpowers/plans/2026-07-09-generative-grammar-phase-a.md)) |
+| **Gen-B · Live scheduler** | Decisions made *during* playback from the same rules (incremental resolver) | ⏭ **parked for its own session** |
+
+**Gen-B resume point:** brainstorm started 2026-07-09; the one decision made — primary purpose is
+**live-steerable playback** (steer drift / upcoming entrances mid-session without stopping; not
+endless-radio, not fixed-length-replay — those can layer on later). Next step: continue the
+brainstorm from the framework doc **§Part B** (open questions: how far ahead to draw, live bridges,
+what's shown on the timeline while playing, regeneration between modules), then spec → plan → build.
+
+Decisions already locked that Gen-B inherits: envelope-path fades ([ADR-0007]), drift names
+(STRICT/MODERATE/EXPLORATORY), fades keep slight jitter (brief says "average ~1 min"), seed internal.
+
+## 6. Then — sequence the modes (Phase C)
 
 Surface the **Composition** view:
 - Modules as blocks on a session timeline (duration-driven count; modes cycle
@@ -124,14 +150,16 @@ At this point the two code paths (single-module `moduleRegions` vs. `composition
 **reconciled**: the designer edits `composition.templates[activeMode]`, and playback uses the
 composition scheduler.
 
-## 6. Later — advanced (Phase D)
+## 7. Later — advanced (Phase D)
 
 - **Sample regeneration** — swap unlocked samples between/within modules so repeats vary (needs the
   Lock status already carried in the handoff).
 - **Density dynamics** — ISO↔PLANETS alternation, time-varying rarefaction.
+- **Per-instance variation** — `Composition.templates` is per-mode, so repeated instances of a mode
+  share one generated arrangement; varying each instance needs a small `Composition` model change.
 - **Tuning** wired to `playbackRate`; **effects** once Layer One models them; **persistence**.
 
-## 7. Phase summary
+## 8. Phase summary
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -139,3 +167,5 @@ composition scheduler.
 | **B** | Mode picker + per-mode edit persistence | ◐ picker done; persistence next |
 | **C** | Composition — sequence modules + bridges + session playhead | 🅿 engine built, UI parked |
 | **D** | Regeneration, density dynamics, tuning, effects, persistence | ⏳ later |
+| **Gen-A** | Generative grammar → timing tables + Generate/drift UI (§5) | ✅ done 2026-07-09 |
+| **Gen-B** | Live generative scheduler (live-steerable playback) | ⏭ next — own session (resume: §5) |

@@ -189,6 +189,12 @@ so nothing breaks; `generation.modeRules` is additive.
 
 ## Part B — The Scheduler (Phase 2, live — design only)
 
+> **Status (2026-07-09):** Part A is fully built (see [ROADMAP §5](../ROADMAP.md)). Part B is
+> **parked for its own session**. Brainstorm decision already made: primary purpose =
+> **live-steerable playback** (steer drift / upcoming entrances mid-session without stopping).
+> Resume the brainstorm from the open questions: how far ahead to draw, live bridges, what the
+> timeline shows during live play, regeneration between modules.
+
 "Scheduler" here means a **live generative engine**, distinct from today's
 [`useArrangementScheduler`](../../src/arrange/useArrangementScheduler.ts) (which merely *plays* a
 fixed composition's envelopes in real time). Phase 2 decides transitions **as the session plays**, so
