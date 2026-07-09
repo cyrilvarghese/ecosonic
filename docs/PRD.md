@@ -134,7 +134,10 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - **Meditation-first:** slow changes (1–2 min scale), no abrupt cuts, no rhythmic/quantized
   structures, avoid evident repetition.
 - **Respect Layer One:** never exceed a track's volume ceiling; master is inherited, read-only.
-- **Baked fades:** Layer Two must not add its own fades — samples carry them.
+- **Fades:** the single-module designer treats a clip as playback trigger/release — baked sample
+  fades are the only fades there ([ADR-0002](./adr/0002-clips-control-playback-not-gain.md)).
+  **Generated composition playback** applies a ~1-min cosine volume envelope per region
+  ([ADR-0007](./adr/0007-generated-playback-uses-volume-envelope.md)).
 - **Known gaps:**
   - **Tuning is inert** — `tuningHz` is carried through but never applied (no `playbackRate` is set,
     in Layer One *or* Two). Wiring it is a small, isolated change.

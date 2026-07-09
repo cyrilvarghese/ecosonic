@@ -19,6 +19,51 @@ const ModeRule = z.object({
   BASS: Timing.nullable(), PAD: Timing.nullable(), ARP: Timing.nullable(),
   MELODY: Timing.nullable(), FX: Timing.nullable(),
 });
+const CATEGORY_VALUES = [
+  'NOISE', 'ISO', 'PLANET', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'ARP', 'MELODY', 'FX',
+] as const;
+
+// A generation range: draw a value from `canon ± half × driftScale`.
+const GenRangeSchema = z.object({
+  canon: z.number().nonnegative(),
+  half: z.number().nonnegative(),
+});
+const ExitSpecSchema = z.union([GenRangeSchema, z.literal('MODULE_END')]);
+// A layer's generative spec within a mode: presence + drawable timing ranges + ordering hint.
+const GenLayerRuleSchema = z.object({
+  present: z.number().min(0).max(1),
+  enter: GenRangeSchema,
+  exit: ExitSpecSchema,
+  fadeIn: GenRangeSchema,
+  fadeOut: GenRangeSchema,
+  after: z.enum(CATEGORY_VALUES).optional(),
+});
+// Every category optional — an omitted key = the layer is absent in that mode.
+const GenModeRuleSchema = z.object({
+  NOISE: GenLayerRuleSchema.optional(), ISO: GenLayerRuleSchema.optional(),
+  PLANET: GenLayerRuleSchema.optional(), ELEMENT: GenLayerRuleSchema.optional(),
+  ELEMENT_SUB: GenLayerRuleSchema.optional(), BASS: GenLayerRuleSchema.optional(),
+  PAD: GenLayerRuleSchema.optional(), ARP: GenLayerRuleSchema.optional(),
+  MELODY: GenLayerRuleSchema.optional(), FX: GenLayerRuleSchema.optional(),
+});
+const GenerationSchema = z.object({
+  minGapSec: z.number().nonnegative(),
+  driftScales: z.object({
+    STRICT: z.number().nonnegative(),
+    MODERATE: z.number().nonnegative(),
+    EXPLORATORY: z.number().nonnegative(),
+  }),
+  modeRules: z.object({
+    INTRODUCTION: GenModeRuleSchema,
+    DEEP_RELAXATION: GenModeRuleSchema,
+    RETURN: GenModeRuleSchema,
+  }),
+});
+
+export type GenRange = z.infer<typeof GenRangeSchema>;
+export type GenLayerRule = z.infer<typeof GenLayerRuleSchema>;
+export type GenModeRule = z.infer<typeof GenModeRuleSchema>;
+
 const LayerTwo = z.object({
   moduleSeconds: z.number().positive(),
   bridgeSeconds: z.number().nonnegative(),
@@ -29,6 +74,7 @@ const LayerTwo = z.object({
   durationPresetsMin: z.array(z.number().positive()),
   modes: z.array(z.enum(['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN'])),
   modeRules: z.object({ INTRODUCTION: ModeRule, DEEP_RELAXATION: ModeRule, RETURN: ModeRule }),
+  generation: GenerationSchema,
 });
 
 export const ConfigSchema = z.object({

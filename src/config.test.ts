@@ -50,6 +50,22 @@ const valid = {
         MELODY: { enter: 390, exit: 570, fadeIn: 60, fadeOut: 60 },
       },
     },
+    generation: {
+      minGapSec: 20,
+      driftScales: { STRICT: 0.15, MODERATE: 0.5, EXPLORATORY: 1.0 },
+      modeRules: {
+        INTRODUCTION: {
+          NOISE: { present: 1, enter: { canon: 0, half: 0 }, exit: 'MODULE_END', fadeIn: { canon: 60, half: 0 }, fadeOut: { canon: 0, half: 0 } },
+          ISO: { present: 1, enter: { canon: 60, half: 20 }, exit: { canon: 540, half: 30 }, fadeIn: { canon: 60, half: 15 }, fadeOut: { canon: 120, half: 20 }, after: 'ELEMENT' },
+        },
+        DEEP_RELAXATION: {
+          NOISE: { present: 1, enter: { canon: 0, half: 0 }, exit: { canon: 480, half: 30 }, fadeIn: { canon: 60, half: 15 }, fadeOut: { canon: 60, half: 15 } },
+        },
+        RETURN: {
+          NOISE: { present: 1, enter: { canon: 0, half: 0 }, exit: 'MODULE_END', fadeIn: { canon: 60, half: 15 }, fadeOut: { canon: 60, half: 15 } },
+        },
+      },
+    },
   },
 };
 
@@ -73,6 +89,16 @@ describe('config', () => {
           INTRODUCTION: { ...valid.layerTwo.modeRules.INTRODUCTION, NOISE: 'loud' } },
       },
     };
+    expect(ConfigSchema.safeParse(bad).success).toBe(false);
+  });
+  it('parses the generation block and exposes drift scales', () => {
+    expect(config.layerTwo.generation.driftScales.MODERATE).toBe(0.5);
+    expect(config.layerTwo.generation.modeRules.INTRODUCTION.ISO?.after).toBe('ELEMENT');
+    expect(config.layerTwo.generation.modeRules.DEEP_RELAXATION.BASS).toBeUndefined();
+  });
+  it('rejects a generation layer rule with present > 1', () => {
+    const bad = JSON.parse(JSON.stringify(valid));
+    bad.layerTwo.generation.modeRules.INTRODUCTION.NOISE.present = 2;
     expect(ConfigSchema.safeParse(bad).success).toBe(false);
   });
 });
