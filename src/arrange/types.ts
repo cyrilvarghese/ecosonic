@@ -5,6 +5,15 @@ export type Mode = 'INTRODUCTION' | 'DEEP_RELAXATION' | 'RETURN';
 export const BED_CATEGORIES: Category[] = ['NOISE', 'ISO', 'PLANET', 'ELEMENT'];
 export const isBed = (c: Category): boolean => BED_CATEGORIES.includes(c);
 
+export type Drift = 'STRICT' | 'MODERATE' | 'EXPLORATORY';
+export const DRIFTS: Drift[] = ['STRICT', 'MODERATE', 'EXPLORATORY'];
+
+/** Fixed vertical grammar (bottom → top) from the production brief. Drives entrance ordering. */
+export const STACK_ORDER: Category[] = [
+  'NOISE', 'ELEMENT', 'ELEMENT_SUB', 'FX', 'ISO', 'PLANET', 'PAD', 'BASS', 'ARP', 'MELODY',
+];
+export const stackIndex = (c: Category): number => STACK_ORDER.indexOf(c);
+
 export interface ArrTrack {
   id: string;
   category: Category;
