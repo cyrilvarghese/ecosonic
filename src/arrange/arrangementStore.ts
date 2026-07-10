@@ -7,6 +7,7 @@ import { buildComposition } from '@/arrange/buildComposition';
 import { buildModeTemplate } from '@/arrange/buildModeTemplate';
 import { generateModeTemplate } from '@/arrange/generate/generateModeTemplate';
 import { steerModule, type SteerNudge } from '@/arrange/generate/steerModule';
+import type { ArrangementFile } from '@/arrange/arrangementFile';
 import { config } from '@/config';
 
 type Selection = { element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number };
@@ -44,6 +45,8 @@ export interface ArrangementState {
   setLive: (b: boolean) => void;
   /** Live steering: redraw the un-played future (optionally with a nudge), spliced at the playhead. */
   steer: (nudge?: SteerNudge) => void;
+  /** Load a previously exported arrangement (regions filtered to the current tracks). */
+  importArrangement: (file: ArrangementFile) => void;
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
   setTrackDuration: (trackId: string, sec: number) => void;
@@ -121,6 +124,16 @@ export function createArrangementStore() {
         set((s) => ({
           moduleRegions: steerModule(s.moduleRegions, s.positionSec, s.tracks, s.activeMode, s.drift, steerSeed++, nudge),
         })),
+      importArrangement: (file) =>
+        set((s) => {
+          const known = new Set(s.tracks.map((tr) => tr.id));
+          return {
+            activeMode: file.mode,
+            drift: file.drift,
+            moduleRegions: file.regions.filter((r) => known.has(r.trackId)),
+            positionSec: 0,
+          };
+        }),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
       setTrackCeilingDb: (trackId, db) =>

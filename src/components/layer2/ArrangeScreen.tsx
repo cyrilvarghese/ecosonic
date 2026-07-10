@@ -1,6 +1,7 @@
 'use client';
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
+import { serializeArrangement, parseArrangement } from '@/arrange/arrangementFile';
 import { ArrowLeft, Play, Pause, ChevronDown, Check } from 'lucide-react';
 import { Menu } from '@base-ui/react/menu';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -35,8 +36,30 @@ export function ArrangeScreen() {
   const generateModule = useArrangement((s) => s.generateModule);
   const live = useArrangement((s) => s.live);
   const setLive = useArrangement((s) => s.setLive);
+  const importArrangement = useArrangement((s) => s.importArrangement);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [showVolume, setShowVolume] = useState(true);
   const driftLabel = (d: (typeof DRIFTS)[number]) => d.charAt(0) + d.slice(1).toLowerCase();
+
+  const downloadBlob = (blob: Blob, name: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const exportJson = () => {
+    const text = serializeArrangement({ mode: activeMode, drift, regions: moduleRegions, tracks });
+    downloadBlob(new Blob([text], { type: 'application/json' }), `ecosonic-${activeMode.toLowerCase()}.json`);
+  };
+  const importJson = async (f: File) => {
+    try {
+      importArrangement(parseArrangement(await f.text()));
+    } catch {
+      window.alert('Not a valid ECOSONIC arrangement file.');
+    }
+  };
 
   const D = config.layerTwo.moduleSeconds;
   const el = element ? element.toLowerCase() : undefined;
@@ -149,6 +172,32 @@ export function ArrangeScreen() {
             Volume
           </label>
           <a href="/rules" className={buttonVariants({ variant: 'link' })}>Rules →</a>
+          <span className="mx-2 h-4 w-px bg-border" aria-hidden />
+          <button
+            type="button"
+            onClick={exportJson}
+            className="rounded-full border border-border px-3 py-1 text-xs transition-calm hover:text-foreground"
+          >
+            Export JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            className="rounded-full border border-border px-3 py-1 text-xs transition-calm hover:text-foreground"
+          >
+            Import
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void importJson(f);
+              e.target.value = '';
+            }}
+          />
         </div>
       </header>
 

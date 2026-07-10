@@ -108,4 +108,21 @@ describe('arrangementStore', () => {
     const mel = store.getState().moduleRegions.find((r) => r.trackId === 'mel')!;
     expect(mel.enterSec).toBeCloseTo(61, 5); // t + IN_NEXT_DELAY_SEC
   });
+  it('importArrangement applies mode, drift and known-track regions, resetting position', () => {
+    store.getState().initFrom(sel, 30);
+    store.getState().seek(200);
+    store.getState().importArrangement({
+      version: 1, kind: 'ecosonic-arrangement', mode: 'RETURN', drift: 'STRICT',
+      regions: [
+        { trackId: 'n', enterSec: 0, exitSec: 600, fadeInSec: 60, fadeOutSec: 60 },
+        { trackId: 'ghost', enterSec: 10, exitSec: 20, fadeInSec: 0, fadeOutSec: 0 }, // unknown track: dropped
+      ],
+      tracks: [],
+    });
+    const s = store.getState();
+    expect(s.activeMode).toBe('RETURN');
+    expect(s.drift).toBe('STRICT');
+    expect(s.positionSec).toBe(0);
+    expect(s.moduleRegions.map((r) => r.trackId)).toEqual(['n']);
+  });
 });
