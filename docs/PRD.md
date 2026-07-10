@@ -73,7 +73,7 @@ memory; a hard refresh returns to `/`.
 - **Element selection** — five elements, each with its own accent theme (oklch tokens).
 - **Auto-selection** — from a manifest of samples per element × category, build a set of tracks
   per configurable count rules. Categories: `ISO, PLANET, NOISE, ELEMENT, ELEMENT_SUB, BASS, PAD,
-  ARP, MELODY, FX`.
+  DRONE, ARP, MELODY, FX`.
 - **Per-track controls** — volume (**centered ±20 dB**, 0 dB = unity), mute, play/pause, lock,
   change (swap to another sample in the same category).
 - **Session controls** — master volume, global tuning, regenerate (re-roll unlocked tracks),
@@ -149,9 +149,11 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 
 - **Element** — EARTH/WATER/AIR/FIRE/ETHER; drives sample set + theme.
 - **Category** — a track's role (ISO, PLANET, NOISE, ELEMENT, ELEMENT_SUB/Sub-Elements, BASS, PAD,
-  ARP, MELODY, FX).
+  DRONE, ARP, MELODY, FX).
 - **Bed / continuity layers** — NOISE/ISO/PLANET/ELEMENT; the always-present perceptual foundation.
-- **Drivers** — BASS/PAD/ARP/MELODY/FX; come and go to shape density.
+- **Drivers** — BASS/PAD/DRONE/ARP/MELODY/FX; come and go to shape density. (DRONE is a sustained
+  swell that enters ~3:00 with PAD; unlike the other drivers its Deep Relaxation presence is
+  randomized rather than always-stripped.)
 - **Wave Module** — a ~10-minute section with a growth→peak→decrease **density** shape.
 - **Clip / region** — a track's `[enter, exit]` window within a module.
 - **Density** — how many tracks overlap at a moment; *is* the arrangement ([ADR-0001]).

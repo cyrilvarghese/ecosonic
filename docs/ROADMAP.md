@@ -87,6 +87,7 @@ The three sections:
 | ISO | 1:00 | 9:00 | 1-min fades |
 | PLANET | 2:00 | 9:00 | after ISO peaks |
 | PAD | 3:00 | 9:00 | 1-min fade-in |
+| DRONE | 3:00 | 9:00 | sustained swell, with PAD; below PAD in the stack; randomized in Deep Relaxation |
 | BASS | 4:00 | 9:00 | **no fade-in** — enters directly |
 | ARP | 4:30 | 9:00 | arpeggiator, between Bass and Melody |
 | MELODY | 6:30 | 9:00 | completes the harmony |
