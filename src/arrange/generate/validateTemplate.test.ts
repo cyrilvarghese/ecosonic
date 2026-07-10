@@ -10,7 +10,7 @@ const t = (id: string, category: ArrTrack['category']): ArrTrack => ({
 });
 const tracks: ArrTrack[] = [
   t('n', 'NOISE'), t('e', 'ELEMENT'), t('iso', 'ISO'), t('pl', 'PLANET'),
-  t('pad', 'PAD'), t('bass', 'BASS'), t('arp', 'ARP'), t('mel', 'MELODY'),
+  t('drone', 'DRONE'), t('pad', 'PAD'), t('bass', 'BASS'), t('arp', 'ARP'), t('mel', 'MELODY'),
 ];
 
 describe('validateTemplate', () => {

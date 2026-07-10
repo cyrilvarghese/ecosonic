@@ -16,11 +16,11 @@ const Timing = z.object({
 const ModeRule = z.object({
   NOISE: Timing.nullable(), ISO: Timing.nullable(), PLANET: Timing.nullable(),
   ELEMENT: Timing.nullable(), ELEMENT_SUB: Timing.nullable(),
-  BASS: Timing.nullable(), PAD: Timing.nullable(), ARP: Timing.nullable(),
-  MELODY: Timing.nullable(), FX: Timing.nullable(),
+  BASS: Timing.nullable(), PAD: Timing.nullable(), DRONE: Timing.nullable(),
+  ARP: Timing.nullable(), MELODY: Timing.nullable(), FX: Timing.nullable(),
 });
 const CATEGORY_VALUES = [
-  'NOISE', 'ISO', 'PLANET', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'ARP', 'MELODY', 'FX',
+  'NOISE', 'ISO', 'PLANET', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'DRONE', 'ARP', 'MELODY', 'FX',
 ] as const;
 
 // A generation range: draw a value from `canon ± half × driftScale`.
@@ -43,8 +43,9 @@ const GenModeRuleSchema = z.object({
   NOISE: GenLayerRuleSchema.optional(), ISO: GenLayerRuleSchema.optional(),
   PLANET: GenLayerRuleSchema.optional(), ELEMENT: GenLayerRuleSchema.optional(),
   ELEMENT_SUB: GenLayerRuleSchema.optional(), BASS: GenLayerRuleSchema.optional(),
-  PAD: GenLayerRuleSchema.optional(), ARP: GenLayerRuleSchema.optional(),
-  MELODY: GenLayerRuleSchema.optional(), FX: GenLayerRuleSchema.optional(),
+  PAD: GenLayerRuleSchema.optional(), DRONE: GenLayerRuleSchema.optional(),
+  ARP: GenLayerRuleSchema.optional(), MELODY: GenLayerRuleSchema.optional(),
+  FX: GenLayerRuleSchema.optional(),
 });
 const GenerationSchema = z.object({
   minGapSec: z.number().nonnegative(),
@@ -100,7 +101,7 @@ export const ConfigSchema = z.object({
   }),
   selection: z.object({
     ISO: Count, PLANET: Count, NOISE: Count, ELEMENT: Count, ELEMENT_SUB: Count,
-    BASS: Count, PAD: Count, ARP: Count, MELODY: Count, FX: Count,
+    BASS: Count, PAD: Count, DRONE: Count, ARP: Count, MELODY: Count, FX: Count,
   }),
   motion: z.object({
     durFastMs: z.number(),

@@ -23,6 +23,7 @@ function waterManifest(): Manifest {
     { path: 'WATER/ELEMENT/OCEAN.wav', bytes: 1 }, { path: 'WATER/ELEMENT/RAIN.wav', bytes: 1 },
     { path: 'WATER/ELEMENT/WATER.wav', bytes: 1 }, { path: 'WATER/ELEMENT/XYLO.wav', bytes: 1 },
     { path: 'WATER/ELEMENT/SUB/WHALES.wav', bytes: 1 }, // excluded
+    { path: 'WATER/DRONE/DRONE WATER.wav', bytes: 1 },
     { path: 'WATER/SOUND/ARP/ARP.wav', bytes: 1 },      // excluded
     { path: 'WATER/SOUND/BASS/BASS.wav', bytes: 1 },
     { path: 'WATER/SOUND/PAD/PAD.wav', bytes: 1 },
@@ -81,6 +82,12 @@ describe('buildSelection', () => {
     expect(byCat('ELEMENT_SUB').length).toBeGreaterThanOrEqual(1);
     expect(tracks.some((t) => t.sample.path.includes('/ARP/'))).toBe(true);
     expect(tracks.some((t) => t.sample.path.includes('/SUB/'))).toBe(true);
+  });
+
+  it('selects the single DRONE sample', () => {
+    expect(byCat('DRONE')).toHaveLength(1);
+    expect(byCat('DRONE')[0].label).toBe('DRONE');
+    expect(tracks.some((t) => t.sample.path.includes('/DRONE/'))).toBe(true);
   });
 
   it('applies default volume and unique ids', () => {

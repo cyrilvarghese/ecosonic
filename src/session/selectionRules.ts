@@ -2,12 +2,12 @@ import type { Category } from '@/types';
 
 // The order tracks appear in, top to bottom.
 export const SELECTION_ORDER: Category[] = [
-  'ISO', 'PLANET', 'NOISE', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'ARP', 'MELODY', 'FX',
+  'ISO', 'PLANET', 'NOISE', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'DRONE', 'ARP', 'MELODY', 'FX',
 ];
 
 const BASE_LABEL: Record<Category, string> = {
   ISO: 'ISO', PLANET: 'PLANETS', NOISE: 'NOISE', ELEMENT: 'ELEMENTS', ELEMENT_SUB: 'SUB-ELEMENTS',
-  BASS: 'BASS', PAD: 'PAD', ARP: 'ARP', MELODY: 'MELODY', FX: 'FX',
+  BASS: 'BASS', PAD: 'PAD', DRONE: 'DRONE', ARP: 'ARP', MELODY: 'MELODY', FX: 'FX',
 };
 
 /** "ISO" for a single track; "PLANETS A"/"PLANETS B" when a category has several. */

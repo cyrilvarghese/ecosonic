@@ -10,8 +10,8 @@ const valid = {
   selection: {
     ISO: { min: 1, max: 1 }, PLANET: { min: 2, max: 2 }, NOISE: { min: 1, max: 1 },
     ELEMENT: { min: 2, max: 3 }, ELEMENT_SUB: { min: 1, max: 2 },
-    BASS: { min: 1, max: 1 }, PAD: { min: 1, max: 1 }, ARP: { min: 1, max: 1 },
-    MELODY: { min: 1, max: 1 }, FX: { min: 1, max: 2 },
+    BASS: { min: 1, max: 1 }, PAD: { min: 1, max: 1 }, DRONE: { min: 1, max: 1 },
+    ARP: { min: 1, max: 1 }, MELODY: { min: 1, max: 1 }, FX: { min: 1, max: 2 },
   },
   motion: { durFastMs: 200, durMs: 400, durSlowMs: 800 },
   layerTwo: {
@@ -26,6 +26,7 @@ const valid = {
         ISO: { enter: 60, exit: 540, fadeIn: 60, fadeOut: 120 },
         PLANET: { enter: 120, exit: 540, fadeIn: 60, fadeOut: 120 },
         PAD: { enter: 180, exit: 540, fadeIn: 60, fadeOut: 60 },
+        DRONE: { enter: 180, exit: 540, fadeIn: 60, fadeOut: 60 },
         BASS: { enter: 240, exit: 540, fadeIn: 0, fadeOut: 60 },
         ARP: { enter: 270, exit: 540, fadeIn: 60, fadeOut: 60 },
         MELODY: { enter: 390, exit: 540, fadeIn: 60, fadeOut: 60 },
@@ -36,7 +37,7 @@ const valid = {
         ELEMENT_SUB: { enter: 0, exit: 600, fadeIn: 60, fadeOut: 60 },
         ISO: { enter: 0, exit: 480, fadeIn: 60, fadeOut: 60 },
         PLANET: { enter: 0, exit: 480, fadeIn: 60, fadeOut: 60 },
-        PAD: null, BASS: null, ARP: null, MELODY: null, FX: null,
+        PAD: null, DRONE: null, BASS: null, ARP: null, MELODY: null, FX: null,
       },
       RETURN: {
         NOISE: { enter: 0, exit: 600, fadeIn: 60, fadeOut: 60 },
@@ -45,6 +46,7 @@ const valid = {
         ISO: { enter: 60, exit: 600, fadeIn: 60, fadeOut: 60 },
         PLANET: { enter: 120, exit: 600, fadeIn: 60, fadeOut: 60 },
         PAD: { enter: 180, exit: 570, fadeIn: 60, fadeOut: 60 },
+        DRONE: { enter: 180, exit: 570, fadeIn: 60, fadeOut: 60 },
         BASS: { enter: 240, exit: 570, fadeIn: 0, fadeOut: 60 },
         ARP: { enter: 270, exit: 570, fadeIn: 60, fadeOut: 60 },
         MELODY: { enter: 390, exit: 570, fadeIn: 60, fadeOut: 60 },

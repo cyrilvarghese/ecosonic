@@ -57,6 +57,16 @@ describe('buildModeTemplate', () => {
     expect(byTrack(deep, 'arp')).toBeUndefined();
     expect(byTrack(deep, 'sub')).toBeDefined();
   });
+  it('places DRONE near PAD in INTRODUCTION and omits it in DEEP_RELAXATION', () => {
+    const withDrone: ArrTrack[] = [t('n', 'NOISE'), t('drone', 'DRONE'), t('pad', 'PAD')];
+    const intro = buildModeTemplate(withDrone, 'INTRODUCTION');
+    const drone = byTrack(intro, 'drone')!, pad = byTrack(intro, 'pad')!;
+    expect(drone).toBeDefined();
+    expect(drone.enterSec).toBeGreaterThan(0);            // a mid-module swell, not a bed
+    expect(drone.enterSec).toBeLessThanOrEqual(pad.enterSec); // sits at/just under PAD
+    expect(byTrack(buildModeTemplate(withDrone, 'DEEP_RELAXATION'), 'drone')).toBeUndefined();
+  });
+
   it('staggers a 2nd Element later than the 1st', () => {
     const tpl = buildModeTemplate([t('e0', 'ELEMENT'), t('e1', 'ELEMENT')], 'INTRODUCTION');
     const e0 = byTrack(tpl, 'e0')!, e1 = byTrack(tpl, 'e1')!;

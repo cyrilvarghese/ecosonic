@@ -12,7 +12,7 @@ const SOUND_CATEGORIES = new Set(['BASS', 'PAD', 'MELODY', 'FX', 'ARP']);
 function emptyElement(): ElementManifest {
   return {
     ISO: [], PLANET: [], NOISE: [], ELEMENT: [],
-    BASS: [], PAD: [], MELODY: [], FX: [], ARP: [], ELEMENT_SUB: [],
+    BASS: [], PAD: [], MELODY: [], FX: [], ARP: [], ELEMENT_SUB: [], DRONE: [],
   };
 }
 
@@ -27,7 +27,7 @@ function extOf(name: string): string {
 
 function categoryOf(parts: string[]): keyof ElementManifest | null {
   const l1 = parts[1]?.toUpperCase();
-  if (l1 === 'ISO' || l1 === 'PLANET' || l1 === 'NOISE') return l1;
+  if (l1 === 'ISO' || l1 === 'PLANET' || l1 === 'NOISE' || l1 === 'DRONE') return l1;
   if (l1 === 'ELEMENT') return parts[2]?.toUpperCase() === 'SUB' ? 'ELEMENT_SUB' : 'ELEMENT';
   if (l1 === 'SOUND') {
     const c = parts[2]?.toUpperCase();

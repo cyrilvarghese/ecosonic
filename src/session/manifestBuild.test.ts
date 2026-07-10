@@ -8,6 +8,7 @@ const files = [
   { path: 'WATER/NOISE/NOISE WATER.wav', bytes: 300 },
   { path: 'WATER/ELEMENT/OCEAN.wav', bytes: 400 },
   { path: 'WATER/ELEMENT/SUB/WHALES.wav', bytes: 500 },        // SUB → ELEMENT_SUB
+  { path: 'WATER/DRONE/DRONE WATER.wav', bytes: 550 },         // top-level DRONE folder
   { path: 'WATER/SOUND/BASS/BASS.wav', bytes: 600 },
   { path: 'WATER/SOUND/ARP/ARP.wav', bytes: 700 },             // ARP → recorded only
   { path: 'EARTH/ELEMENT/NATURE.mp3', bytes: 800 },            // mp3 allowed
@@ -30,6 +31,11 @@ describe('buildManifest', () => {
   it('records ARP and ELEMENT/SUB separately (not in primary ELEMENT)', () => {
     expect(m.WATER.ELEMENT_SUB.map((s) => s.name)).toEqual(['WHALES']);
     expect(m.WATER.ARP.map((s) => s.name)).toEqual(['ARP']);
+  });
+
+  it('classifies the top-level DRONE folder', () => {
+    expect(m.WATER.DRONE.map((s) => s.name)).toEqual(['DRONE WATER']);
+    expect(m.WATER.ELEMENT.map((s) => s.name)).toEqual(['OCEAN']); // DRONE not folded into ELEMENT
   });
 
   it('keeps mp3, drops cruft and non-audio', () => {

@@ -5,6 +5,8 @@ import { STACK_ORDER } from '@/arrange/types';
 
 export interface Violation { code: string; message: string }
 
+// Drivers stripped from Deep Relaxation by I4. DRONE is intentionally excluded: it is driver-like
+// for staggering/bridges, but permitted in Deep Relaxation (its presence there is randomized).
 const DRIVERS: Category[] = ['PAD', 'BASS', 'ARP', 'MELODY', 'FX'];
 
 /** True if `nums` rises (non-decreasing) then falls (non-increasing) — a single density peak. */
