@@ -115,6 +115,14 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
   it doesn't tile evenly, and a `×N` readout (e.g. `2:22 ×4`).
 - **Volume view**: a *Volume* checkbox overlays each clip's actual audible envelope as a DAW-style
   automation line (exact vertical edges for zero fades) and dims the waveform texture under it.
+- **Live mode (Gen-B, module scale)**: a *Live* toggle makes playback steerable — changing drift
+  mid-play redraws the un-played future (splice at the playhead; played history is untouched), and
+  eligible pending lanes offer *in next* / *hold* nudges. Scrubbing is disabled while live; an
+  untouched loop repeats the last-drawn pass (generation is purely reactive). Toggling Live off
+  freezes the arrangement in place, still editable.
+- **Snapshot export**: *Export JSON* / *Import* round-trip the arrangement as a file; *Export WAV*
+  offline-renders the module exactly as heard (clips, loops, envelopes, ceilings, master) without
+  interrupting live playback.
 - **Sample-accurate scrubbing** ([ADR-0003]): a single **playhead** and a **scrub slider** move
   playback across all tracks; landing at position *P* plays each present track from the sample
   offset for *P* (mid-clip → mid-sample), silent if the playhead isn't over the clip. This is the
@@ -129,11 +137,9 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
   `generateComposition` (a distinct generated arrangement per section on the module sequence).
   Wired into the designer via Generate + drift. See the
   [framework spec](./generative/03-generation-framework.md).
-- **Live generative scheduler (in design — 2026-07-10)** — the framework's **Part B**: decisions
-  made *during* playback from the same grammar rules. Purpose (decided in brainstorm):
-  **live-steerable playback** — change drift / steer upcoming entrances mid-session without
-  stopping. A deprioritization was recommended and declined
-  ([provenance & assessment](./generative/04-gen-b-scheduler-rationale.md)); design in progress.
+- **Live generative scheduler — module scale shipped 2026-07-10** (see §6.2 Live mode); session
+  scale (live bridges, regeneration between module instances, listener surface) remains
+  ([provenance & assessment](./generative/04-gen-b-scheduler-rationale.md)).
 - **Per-mode edit persistence** — the mode picker is wired, but switching modes reseeds from the
   table and discards drag-edits. Storing each mode's edits (so you design them independently and
   switch freely) is the remaining ROADMAP Phase-B piece.
@@ -194,3 +200,7 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
   different per click, and drift-scaled (Strict hugs the brief; Exploratory strays, may drop
   ARP/MELODY).
 - Loop repeats and volume automation are visible per clip (segments + `×N`; Volume view).
+- **Live**: with Live on, a drift change or nudge visibly rearranges only upcoming clips within one
+  tick, audio uninterrupted; stopping keeps the arrangement editable on the timeline.
+- **Export**: JSON round-trips the arrangement; WAV renders the module as heard, mid-play, without
+  glitching live playback.
