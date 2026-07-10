@@ -6,6 +6,7 @@ import type { ArrTrack, Composition, Drift, Mode, TemplateRegion } from '@/arran
 import { buildComposition } from '@/arrange/buildComposition';
 import { buildModeTemplate } from '@/arrange/buildModeTemplate';
 import { generateModeTemplate } from '@/arrange/generate/generateModeTemplate';
+import { steerModule, type SteerNudge } from '@/arrange/generate/steerModule';
 import { config } from '@/config';
 
 type Selection = { element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number };
@@ -25,6 +26,7 @@ export interface ArrangementState {
   durationMin: number;
   activeMode: Mode;
   drift: Drift;
+  live: boolean;
 
   initFrom: (sel: Selection, durationMin: number) => void;
   setDurationMin: (min: number) => void;
@@ -39,6 +41,9 @@ export interface ArrangementState {
   setDrift: (d: Drift) => void;
   /** Reseed the module's clips from the generative grammar for the active mode. */
   generateModule: () => void;
+  setLive: (b: boolean) => void;
+  /** Live steering: redraw the un-played future (optionally with a nudge), spliced at the playhead. */
+  steer: (nudge?: SteerNudge) => void;
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
   setTrackDuration: (trackId: string, sec: number) => void;
@@ -58,6 +63,7 @@ export function createArrangementStore() {
   return createStore<ArrangementState>((set, get) => {
     let selection: Selection | null = null;
     let genSeed = 1;
+    let steerSeed = 1;
     return {
       element: null,
       tracks: [],
@@ -71,6 +77,7 @@ export function createArrangementStore() {
       durationMin: 30,
       activeMode: 'INTRODUCTION',
       drift: 'MODERATE',
+      live: false,
 
       initFrom: (sel, durationMin) => {
         selection = sel;
@@ -99,11 +106,20 @@ export function createArrangementStore() {
       setActiveMode: (mode) => set({ activeMode: mode }),
       loadMode: (mode) =>
         set({ activeMode: mode, moduleRegions: seedModuleFromTable(get().tracks, mode), positionSec: 0 }),
-      setDrift: (d) => set({ drift: d }),
+      setDrift: (d) => {
+        set({ drift: d });
+        const s = get();
+        if (s.live && s.playing) s.steer(); // a live drift change is itself a steer (spec §3)
+      },
       generateModule: () =>
         set((s) => ({
           moduleRegions: generateModeTemplate(s.tracks, s.activeMode, s.drift, genSeed++, config).regions,
           positionSec: 0,
+        })),
+      setLive: (b) => set({ live: b }),
+      steer: (nudge) =>
+        set((s) => ({
+          moduleRegions: steerModule(s.moduleRegions, s.positionSec, s.tracks, s.activeMode, s.drift, steerSeed++, nudge),
         })),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),

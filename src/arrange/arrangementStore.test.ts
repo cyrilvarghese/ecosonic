@@ -7,6 +7,7 @@ const t = (id: string, category: ArrTrack['category']): ArrTrack => ({
   id, category, label: id, sample: { name: id, path: id, bytes: 1 }, ceilingDb: 0, locked: false,
 });
 const sel = { element: 'WATER' as const, tracks: [t('n', 'NOISE'), t('pad', 'PAD')], tuningHz: 440, masterDb: 0 };
+const selLive = { element: 'WATER' as const, tracks: [t('n', 'NOISE'), t('pad', 'PAD'), t('mel', 'MELODY')], tuningHz: 440, masterDb: 0 };
 const D = config.layerTwo.moduleSeconds;
 
 describe('arrangementStore', () => {
@@ -65,5 +66,46 @@ describe('arrangementStore', () => {
     expect(store.getState().drift).toBe('STRICT');
     store.getState().generateModule();
     expect(store.getState().moduleRegions.length).toBeGreaterThan(0);
+  });
+
+  it('live defaults to false and toggles', () => {
+    expect(store.getState().live).toBe(false);
+    store.getState().setLive(true);
+    expect(store.getState().live).toBe(true);
+  });
+  it('steer redraws only the future and leaves position/playing untouched', () => {
+    store.getState().initFrom(selLive, 30);
+    store.getState().play();
+    store.getState().seek(300);
+    const before = store.getState().moduleRegions;
+    const noiseBefore = before.find((r) => r.trackId === 'n')!;
+    store.getState().steer();
+    const after = store.getState().moduleRegions;
+    expect(store.getState().positionSec).toBe(300);
+    expect(store.getState().playing).toBe(true);
+    const noiseAfter = after.find((r) => r.trackId === 'n')!;
+    expect(noiseAfter.enterSec).toBe(noiseBefore.enterSec); // active bed keeps its entrance
+    const mel = after.find((r) => r.trackId === 'mel');
+    if (mel) expect(mel.enterSec).toBeGreaterThan(300); // pending layer redrew into the future
+  });
+  it('setDrift while live+playing steers; while not live it only sets drift', () => {
+    store.getState().initFrom(selLive, 30);
+    store.getState().seek(120);
+    const frozen = store.getState().moduleRegions;
+    store.getState().setDrift('EXPLORATORY'); // not live, not playing → regions untouched
+    expect(store.getState().moduleRegions).toBe(frozen);
+    store.getState().play();
+    store.getState().setLive(true);
+    store.getState().setDrift('STRICT'); // live steer
+    expect(store.getState().drift).toBe('STRICT');
+    expect(store.getState().moduleRegions).not.toBe(frozen);
+  });
+  it('steer accepts an IN_NEXT nudge', () => {
+    store.getState().initFrom(selLive, 30);
+    store.getState().play();
+    store.getState().seek(60);
+    store.getState().steer({ kind: 'IN_NEXT', trackId: 'mel' });
+    const mel = store.getState().moduleRegions.find((r) => r.trackId === 'mel')!;
+    expect(mel.enterSec).toBeCloseTo(61, 5); // t + IN_NEXT_DELAY_SEC
   });
 });
