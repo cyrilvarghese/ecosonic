@@ -7,7 +7,7 @@ import { makeRng, type RNG } from '@/arrange/prng';
 interface DrawnTiming { enter: number; exit: number; fadeIn: number; fadeOut: number }
 
 /** Sample a value from `canon ± half × scale`, clamped to [0, D]. Even at scale 0 it returns canon. */
-function sampleRange(r: GenRange, scale: number, rng: RNG, D: number): number {
+export function sampleRange(r: GenRange, scale: number, rng: RNG, D: number): number {
   const half = r.half * scale;
   const lo = Math.max(0, r.canon - half);
   const hi = Math.min(D, r.canon + half);
