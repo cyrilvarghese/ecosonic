@@ -2,6 +2,7 @@
 import { useRef } from 'react';
 import type { ArrTrack, TemplateRegion } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
+import { nudgeOptions } from '@/arrange/generate/steerModule';
 import { clampRegion } from '@/arrange/geometry';
 import { regionEnvAt } from '@/arrange/regionEnv';
 import { heights } from '@/components/WaveformStrip';
@@ -22,6 +23,7 @@ export function ModuleDesigner({
   trackDurations,
   positionSec,
   showVolume = false,
+  live = false,
 }: {
   tracks: ArrTrack[];
   regions: TemplateRegion[];
@@ -29,8 +31,11 @@ export function ModuleDesigner({
   positionSec: number;
   /** Overlay each clip's volume automation line on the track visualization. */
   showVolume?: boolean;
+  /** Steering active: show in-next / hold nudges on eligible pending lanes. */
+  live?: boolean;
 }) {
   const D = config.layerTwo.moduleSeconds;
+  const activeMode = useArrangement((s) => s.activeMode);
 
   return (
     <div className="relative flex flex-col gap-1.5">
@@ -51,6 +56,7 @@ export function ModuleDesigner({
           total={trackDurations[track.id]}
           D={D}
           showVolume={showVolume}
+          nudges={live ? nudgeOptions(track, regions, tracks, activeMode, positionSec) : null}
         />
       ))}
 
@@ -78,17 +84,20 @@ function ClipRow({
   total,
   D,
   showVolume,
+  nudges,
 }: {
   track: ArrTrack;
   region: TemplateRegion | null;
   total: number | undefined;
   D: number;
   showVolume: boolean;
+  nudges: { inNext: boolean; holdBack: boolean } | null;
 }) {
   const laneRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ kind: 'left' | 'right' | 'move'; startX: number; enter: number; exit: number; pxPerSec: number } | null>(null);
   const updateModuleRegion = useArrangement((s) => s.updateModuleRegion);
   const setTrackCeilingDb = useArrangement((s) => s.setTrackCeilingDb);
+  const steer = useArrangement((s) => s.steer);
 
   const begin = (kind: 'left' | 'right' | 'move') => (e: React.PointerEvent) => {
     if (!region || !laneRef.current) return;
@@ -140,6 +149,30 @@ function ClipRow({
       <div className="w-28 shrink-0">
         <div className="label">{track.category}</div>
         <div className="truncate text-sm text-foreground">{track.sample.name}</div>
+        {nudges && (nudges.inNext || nudges.holdBack) && (
+          <div className="mt-1 flex gap-1">
+            {nudges.inNext && (
+              <button
+                type="button"
+                onClick={() => steer({ kind: 'IN_NEXT', trackId: track.id })}
+                title="Bring this layer in on the next beat of the grammar"
+                className="rounded-full border border-border px-2 py-0.5 text-[10px] transition-calm hover:text-foreground"
+              >
+                in next
+              </button>
+            )}
+            {nudges.holdBack && (
+              <button
+                type="button"
+                onClick={() => steer({ kind: 'HOLD_BACK', trackId: track.id })}
+                title="Push this layer's entrance later"
+                className="rounded-full border border-border px-2 py-0.5 text-[10px] transition-calm hover:text-foreground"
+              >
+                hold
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div ref={laneRef} className="relative h-9 flex-1 overflow-hidden rounded-md bg-muted">
         {region && (

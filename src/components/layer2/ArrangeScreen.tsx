@@ -33,6 +33,8 @@ export function ArrangeScreen() {
   const drift = useArrangement((s) => s.drift);
   const setDrift = useArrangement((s) => s.setDrift);
   const generateModule = useArrangement((s) => s.generateModule);
+  const live = useArrangement((s) => s.live);
+  const setLive = useArrangement((s) => s.setLive);
   const [showVolume, setShowVolume] = useState(true);
   const driftLabel = (d: (typeof DRIFTS)[number]) => d.charAt(0) + d.slice(1).toLowerCase();
 
@@ -62,6 +64,19 @@ export function ArrangeScreen() {
         <div className="flex items-center gap-3">
           <button
             type="button"
+            onClick={() => setLive(!live)}
+            aria-pressed={live}
+            title="Live: steer drift and upcoming entrances while playing; off = the arrangement is frozen"
+            className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs transition-calm ${
+              live ? 'text-white' : 'bg-card text-muted-foreground hover:text-foreground'
+            }`}
+            style={live ? { background: 'var(--accent-ink)' } : undefined}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-white' : 'bg-muted-foreground'}`} aria-hidden />
+            Live
+          </button>
+          <button
+            type="button"
             aria-label={playing ? 'Pause' : 'Play'}
             onClick={() => (playing ? pause() : play())}
             className="flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-calm hover:scale-105"
@@ -80,7 +95,9 @@ export function ArrangeScreen() {
             onPointerUp={() => setScrubbing(false)}
             onPointerCancel={() => setScrubbing(false)}
             aria-label="Scrub playback position"
-            className="w-44 cursor-pointer"
+            disabled={live && playing}
+            title={live && playing ? 'Scrubbing is off while Live — the past is committed' : undefined}
+            className="w-44 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             style={{ accentColor: 'var(--accent-ink)' }}
           />
           <span className="w-20 text-right text-xs tabular-nums text-muted-foreground">
@@ -157,7 +174,7 @@ export function ArrangeScreen() {
             );
           })}
         </div>
-        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} showVolume={showVolume} />
+        <ModuleDesigner tracks={tracks} regions={moduleRegions} trackDurations={trackDurations} positionSec={positionSec} showVolume={showVolume} live={live && playing} />
       </main>
     </div>
   );
