@@ -2,6 +2,7 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { serializeArrangement, parseArrangement } from '@/arrange/arrangementFile';
+import { renderModuleToWav } from '@/arrange/render/renderModuleWav';
 import { ArrowLeft, Play, Pause, ChevronDown, Check } from 'lucide-react';
 import { Menu } from '@base-ui/react/menu';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -37,9 +38,11 @@ export function ArrangeScreen() {
   const live = useArrangement((s) => s.live);
   const setLive = useArrangement((s) => s.setLive);
   const importArrangement = useArrangement((s) => s.importArrangement);
+  const masterDb = useArrangement((s) => s.masterDb);
   const fileInput = useRef<HTMLInputElement>(null);
   const [showVolume, setShowVolume] = useState(true);
   const driftLabel = (d: (typeof DRIFTS)[number]) => d.charAt(0) + d.slice(1).toLowerCase();
+  const [renderPct, setRenderPct] = useState<number | null>(null);
 
   const downloadBlob = (blob: Blob, name: string) => {
     const url = URL.createObjectURL(blob);
@@ -58,6 +61,23 @@ export function ArrangeScreen() {
       importArrangement(parseArrangement(await f.text()));
     } catch {
       window.alert('Not a valid ECOSONIC arrangement file.');
+    }
+  };
+  const exportWav = async () => {
+    if (renderPct !== null) return;
+    setRenderPct(0);
+    try {
+      const blob = await renderModuleToWav({
+        tracks,
+        regions: moduleRegions,
+        masterDb,
+        onProgress: (f) => setRenderPct(f),
+      });
+      downloadBlob(blob, `ecosonic-${activeMode.toLowerCase()}.wav`);
+    } catch {
+      window.alert('WAV render failed — check the console for details.');
+    } finally {
+      setRenderPct(null);
     }
   };
 
@@ -179,6 +199,14 @@ export function ArrangeScreen() {
             className="rounded-full border border-border px-3 py-1 text-xs transition-calm hover:text-foreground"
           >
             Export JSON
+          </button>
+          <button
+            type="button"
+            onClick={() => void exportWav()}
+            disabled={renderPct !== null}
+            className="rounded-full border border-border px-3 py-1 text-xs transition-calm hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+          >
+            {renderPct === null ? 'Export WAV' : `Rendering ${Math.round(renderPct * 100)}%`}
           </button>
           <button
             type="button"
