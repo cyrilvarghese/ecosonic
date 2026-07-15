@@ -29,6 +29,12 @@ Decisions locked during brainstorm:
 4. **Mechanics-only guardrail** — evidence/rationale describe *what happens when* in the audio,
    never claimed therapeutic/neurological effects (per the
    [LLM-composer assessment §1](../../generative/05-llm-composer-value-assessment.md)).
+5. **Blind extraction (2026-07-15 correction).** The model is told **what elements to listen for**
+   (the layer vocabulary + sonic definitions) and the description **format** — **never the existing
+   patterns/timings**. Feeding it the house rules would anchor it into "finding" them; the
+   objective is discovery. Classification against existing rules (confirms / contradicts / novel)
+   happens **locally and deterministically** (`src/rules/match.ts`), after the model returns raw
+   observations.
 
 ## 2. OpenAI integration (grounded 2026-07-15)
 
@@ -74,20 +80,32 @@ Route is standalone (`/rules`); add a small header link from `/layer2` ("Rules")
 ## 4. Data model
 
 ```ts
-// src/rules/analysisSchema.ts — the OpenAI response contract AND registry payload (zod)
-interface CandidateRule {
-  text: string;                       // testable statement, e.g. "A 2nd element enters ~5:00"
-  kind: 'confirms' | 'contradicts' | 'novel';
-  relatedRule?: string;               // 'R4' | 'I2' | … when kind !== 'novel'
-  structured?: {                      // present only when expressible in the grammar
-    mode: 'INTRODUCTION' | 'DEEP_RELAXATION' | 'RETURN';
-    category: Category;               // 11-value vocabulary incl. DRONE
+// src/rules/analysisSchema.ts (zod)
+
+// What the MODEL returns — raw, blind observations. NO rule references, NO kind.
+interface Observation {
+  text: string;                       // testable statement, e.g. "A 2nd nature layer enters ~5:00"
+  layer?: Category;                   // best-effort mapping onto the 11-category vocabulary
+  sectionIndex?: number;              // 1-based, when the model perceives distinct sections
+  structured?: {                      // present only when honestly expressible as timings
+    category: Category;
     patch: Partial<GenLayerRule>;     // e.g. { enter: {canon:300, half:30} } or { present: 0.5 }
   };
   evidence: Array<{ atSec: number; note: string }>;
   confidence: number;                 // 0..1
 }
-interface AnalysisResult { description: string; candidates: CandidateRule[]; }
+interface AnalysisResult {
+  description: string;                // brief-style prose
+  sections?: Array<{ startSec: number; label: string }>;  // perceived macro-structure
+  observations: Observation[];
+}
+
+// What the UI shows — observation + LOCALLY computed classification (src/rules/match.ts).
+interface CandidateRule extends Observation {
+  kind: 'confirms' | 'contradicts' | 'novel';
+  relatedRule?: string;               // 'R4' | 'I2' | 'grammar:INTRODUCTION.ISO.enter' …
+  mode?: Mode;                        // assigned by the matcher via section mapping
+}
 
 // config/discovered-rules.json — the registry (array of):
 interface DiscoveredRule extends CandidateRule {
@@ -103,8 +121,9 @@ a `discarded` status for dedup is a listed future upgrade, not in scope.
 ## 5. API routes (Node runtime — they use `fs`/env)
 
 - **`POST /api/analyze`** — multipart `FormData` (`file`). Validate type/size → base64 → chat
-  completion (system prompt from §6 + `input_audio` + strict json_schema) → zod-parse →
-  `AnalysisResult`. `GET /api/analyze` → `{ ready }` (key present).
+  completion (blind system prompt from §6 + `input_audio` + strict json_schema) → zod-parse
+  `AnalysisResult` → run the local matcher (§6b) → respond
+  `{ description, sections, candidates: CandidateRule[] }`. `GET /api/analyze` → `{ ready }`.
 - **`GET /api/rules`** — registry contents. **`POST /api/rules`** — keep a candidate (append,
   assign id/source/status). **`PATCH /api/rules`** — `{ id, action: 'promote' | 'discard' }`;
   discard removes a **kept** entry from the registry; promote runs §7 then sets
@@ -117,18 +136,42 @@ Config gains a top-level `analysis` block (zod-extended, fixture updated):
 "analysis": { "model": "gpt-audio-1.5", "maxUploadBytes": 26214400 }
 ```
 
-## 6. The analysis prompt (server-built, never stale)
+## 6. The analysis prompt — blind by design (server-built)
 
-System prompt assembled at request time from:
-1. **Role + exemplar** — "you describe ambient/meditation productions the way this brief does",
-   with the TRACK INFO text embedded verbatim (stored in `src/rules/inventory.ts`).
-2. **Current rule inventory** — R1–R9 + I1–I6 texts, plus the live grammar table serialized from
-   `config.layerTwo.generation` (so contradictions are judged against today's numbers, incl. DRONE).
-3. **Output contract** — describe first; then *compare*: which existing rules the audio **confirms**
-   (with timestamps), which it **contradicts**, and what **new** patterns are not covered by any
-   rule. New rules must be testable statements; attach `structured` only when honestly expressible.
+The model **never sees the existing rules, timings, or the TRACK INFO numbers** — only what to
+listen *for* and how to *report*. System prompt assembled from:
+
+1. **Role + format contract** — "you describe ambient/meditation productions as a chronological,
+   section-by-section narrative of layer entrances, exits, and fades with approximate timestamps"
+   — the brief's *form*, taught by instruction (and a short synthetic example with obviously
+   non-ECOSONIC numbers), never its content.
+2. **Element vocabulary** — the 11 layer roles with sonic definitions so the model can recognize
+   them (NOISE broadband floor; ELEMENT nature identity; ELEMENT_SUB softer nature textures; FX
+   synthesized textures; ISO pulsed tone; PLANET sustained tuning-tone; DRONE slow swelling
+   sustain; PAD harmonic wash; BASS low foundation; ARP cyclic pattern; MELODY top line). Stored in
+   `src/rules/inventory.ts`.
+3. **Output contract** — prose description; perceived `sections`; then `observations` as testable
+   statements with timestamp evidence; attach `structured` timings only when honestly expressible;
+   report **everything notable, including patterns that may be unremarkable** — no knowledge of
+   what the house style expects.
 4. **Guardrail** — "Describe compositional mechanics only (what happens, when). Never claim
    psychological, therapeutic, or neurological effects."
+
+### 6b. The local matcher (`src/rules/match.ts`) — classification without anchoring
+
+Deterministic, pure; runs after the model responds:
+
+- **Section→mode mapping:** exactly 3 perceived sections → map in order to
+  INTRODUCTION / DEEP_RELAXATION / RETURN and compare section-relative timings. Otherwise only
+  **global** rules are compared (continuity/ordering — e.g. R7 noise-unbroken, R2 bottom-up
+  entrances on the absolute timeline); unmapped timing observations classify as **novel**.
+- **Timing comparison:** an observation with `structured` vs the grammar's
+  `modeRules[mode][category]`: within `max(30s, half × EXPLORATORY scale)` of the canon →
+  **confirms** (`relatedRule: 'grammar:MODE.CAT.field'`); outside it, or violating an R/I rule the
+  observation addresses → **contradicts**; no corresponding rule/layer entry → **novel**.
+- Prose-only observations match only the principle rules they textually address (small keyword map
+  per R/I rule, e.g. noise+continuous → R7); otherwise **novel**. Honest default: when unsure,
+  novel — the Keep gate is the filter.
 
 ## 7. Promote (the only write into the grammar)
 
@@ -153,8 +196,9 @@ Structured, kept rules only. Steps, all-or-nothing:
 | `src/components/rules/CandidateCard.tsx` | Zone 3 cards (badge, evidence, Keep/Discard/Promote) |
 | `src/app/api/analyze/route.ts` | POST analysis + GET readiness |
 | `src/app/api/rules/route.ts` | GET/POST/PATCH registry |
-| `src/rules/inventory.ts` | R1–R9 + I1–I6 texts, TRACK INFO exemplar, live-grammar serializer |
-| `src/rules/analysisSchema.ts` | zod: `CandidateRule`, `AnalysisResult`, `DiscoveredRule`, OpenAI json_schema export |
+| `src/rules/inventory.ts` | R1–R9 + I1–I6 texts (UI + matcher), layer sonic vocabulary + format contract (prompt), live-grammar serializer (UI only — never in the prompt) |
+| `src/rules/analysisSchema.ts` | zod: `Observation`, `AnalysisResult`, `CandidateRule`, `DiscoveredRule`, OpenAI json_schema export |
+| `src/rules/match.ts` | §6b — deterministic observation→rule classification (pure, tested) |
 | `src/rules/registry.ts` | read/append/patch `discovered-rules.json` (path injectable for tests) |
 | `src/rules/promote.ts` | §7 merge + validate + write (paths injectable for tests) |
 | `config/discovered-rules.json` | seeded `[]` |
@@ -162,7 +206,10 @@ Structured, kept rules only. Steps, all-or-nothing:
 
 ## 9. Testing
 
-- **`analysisSchema`** — accepts a full fixture; rejects bad kind/confidence/structured shapes.
+- **`analysisSchema`** — accepts a full fixture; rejects bad confidence/structured shapes.
+- **`match`** — 3-section mapping → confirms within tolerance / contradicts outside; ≠3 sections →
+  timing observations classify novel, global rules still compared; keyword-matched prose (noise
+  continuous → R7); unknown layer/pattern → novel. Pure-function table tests across fixtures.
 - **`registry`** — round-trip keep → list → patch on a temp file; malformed file → clear error.
 - **`promote`** — merge-into-existing; complete-entry-into-absent; *reject* partial-into-absent;
   *reject* merge that fails `ConfigSchema` (config file untouched — assert byte-equality).
