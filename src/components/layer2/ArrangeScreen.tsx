@@ -58,6 +58,9 @@ export function ArrangeScreen() {
             <p className="label">Layer Two — Module Designer</p>
             <h1 className="text-lg font-medium">Orchestrate when each track comes in &amp; out</h1>
           </div>
+          <a href="/rules" className="ml-2 text-xs text-muted-foreground transition-calm hover:text-foreground">
+            Rules →
+          </a>
         </div>
 
         <div className="flex items-center gap-4">

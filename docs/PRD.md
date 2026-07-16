@@ -64,6 +64,7 @@ Core flows:
 | `/` | Element selector | Choose EARTH / WATER / AIR / FIRE / ETHER |
 | `/layer1` | Builder | The multitrack sound ecosystem |
 | `/layer2` | Module Designer | Orchestrate track entrances/exits on a timeline |
+| `/rules` | Rule Discovery | List all composition rules; analyze a track into candidate rules; keep/promote |
 
 Navigation is one-way-friendly: `/` → `/layer1` → `/layer2`, with "back" links. State is held in
 memory; a hard refresh returns to `/`.
