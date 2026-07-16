@@ -15,9 +15,12 @@ export function useModuleScheduler(engine: AudioEngine): void {
     let wasScrubbing = false;
     let wasPlaying = false;
     let sinceTick = Infinity; // force an envelope update on the first playing frame
+    let sinceSteer = 0; // live-playback time accrued toward the next auto-steer
+    let lastMode = arrangementStore.getState().activeMode; // detect session boundaries
     const active = new Set<string>();
     const D = config.layerTwo.moduleSeconds;
     const tickSec = config.layerTwo.schedulerTickMs / 1000;
+    const autoSteerSec = 60; // live playback: recompose the un-played future this often
 
     const frame = (now: number) => {
       const st = arrangementStore.getState();
@@ -29,13 +32,23 @@ export function useModuleScheduler(engine: AudioEngine): void {
         let pos = st.positionSec;
         if (!st.scrubbing) {
           pos += dt;
-          if (pos >= D) pos -= D;
+          if (pos >= D) {
+            if (st.session) {
+              // Chained session: hand off to the next module (or stop after the last).
+              st.advanceSession();
+              raf = requestAnimationFrame(frame);
+              return;
+            }
+            pos -= D; // single-module play loops
+          }
           st.setPosition(pos);
         }
         // On a position jump (scrub released, or playback (re)started after a seek), re-seek
         // every present track to the SAMPLE OFFSET for `pos` — so a mid-clip playhead plays
         // mid-sample, not from 0. During normal forward play, sources stay in sync on their own.
-        const resync = (wasScrubbing && !st.scrubbing) || !wasPlaying;
+        const modeChanged = st.activeMode !== lastMode;
+        lastMode = st.activeMode;
+        const resync = (wasScrubbing && !st.scrubbing) || !wasPlaying || modeChanged;
         wasScrubbing = st.scrubbing;
         wasPlaying = true;
         sinceTick += dt;
@@ -60,11 +73,25 @@ export function useModuleScheduler(engine: AudioEngine): void {
             engine.setTrackEnvelope(track.id, regionEnvAt(region, pos));
           }
         }
+
+        // Auto-compose: during live playback, recompose the un-played future on a fixed
+        // cadence. The timer is just another steer trigger (spec §3: a drift change is a steer);
+        // steerModule keeps the past + active entrances verbatim, so nothing audible restarts.
+        if (st.live) {
+          sinceSteer += dt;
+          if (sinceSteer >= autoSteerSec) {
+            sinceSteer = 0;
+            st.steer();
+          }
+        } else {
+          sinceSteer = 0; // frozen while not Live — restart the phase
+        }
       } else {
         last = null; // freeze; ctx.suspend holds the sources, so keep `active` as-is
         wasScrubbing = st.scrubbing;
         wasPlaying = false;
         sinceTick = Infinity;
+        sinceSteer = 0;
       }
       raf = requestAnimationFrame(frame);
     };
