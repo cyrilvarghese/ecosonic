@@ -44,11 +44,20 @@ export function useLayer2Engine(): AudioEngine {
     });
 
     let wasPlaying = false;
+    const ceilings = new Map(st.tracks.map((t) => [t.id, t.ceilingDb]));
     const unsub = arrangementStore.subscribe((s) => {
-      if (s.playing === wasPlaying) return;
-      wasPlaying = s.playing;
-      if (s.playing) engine.resumeContext();
-      else engine.suspendContext();
+      // Per-track volume ceiling (Layer Two slider) — ramp the layer's gain like Layer One does.
+      for (const t of s.tracks) {
+        if (ceilings.get(t.id) !== t.ceilingDb) {
+          ceilings.set(t.id, t.ceilingDb);
+          engine.setTrackVolume(t.id, t.ceilingDb);
+        }
+      }
+      if (s.playing !== wasPlaying) {
+        wasPlaying = s.playing;
+        if (s.playing) engine.resumeContext();
+        else engine.suspendContext();
+      }
     });
     return () => { cancelled = true; unsub(); engine.clear(); };
   }, [engine]);

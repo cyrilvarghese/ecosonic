@@ -3,6 +3,7 @@ import { Play, Pause, Volume2, VolumeX, RefreshCw, Lock, Unlock } from 'lucide-r
 import { useSession } from '@/session/appStore';
 import { config } from '@/config';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { LaneVisualizer } from '@/components/LaneVisualizer';
 
 const { trackMinDb, trackMaxDb } = config.audio.volume;
@@ -47,16 +48,14 @@ export function TrackLane({ trackId }: { trackId: string }) {
           {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </Button>
 
-        <input
-          type="range"
+        <Slider
           min={trackMinDb}
           max={trackMaxDb}
           step={1}
-          value={volumeDb}
-          onChange={(e) => setTrackVolumeDb(trackId, Number(e.target.value))}
+          value={[volumeDb]}
+          onValueChange={(v) => setTrackVolumeDb(trackId, Array.isArray(v) ? v[0] : v)}
           aria-label={`Volume ${label}`}
-          className="w-full cursor-pointer"
-          style={{ accentColor: 'var(--accent-ink)' }}
+          className="w-full"
         />
         <span className="text-right text-xs tabular-nums text-muted-foreground">{volumeDb} dB</span>
 

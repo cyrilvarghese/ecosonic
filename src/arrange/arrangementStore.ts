@@ -42,6 +42,8 @@ export interface ArrangementState {
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
   setTrackDuration: (trackId: string, sec: number) => void;
+  /** Set a track's volume ceiling (dB) — the max level its clip reaches. Inherited from Layer One. */
+  setTrackCeilingDb: (trackId: string, db: number) => void;
 }
 
 const clampModule = (sec: number) => Math.max(0, Math.min(config.layerTwo.moduleSeconds, sec));
@@ -105,6 +107,8 @@ export function createArrangementStore() {
         })),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
+      setTrackCeilingDb: (trackId, db) =>
+        set((s) => ({ tracks: s.tracks.map((t) => (t.id === trackId ? { ...t, ceilingDb: db } : t)) })),
       updateModuleRegion: (trackId, next) =>
         set((s) => {
           const width = Math.max(0.001, next.exitSec - next.enterSec);

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:electron": "node scripts/build-electron.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

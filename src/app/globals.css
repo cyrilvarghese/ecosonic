@@ -8,26 +8,26 @@
   --n-500: oklch(0.58 0.02 285);
   --n-800: oklch(0.28 0.03 285);
 
-  /* Element accents */
-  --c-earth: oklch(0.80 0.09 140);
-  --c-water: oklch(0.82 0.08 225);
-  --c-air: oklch(0.89 0.04 255);
-  --c-fire: oklch(0.80 0.11 45);
-  --c-ether: oklch(0.78 0.10 305);
+  /* Element accents — brand palette (ECOSONIC FILES/Element-colors; grey.png = air) */
+  --c-earth: #007F65;
+  --c-water: #083C60;
+  --c-air: #272F33;
+  --c-fire: #FF4C1F;
+  --c-ether: #72006C;
 
-  /* Readable text variants — darker for contrast on the light background (esp. Air). */
-  --ink-earth: oklch(0.48 0.11 140);
-  --ink-water: oklch(0.50 0.12 240);
-  --ink-air: oklch(0.52 0.10 250);
-  --ink-fire: oklch(0.52 0.16 45);
-  --ink-ether: oklch(0.50 0.15 305);
+  /* Readable text variants — the brand colors are dark enough to serve as ink directly. */
+  --ink-earth: var(--c-earth);
+  --ink-water: var(--c-water);
+  --ink-air: var(--c-air);
+  --ink-fire: var(--c-fire);
+  --ink-ether: var(--c-ether);
 
   /* Semantic */
   --background: var(--n-50);
   --foreground: var(--n-800);
   --card: oklch(1 0 0 / 0.7);
   --card-foreground: var(--n-800);
-  --popover: oklch(1 0 0 / 0.9);
+  --popover: oklch(1 0 0);
   --popover-foreground: var(--n-800);
   --primary: var(--n-800);
   --primary-foreground: var(--n-50);

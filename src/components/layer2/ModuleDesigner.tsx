@@ -5,9 +5,14 @@ import { useArrangement } from '@/arrange/arrangementStore';
 import { clampRegion } from '@/arrange/geometry';
 import { regionEnvAt } from '@/arrange/regionEnv';
 import { heights } from '@/components/WaveformStrip';
+import { Slider } from '@/components/ui/slider';
 import { config } from '@/config';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const { trackMinDb, trackMaxDb } = config.audio.volume;
+/** Map a track's dB ceiling onto the lane's drawable height (0..1); floored so the line stays visible. */
+const ceilingFrac = (db: number) =>
+  Math.max(0.08, Math.min(1, (db - trackMinDb) / (trackMaxDb - trackMinDb)));
 
 /** One module: every handed-off track as a draggable clip on a [0, moduleSeconds] timeline,
  *  with a single playhead sweeping across all lanes. */
@@ -22,19 +27,20 @@ export function ModuleDesigner({
   regions: TemplateRegion[];
   trackDurations: Record<string, number>;
   positionSec: number;
-  /** Show each clip's volume automation line and dim the waveform texture under it. */
+  /** Overlay each clip's volume automation line on the track visualization. */
   showVolume?: boolean;
 }) {
   const D = config.layerTwo.moduleSeconds;
 
   return (
     <div className="relative flex flex-col gap-1.5">
-      <div className="flex px-4 text-[11px] tabular-nums text-muted-foreground">
+      <div className="flex gap-3 px-4 text-[11px] tabular-nums text-muted-foreground">
         <span className="w-28 shrink-0" />
-        <span className="mx-3 flex flex-1 justify-between">
+        <span className="flex flex-1 justify-between">
           <span>0:00</span><span>{clock(D / 2)}</span><span>{clock(D)}</span>
         </span>
-        <span className="w-24 shrink-0 pl-3">played / total</span>
+        <span className="w-40 shrink-0 text-center">volume</span>
+        <span className="w-24 shrink-0">played / total</span>
       </div>
 
       {tracks.map((track) => (
@@ -49,9 +55,9 @@ export function ModuleDesigner({
       ))}
 
       {/* single playhead across every lane — aligned to the timeline column */}
-      <div className="pointer-events-none absolute inset-0 z-20 flex px-4">
+      <div className="pointer-events-none absolute inset-0 z-20 flex gap-3 px-4">
         <div className="w-28 shrink-0" />
-        <div className="relative mx-3 flex-1">
+        <div className="relative flex-1">
           <div
             className="absolute top-0 bottom-0 w-[2px] -translate-x-1/2 rounded bg-[var(--accent-ink)]"
             style={{ left: `${Math.min(100, (positionSec / D) * 100)}%` }}
@@ -59,6 +65,7 @@ export function ModuleDesigner({
             <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--accent-ink)]" />
           </div>
         </div>
+        <div className="w-40 shrink-0" />
         <div className="w-24 shrink-0" />
       </div>
     </div>
@@ -81,6 +88,7 @@ function ClipRow({
   const laneRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ kind: 'left' | 'right' | 'move'; startX: number; enter: number; exit: number; pxPerSec: number } | null>(null);
   const updateModuleRegion = useArrangement((s) => s.updateModuleRegion);
+  const setTrackCeilingDb = useArrangement((s) => s.setTrackCeilingDb);
 
   const begin = (kind: 'left' | 'right' | 'move') => (e: React.PointerEvent) => {
     if (!region || !laneRef.current) return;
@@ -153,11 +161,7 @@ function ClipRow({
           >
             {/* Texture: the sample's stylized waveform, repeated once per loop — identical shapes
                 show it looping N×; the last repeat is a partial (prefix) when it doesn't fit evenly. */}
-            <div
-              className={`pointer-events-none absolute inset-0 flex overflow-hidden rounded-[6px] transition-opacity duration-300 ${
-                showVolume ? 'opacity-20' : 'opacity-100'
-              }`}
-            >
+            <div className="pointer-events-none absolute inset-0 flex overflow-hidden rounded-[6px]">
               {Array.from({ length: segmented ? loops : 1 }).map((_, i) => {
                 const segSec = Math.min(unit, clipDur - i * unit);
                 const pts = Math.max(16, Math.min(240, Math.round(segSec / 1.5)));
@@ -196,7 +200,7 @@ function ClipRow({
                 );
               })}
             </div>
-            {showVolume && <FadeEnvelope region={region} />}
+            {showVolume && <FadeEnvelope region={region} ceilFrac={ceilingFrac(track.ceilingDb)} />}
             <span className="relative z-10 w-2.5 shrink-0 cursor-ew-resize rounded-l-[6px] bg-black/25"
               onPointerDown={begin('left')} onPointerMove={move} onPointerUp={end} />
             <span className="relative z-10 flex-1 cursor-grab" />
@@ -204,6 +208,20 @@ function ClipRow({
               onPointerDown={begin('right')} onPointerMove={move} onPointerUp={end} />
           </div>
         )}
+      </div>
+      {/* Volume ceiling — inherited from Layer One; always-visible level like Layer One's track
+          slider. Drives live audio + the automation envelope / clip-fill intensity. */}
+      <div className="flex w-40 shrink-0 items-center gap-2">
+        <Slider
+          min={trackMinDb}
+          max={trackMaxDb}
+          step={1}
+          value={[track.ceilingDb]}
+          onValueChange={(v) => setTrackCeilingDb(track.id, Array.isArray(v) ? v[0] : v)}
+          aria-label={`Volume ${track.category}`}
+          className="flex-1"
+        />
+        <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{track.ceilingDb} dB</span>
       </div>
       <span
         className={`w-24 shrink-0 pl-3 text-right text-xs tabular-nums ${partial ? 'font-medium text-[var(--accent-ink)]' : 'text-muted-foreground'}`}
@@ -224,10 +242,12 @@ function ClipRow({
 /** DAW-style volume automation over a clip: the region's actual audible envelope (regionEnvAt —
  *  cosine rise over fadeIn, hold at the ceiling, cosine fall over fadeOut), with breakpoint dots
  *  at the four automation corners. Pointer-transparent; sits under the drag handles. */
-function FadeEnvelope({ region }: { region: TemplateRegion }) {
+function FadeEnvelope({ region, ceilFrac }: { region: TemplateRegion; ceilFrac: number }) {
   const dur = region.exitSec - region.enterSec;
   if (dur <= 0) return null;
-  const Y = (env: number) => (90 - env * 80).toFixed(1); // env 0 → y90 (bottom), 1 → y10 (top)
+  // env 0 → y90 (bottom), 1 → y10 (top); the hold level is scaled by ceilFrac so the automation
+  // tops out at the track's volume ceiling rather than the full lane height.
+  const Y = (env: number) => (90 - ceilFrac * env * 80).toFixed(1);
   // Piecewise, with exact breakpoints: cosine samples across each fade, straight hold between,
   // and a true vertical edge when a fade is 0 (BASS enter, spanning NOISE exit) — so the line
   // is exactly what the audio does, not a uniform-sampling approximation.
@@ -266,11 +286,11 @@ function FadeEnvelope({ region }: { region: TemplateRegion }) {
       preserveAspectRatio="none"
       aria-hidden
     >
-      <path d={`M${pts.join(' L')}`} fill="none" stroke="rgba(255,95,95,0.95)"
+      <path d={`M${pts.join(' L')}`} fill="none" stroke="rgba(0,0,0,0.95)"
         strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
       {/* zero-length round-cap subpaths render as circular dots even under non-uniform scale */}
       <path d={bps.map(([x, e]) => `M${x.toFixed(2)} ${Y(e)} l0.01 0`).join(' ')} fill="none"
-        stroke="rgba(255,95,95,0.95)" strokeWidth={5.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        stroke="rgba(0,0,0,0.95)" strokeWidth={5.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
