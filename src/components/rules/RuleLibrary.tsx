@@ -21,7 +21,6 @@ export function RuleLibrary({
   const rows = grammarRows();
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">Rule library</h2>
       <Group title="Principles (R1–R9)">
         <ul className="flex flex-col gap-1 text-sm">
           {PRINCIPLES.map((r) => (

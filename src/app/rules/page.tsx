@@ -64,27 +64,50 @@ export default function RulesPage() {
           ← Module Designer
         </Link>
       </header>
-      <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-        <RuleLibrary discovered={discovered}
-          onPromote={(id) => void patch(id, 'promote')}
-          onDiscard={(id) => void patch(id, 'discard')} />
-        <AnalyzePanel ready={ready} onResult={onResult} />
-        {actionError && <p className="text-xs text-red-600 dark:text-red-400">{actionError}</p>}
-        {description && (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium">Description — {fileName}</h2>
-            <p className="whitespace-pre-wrap rounded-[var(--radius-md)] border border-border bg-card p-4 text-sm leading-relaxed">
-              {description}
-            </p>
-            <h2 className="text-sm font-medium">Candidate rules ({cards.length})</h2>
-            {cards.map((c, i) => (
-              <CandidateCard key={i} candidate={c.candidate} keptId={c.keptId}
-                onKeep={() => void keep(i)}
-                onDiscard={() => setCards((all) => all.filter((_, j) => j !== i))}
-                onPromote={() => { if (c.keptId) void patch(c.keptId, 'promote'); }} />
-            ))}
-          </section>
-        )}
+      <main className="mx-auto w-full max-w-[1680px] p-6">
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
+          {/* LEFT — Discover: analyze a track, review candidate rules */}
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-base font-medium">Discover</h2>
+              <p className="text-sm text-muted-foreground">
+                Analyze a track to surface candidate rules. Keep the good ones — promote structured
+                ones into the grammar on the right.
+              </p>
+            </div>
+            <AnalyzePanel ready={ready} onResult={onResult} />
+            {actionError && <p className="text-sm text-red-600 dark:text-red-400">{actionError}</p>}
+            {description && (
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-medium">Description — {fileName}</h3>
+                <p className="whitespace-pre-wrap rounded-[var(--radius-md)] border border-border bg-card p-4 text-sm leading-relaxed">
+                  {description}
+                </p>
+                <h3 className="text-sm font-medium">Candidate rules ({cards.length})</h3>
+                {cards.map((c, i) => (
+                  <CandidateCard key={i} candidate={c.candidate} keptId={c.keptId}
+                    onKeep={() => void keep(i)}
+                    onDiscard={() => setCards((all) => all.filter((_, j) => j !== i))}
+                    onPromote={() => { if (c.keptId) void patch(c.keptId, 'promote'); }} />
+                ))}
+              </section>
+            )}
+          </div>
+
+          {/* RIGHT — Exists: the rules the generator already knows (promoted rules land here) */}
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-base font-medium">Exists</h2>
+              <p className="text-sm text-muted-foreground">
+                What the generator already knows — principles, invariants, the live grammar, and
+                rules you&apos;ve kept.
+              </p>
+            </div>
+            <RuleLibrary discovered={discovered}
+              onPromote={(id) => void patch(id, 'promote')}
+              onDiscard={(id) => void patch(id, 'discard')} />
+          </div>
+        </div>
       </main>
     </div>
   );
