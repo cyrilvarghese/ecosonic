@@ -14,6 +14,7 @@ const valid = {
     ARP: { min: 1, max: 1 }, MELODY: { min: 1, max: 1 }, FX: { min: 1, max: 2 },
   },
   motion: { durFastMs: 200, durMs: 400, durSlowMs: 800 },
+  analysis: { model: 'gpt-audio-1.5', maxUploadBytes: 26214400 },
   layerTwo: {
     moduleSeconds: 600, bridgeSeconds: 120, regionFadeSeconds: 12, secondElementEnterSec: 300,
     peakFrac: 0.5, schedulerTickMs: 250, durationPresetsMin: [10, 20, 30, 40],
@@ -101,6 +102,15 @@ describe('config', () => {
   it('rejects a generation layer rule with present > 1', () => {
     const bad = JSON.parse(JSON.stringify(valid));
     bad.layerTwo.generation.modeRules.INTRODUCTION.NOISE.present = 2;
+    expect(ConfigSchema.safeParse(bad).success).toBe(false);
+  });
+  it('parses the analysis block', () => {
+    expect(config.analysis.model).toBe('gpt-audio-1.5');
+    expect(config.analysis.maxUploadBytes).toBe(26214400);
+  });
+  it('rejects a non-positive maxUploadBytes', () => {
+    const bad = JSON.parse(JSON.stringify(valid));
+    bad.analysis.maxUploadBytes = 0;
     expect(ConfigSchema.safeParse(bad).success).toBe(false);
   });
 });

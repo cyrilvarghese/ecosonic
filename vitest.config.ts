@@ -11,5 +11,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // .claude/worktrees/* are agent worktrees whose stale tests resolve `@` to THIS src — exclude.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
   },
 });

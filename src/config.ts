@@ -108,6 +108,11 @@ export const ConfigSchema = z.object({
     durMs: z.number(),
     durSlowMs: z.number(),
   }),
+  // Track analysis (rule discovery): OpenAI audio model + upload ceiling (~25 MB API limit).
+  analysis: z.object({
+    model: z.string().min(1),
+    maxUploadBytes: z.number().int().positive(),
+  }),
   layerTwo: LayerTwo,
 });
 
