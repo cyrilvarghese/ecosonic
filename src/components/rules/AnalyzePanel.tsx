@@ -17,6 +17,7 @@ export function AnalyzePanel({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
 
   const analyze = async (file: File) => {
     setError(null);
@@ -54,11 +55,19 @@ export function AnalyzePanel({
           OPENAI_API_KEY is not configured. Add it to <code>.env.local</code> and restart the dev server.
         </p>
       )}
-      <div className="flex items-center gap-3">
-        <input ref={inputRef} type="file" accept=".mp3,.mpeg,.wav,audio/mpeg,audio/wav" className="text-xs"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) void analyze(f); }}
+      <div className="flex flex-wrap items-center gap-3">
+        <input ref={inputRef} type="file" accept=".mp3,.mpeg,.wav,audio/mpeg,audio/wav" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPicked(f.name); void analyze(f); } }}
           disabled={busy || ready !== true} />
-        {busy && <span className="text-xs text-muted-foreground">Analyzing… (a long track can take a minute)</span>}
+        <button type="button" onClick={() => inputRef.current?.click()}
+          disabled={busy || ready !== true}
+          className="rounded-full px-4 py-1.5 text-xs text-white transition-calm hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+          style={{ background: 'var(--accent-ink)' }}>
+          {busy ? 'Analyzing…' : picked ? 'Analyze another track' : 'Choose a track'}
+        </button>
+        {busy
+          ? <span className="text-xs text-muted-foreground">a long track can take a minute…</span>
+          : picked && <span className="text-xs text-muted-foreground">{picked}</span>}
       </div>
       {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </section>
