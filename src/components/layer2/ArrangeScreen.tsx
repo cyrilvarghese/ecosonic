@@ -3,6 +3,8 @@ import { useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { serializeArrangement, parseArrangement } from '@/arrange/arrangementFile';
 import { renderModuleToWav } from '@/arrange/render/renderModuleWav';
+import { renderSessionToWav } from '@/arrange/render/renderSessionWav';
+import { buildSessionModules } from '@/arrange/session';
 import { ArrowLeft, Play, Pause, ChevronDown, Check } from 'lucide-react';
 import { Menu } from '@base-ui/react/menu';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -37,6 +39,9 @@ export function ArrangeScreen() {
   const generateModule = useArrangement((s) => s.generateModule);
   const live = useArrangement((s) => s.live);
   const setLive = useArrangement((s) => s.setLive);
+  const session = useArrangement((s) => s.session);
+  const playSession = useArrangement((s) => s.playSession);
+  const endSession = useArrangement((s) => s.endSession);
   const importArrangement = useArrangement((s) => s.importArrangement);
   const masterDb = useArrangement((s) => s.masterDb);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -76,6 +81,25 @@ export function ArrangeScreen() {
       downloadBlob(blob, `ecosonic-${activeMode.toLowerCase()}.wav`);
     } catch {
       window.alert('WAV render failed — check the console for details.');
+    } finally {
+      setRenderPct(null);
+    }
+  };
+  const exportSession = async () => {
+    if (renderPct !== null) return;
+    setRenderPct(0);
+    try {
+      const { order, regionsByMode } = buildSessionModules(tracks, activeMode, moduleRegions, config);
+      const blob = await renderSessionToWav({
+        tracks,
+        regionsByMode,
+        order,
+        masterDb,
+        onProgress: (f) => setRenderPct(f),
+      });
+      downloadBlob(blob, `ecosonic-session.wav`);
+    } catch {
+      window.alert('Session WAV render failed — check the console for details.');
     } finally {
       setRenderPct(null);
     }
@@ -126,6 +150,18 @@ export function ArrangeScreen() {
             style={{ background: 'var(--accent-ink)' }}
           >
             {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="translate-x-[1px]" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => (session ? endSession() : playSession())}
+            aria-pressed={!!session}
+            title="Play the full session: Introduction → Deep Relaxation → Return, then stop"
+            className={`rounded-full px-3.5 py-1.5 text-xs transition-calm ${
+              session ? 'text-white' : 'bg-card text-muted-foreground hover:text-foreground'
+            }`}
+            style={session ? { background: 'var(--accent-ink)' } : undefined}
+          >
+            {session ? `Session ${session.index + 1}/${session.order.length}` : 'Play Session'}
           </button>
           <input
             type="range"
@@ -207,6 +243,15 @@ export function ArrangeScreen() {
             className="rounded-full border border-border px-3 py-1 text-xs transition-calm hover:text-foreground disabled:cursor-wait disabled:opacity-60"
           >
             {renderPct === null ? 'Export WAV' : `Rendering ${Math.round(renderPct * 100)}%`}
+          </button>
+          <button
+            type="button"
+            onClick={() => void exportSession()}
+            disabled={renderPct !== null}
+            title="Render all three modules back-to-back into one WAV"
+            className="rounded-full border border-border px-3 py-1 text-xs transition-calm hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+          >
+            {renderPct === null ? 'Export Session' : `Rendering ${Math.round(renderPct * 100)}%`}
           </button>
           <button
             type="button"
