@@ -10,7 +10,7 @@ import { encodeWavPcm16 } from '@/audio/wavEncode';
  *  as Layer.trigger does), the region's volume envelope × Layer One ceiling on its gain node,
  *  and the master gain on top. Runs in its own OfflineAudioContext — never touches the live
  *  graph, so a running live session is unaffected (spec §6 snapshot semantics). */
-export async function renderModuleToWav(
+export async function renderModuleToChannels(
   args: {
     tracks: ArrTrack[];
     regions: TemplateRegion[];
@@ -19,7 +19,7 @@ export async function renderModuleToWav(
     onProgress?: (frac: number) => void;
   },
   cfg: EcosonicConfig = defaultConfig,
-): Promise<Blob> {
+): Promise<Float32Array[]> {
   const sr = args.sampleRate ?? 44100;
   const D = cfg.layerTwo.moduleSeconds;
   const minDb = cfg.audio.volume.minDb;
@@ -75,6 +75,21 @@ export async function renderModuleToWav(
 
   const rendered = await ctx.startRendering();
   args.onProgress?.(1);
-  const channels = Array.from({ length: rendered.numberOfChannels }, (_, c) => rendered.getChannelData(c));
+  return Array.from({ length: rendered.numberOfChannels }, (_, c) => rendered.getChannelData(c));
+}
+
+/** Offline-render a single module to a WAV Blob (unchanged public behavior). */
+export async function renderModuleToWav(
+  args: {
+    tracks: ArrTrack[];
+    regions: TemplateRegion[];
+    masterDb: number;
+    sampleRate?: number;
+    onProgress?: (frac: number) => void;
+  },
+  cfg: EcosonicConfig = defaultConfig,
+): Promise<Blob> {
+  const sr = args.sampleRate ?? 44100;
+  const channels = await renderModuleToChannels(args, cfg);
   return new Blob([encodeWavPcm16(channels, sr)], { type: 'audio/wav' });
 }
