@@ -20,7 +20,7 @@ export function AnalyzePanel({
 
   const analyze = async (file: File) => {
     setError(null);
-    if (!/\.(mp3|wav)$/i.test(file.name)) { setError('MP3 or WAV only.'); return; }
+    if (!/\.(mp3|mpeg|wav)$/i.test(file.name)) { setError('MP3, MPEG, or WAV only.'); return; }
     if (file.size > config.analysis.maxUploadBytes) {
       setError(`File is ${(file.size / 1048576).toFixed(1)} MB — the limit is ` +
         `${Math.round(config.analysis.maxUploadBytes / 1048576)} MB. Re-encode around 128 kbps mono.`);
@@ -55,7 +55,7 @@ export function AnalyzePanel({
         </p>
       )}
       <div className="flex items-center gap-3">
-        <input ref={inputRef} type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" className="text-xs"
+        <input ref={inputRef} type="file" accept=".mp3,.mpeg,.wav,audio/mpeg,audio/wav" className="text-xs"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void analyze(f); }}
           disabled={busy || ready !== true} />
         {busy && <span className="text-xs text-muted-foreground">Analyzing… (a long track can take a minute)</span>}

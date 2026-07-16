@@ -42,6 +42,15 @@ describe('/api/analyze', () => {
     expect((await POST(upload('t.ogg', 'audio/ogg'))).status).toBe(400);
     expect((await POST(upload('t.mp3', 'audio/mpeg', 26214401))).status).toBe(400);
   });
+  it('accepts a .mpeg upload (even with no MIME type) as mp3 format', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'k');
+    vi.stubGlobal('fetch', vi.fn(openAiOk));
+    const res = await POST(upload('t.mpeg', ''));
+    expect(res.status).toBe(200);
+    const sent = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    const audioPart = sent.messages[1].content.find((p: { type: string }) => p.type === 'input_audio');
+    expect(audioPart.input_audio.format).toBe('mp3');
+  });
   it('happy path: classifies observations locally (ISO enter 75 confirms)', async () => {
     vi.stubEnv('OPENAI_API_KEY', 'k');
     vi.stubGlobal('fetch', vi.fn(openAiOk));

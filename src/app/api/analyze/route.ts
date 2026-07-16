@@ -20,11 +20,12 @@ export async function POST(req: Request) {
   const file = form.get('file');
   if (!(file instanceof File)) return Response.json({ error: 'file field required' }, { status: 400 });
 
+  // MPEG audio (.mp3/.mpeg, audio/mpeg) → OpenAI's "mp3" format; WAV → "wav".
   const name = file.name.toLowerCase();
-  const format = file.type === 'audio/mpeg' || name.endsWith('.mp3') ? 'mp3'
+  const format = file.type === 'audio/mpeg' || name.endsWith('.mp3') || name.endsWith('.mpeg') ? 'mp3'
     : file.type === 'audio/wav' || file.type === 'audio/x-wav' || name.endsWith('.wav') ? 'wav'
     : null;
-  if (!format) return Response.json({ error: 'MP3 or WAV only' }, { status: 400 });
+  if (!format) return Response.json({ error: 'MP3, MPEG, or WAV only' }, { status: 400 });
   if (file.size > config.analysis.maxUploadBytes) {
     const mb = Math.round(config.analysis.maxUploadBytes / 1048576);
     return Response.json(
