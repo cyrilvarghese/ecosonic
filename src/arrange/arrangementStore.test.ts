@@ -125,4 +125,46 @@ describe('arrangementStore', () => {
     expect(s.positionSec).toBe(0);
     expect(s.moduleRegions.map((r) => r.trackId)).toEqual(['n']);
   });
+  it('playSession snapshots all modes, starts at the first, playing from 0', () => {
+    store.getState().initFrom(sel, 30);
+    store.getState().loadMode(config.layerTwo.modes[2]); // active = RETURN, edited on screen
+    store.getState().playSession();
+    const s = store.getState();
+    expect(s.session).not.toBeNull();
+    expect(s.session!.index).toBe(0);
+    expect(s.session!.order).toEqual(config.layerTwo.modes);
+    expect(s.activeMode).toBe(config.layerTwo.modes[0]);
+    expect(s.moduleRegions).toBe(s.session!.regionsByMode[config.layerTwo.modes[0]]);
+    expect(s.playing).toBe(true);
+    expect(s.positionSec).toBe(0);
+  });
+  it('advanceSession moves to the next mode and swaps its regions', () => {
+    store.getState().initFrom(sel, 30);
+    store.getState().playSession();
+    store.getState().advanceSession();
+    const s = store.getState();
+    expect(s.session!.index).toBe(1);
+    expect(s.activeMode).toBe(config.layerTwo.modes[1]);
+    expect(s.moduleRegions).toBe(s.session!.regionsByMode[config.layerTwo.modes[1]]);
+    expect(s.positionSec).toBe(0);
+    expect(s.playing).toBe(true);
+  });
+  it('advanceSession past the last mode ends the session and stops', () => {
+    store.getState().initFrom(sel, 30);
+    store.getState().playSession();
+    store.getState().advanceSession(); // -> index 1
+    store.getState().advanceSession(); // -> index 2 (last)
+    store.getState().advanceSession(); // -> end
+    const s = store.getState();
+    expect(s.session).toBeNull();
+    expect(s.playing).toBe(false);
+    expect(s.positionSec).toBe(0);
+  });
+  it('single-module play clears an active session', () => {
+    store.getState().initFrom(sel, 30);
+    store.getState().playSession();
+    store.getState().play();
+    expect(store.getState().session).toBeNull();
+    expect(store.getState().playing).toBe(true);
+  });
 });

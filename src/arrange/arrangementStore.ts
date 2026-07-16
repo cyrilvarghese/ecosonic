@@ -7,6 +7,7 @@ import { buildComposition } from '@/arrange/buildComposition';
 import { buildModeTemplate } from '@/arrange/buildModeTemplate';
 import { generateModeTemplate } from '@/arrange/generate/generateModeTemplate';
 import { steerModule, type SteerNudge } from '@/arrange/generate/steerModule';
+import { buildSessionModules, type SessionModules } from '@/arrange/session';
 import type { ArrangementFile } from '@/arrange/arrangementFile';
 import { config } from '@/config';
 
@@ -28,6 +29,7 @@ export interface ArrangementState {
   activeMode: Mode;
   drift: Drift;
   live: boolean;
+  session: (SessionModules & { index: number }) | null;
 
   initFrom: (sel: Selection, durationMin: number) => void;
   setDurationMin: (min: number) => void;
@@ -43,6 +45,12 @@ export interface ArrangementState {
   /** Reseed the module's clips from the generative grammar for the active mode. */
   generateModule: () => void;
   setLive: (b: boolean) => void;
+  /** Play the full session: all three modes back-to-back, then stop. */
+  playSession: () => void;
+  /** Advance to the next module in the session, or end it after the last. */
+  advanceSession: () => void;
+  /** End the session and stop playback. */
+  endSession: () => void;
   /** Live steering: redraw the un-played future (optionally with a nudge), spliced at the playhead. */
   steer: (nudge?: SteerNudge) => void;
   /** Load a previously exported arrangement (regions filtered to the current tracks). */
@@ -81,6 +89,7 @@ export function createArrangementStore() {
       activeMode: 'INTRODUCTION',
       drift: 'MODERATE',
       live: false,
+      session: null,
 
       initFrom: (sel, durationMin) => {
         selection = sel;
@@ -101,7 +110,7 @@ export function createArrangementStore() {
         if (!selection) { set({ durationMin: min }); return; }
         set({ composition: buildComposition(selection, min * 60), durationMin: min });
       },
-      play: () => set({ playing: true }),
+      play: () => set({ playing: true, session: null }),
       pause: () => set({ playing: false }),
       seek: (sec) => set({ positionSec: clampModule(sec) }),
       setPosition: (sec) => set({ positionSec: clampModule(sec) }),
@@ -120,6 +129,34 @@ export function createArrangementStore() {
           positionSec: 0,
         })),
       setLive: (b) => set({ live: b }),
+      playSession: () =>
+        set((s) => {
+          const built = buildSessionModules(s.tracks, s.activeMode, s.moduleRegions, config);
+          const first = built.order[0];
+          return {
+            session: { ...built, index: 0 },
+            activeMode: first,
+            moduleRegions: built.regionsByMode[first],
+            positionSec: 0,
+            playing: true,
+          };
+        }),
+      advanceSession: () =>
+        set((s) => {
+          if (!s.session) return {};
+          const next = s.session.index + 1;
+          if (next >= s.session.order.length) {
+            return { session: null, playing: false, positionSec: 0 };
+          }
+          const mode = s.session.order[next];
+          return {
+            session: { ...s.session, index: next },
+            activeMode: mode,
+            moduleRegions: s.session.regionsByMode[mode],
+            positionSec: 0,
+          };
+        }),
+      endSession: () => set({ session: null, playing: false, positionSec: 0 }),
       steer: (nudge) =>
         set((s) => ({
           moduleRegions: steerModule(s.moduleRegions, s.positionSec, s.tracks, s.activeMode, s.drift, steerSeed++, nudge),
