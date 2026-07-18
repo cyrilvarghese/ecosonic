@@ -45,10 +45,16 @@ Responsibilities, split into pure helpers so the math is unit-testable without a
   `durationSec`.
 - `encodeWav(channels, sampleRate)` → `Blob` — minimal 16-bit PCM WAV writer (no deps).
 - `sliceAudio(file)` (browser-only) → `Promise<Array<{ mode: Mode; blob: Blob }>>`:
-  `decodeAudioData` the file once, then for each window from `sliceWindows`, copy the sample range
-  out of each channel and `encodeWav`.
+  `decodeAudioData` the file once, then render each window through an `OfflineAudioContext(1, frames,
+  16000)` — one pass that **resamples to 16 kHz and downmixes to mono** — and `encodeWav` the result.
 
-Window constants derive from `config.layerTwo.moduleSeconds` (≈600) so the design tracks the grammar
+**Why 16 kHz mono (not the native rate):** a raw 10-min WAV at 44.1 kHz is ~50 MB mono / ~100 MB
+stereo, which exceeds both our route's `maxUploadBytes` (25 MB) and OpenAI's audio-input limit — every
+slice would be rejected. 16 kHz mono lands each window at ~18 MB, under both caps, while keeping
+Nyquist at 8 kHz — enough to resolve every layer role the model listens for. `OfflineAudioContext`
+does the resample + downmix natively, so this stays dependency-free.
+
+Window constants derive from `config.layerTwo.moduleSeconds` (600) so the design tracks the grammar
 rather than hard-coding 600.
 
 ## 4. API route — `src/app/api/analyze/route.ts`
@@ -57,6 +63,10 @@ One added field: `form.get('mode')`, validated against `MODES` from `analysisSch
 → `400`. The mode is passed to `classifyObservations`. **Unchanged:** file validation, size cap,
 base64 encoding, the OpenAI call, and `buildSystemPrompt()` — the prompt stays blind; the mode never
 reaches the model. Response shape gains `mode`: `{ mode, description, sections, candidates }`.
+
+The route's 25 MB `maxUploadBytes` check now guards each **16 kHz-mono slice** (~18 MB — passes). The
+client-side panel guards the **raw upload** against browser-decode memory with its own generous limit
+(~150 MB), since the original file is decoded locally and never uploaded.
 
 ## 5. Classification — `src/rules/match.ts`
 
@@ -71,18 +81,18 @@ reaches the model. Response shape gains `mode`: `{ mode, description, sections, 
 ## 6. UI
 
 **`AnalyzePanel`** ([src/components/rules/AnalyzePanel.tsx](../../../src/components/rules/AnalyzePanel.tsx)):
-on file pick, call `sliceAudio`, then fire the N (≤3) requests in parallel. Progress reflects
-per-window state ("Analyzing Deep Relaxation…"). `onResult` now yields an array of
-`{ mode, description, sections, candidates }`, one per analyzed window.
+on file pick, call `sliceAudio`, then fire the N (≤3) requests **with per-window isolation** — each
+window resolves to either a success or an error result and one failing window never aborts the
+others. Progress reflects per-window state ("Analyzed 2 of 3…"). `onResult` yields an array of
+per-window results, one per analyzed window.
 
 **`RulesPage`** ([src/app/rules/page.tsx](../../../src/app/rules/page.tsx)): left panel gains a **tab
-strip** — `Introduction · Deep Relaxation · Return`. Each tab shows its mode's description +
-candidate cards. A window still analyzing shows "analyzing…" in its tab; a skipped window's tab is
-disabled with a hint. Tabs may carry a candidate-count badge. Keep/promote per card is unchanged;
-the kept `source` gains `mode` alongside the existing `file` + `model`.
+strip** — `Introduction · Deep Relaxation · Return` (only the analyzed windows appear). Each tab shows
+its mode's description + candidate cards, or that window's error if its pass failed. Tabs carry a
+candidate-count badge. Keep/promote per card is unchanged.
 
-`DiscoveredRule.source` schema in [analysisSchema.ts](../../../src/rules/analysisSchema.ts) gains an
-optional `mode` field.
+**No schema change to the kept rule's `source`:** each candidate already carries its `mode` (set by
+`classifyObservations`), so the mode is recorded without adding a redundant `source.mode` field.
 
 ## 7. Error handling
 

@@ -12,7 +12,8 @@
 
 - The OpenAI system prompt MUST stay **blind**: `buildSystemPrompt()` is unchanged; `mode` never reaches the model. (Verified by the existing "prompt stayed blind" route test.)
 - Wire optionality is `null`, never absent — do not change schemas that OpenAI strict mode depends on.
-- Window length derives from `config.layerTwo.moduleSeconds` (≈600s), not a hard-coded 600.
+- Window length derives from `config.layerTwo.moduleSeconds` (600s), not a hard-coded 600.
+- Slices are rendered to **16 kHz mono** WAV (~18 MB/window) so each stays under the route's 25 MB `maxUploadBytes` and OpenAI's audio-input limit. The raw upload is decoded in-browser only and guarded by a separate `MAX_DECODE_BYTES` memory limit, never the 25 MB cap.
 - Mode values are exactly `'INTRODUCTION' | 'DEEP_RELAXATION' | 'RETURN'` (`Mode` in `src/arrange/types.ts`, `MODES` in `src/rules/analysisSchema.ts`), in that order.
 - The kept-rule `source` schema is NOT changed: each candidate already carries `mode` from classification, so no redundant `source.mode` is added.
 - Vitest excludes `**/.claude/**` (worktree phantoms) — run tests from repo root as configured.
@@ -155,33 +156,44 @@ git commit -m "feat(rules): pure sliceWindows + encodeWav helpers"
 - Modify: `src/rules/sliceAudio.ts` (append the browser-only function)
 
 **Interfaces:**
-- Consumes: `sliceWindows`, `encodeWav` (Task 1); `config.layerTwo.moduleSeconds`.
-- Produces: `sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: Blob }>>` — browser-only (uses `AudioContext`); no unit test (integration-exercised via the panel). Its correctness rests on the Task 1 pure helpers.
+- Consumes: `sliceWindows`, `encodeWav` (Task 1).
+- Produces: `sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: Blob }>>` — browser-only (uses `AudioContext` + `OfflineAudioContext`); no unit test (integration-exercised via the panel). Its correctness rests on the Task 1 pure helpers.
+
+**Why the resample:** a raw 10-min WAV at the native rate is ~50 MB mono / ~100 MB stereo, over both the route's 25 MB `maxUploadBytes` and OpenAI's audio limit — every slice would be rejected. Render each window through an `OfflineAudioContext` at **16 kHz mono** (~18 MB/window; Nyquist 8 kHz covers every layer role). `OfflineAudioContext` resamples and downmixes in one pass — no deps.
 
 - [ ] **Step 1: Append the implementation**
 
 ```ts
 // src/rules/sliceAudio.ts — append
 
-/** Browser-only: decode the file once, then cut a WAV blob per mode window. */
+/** OpenAI audio input + our own 25 MB maxUploadBytes cap can't take a raw 44.1 kHz WAV (a 10-min
+ *  mono window is ~50 MB). Render to 16 kHz mono → ~18 MB/window; Nyquist 8 kHz still resolves
+ *  every layer role the model listens for. */
+const TARGET_RATE = 16000;
+
+/** Browser-only: decode once, then render each mode window to a 16 kHz mono WAV blob.
+ *  decodeAudioData holds the whole file as float PCM briefly (~0.5 GB for a 30-min track) — fine
+ *  for a one-off on desktop. */
 export async function sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: Blob }>> {
   const Ctx: typeof AudioContext =
     window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new Ctx();
+  let decoded: AudioBuffer;
   try {
-    const decoded = await ctx.decodeAudioData(await file.arrayBuffer());
-    return sliceWindows(decoded.duration).map(({ mode, startSec, endSec }) => {
-      const startFrame = Math.floor(startSec * decoded.sampleRate);
-      const endFrame = Math.floor(endSec * decoded.sampleRate);
-      const channels: Float32Array[] = [];
-      for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
-        channels.push(decoded.getChannelData(ch).slice(startFrame, endFrame));
-      }
-      return { mode, blob: encodeWav(channels, decoded.sampleRate) };
-    });
+    decoded = await ctx.decodeAudioData(await file.arrayBuffer());
   } finally {
     void ctx.close();
   }
+  return Promise.all(sliceWindows(decoded.duration).map(async ({ mode, startSec, endSec }) => {
+    const frames = Math.max(1, Math.ceil((endSec - startSec) * TARGET_RATE));
+    const offline = new OfflineAudioContext(1, frames, TARGET_RATE);
+    const src = offline.createBufferSource();
+    src.buffer = decoded;                      // resampled to TARGET_RATE on render
+    src.connect(offline.destination);          // stereo → mono (destination is 1-channel)
+    src.start(0, startSec, endSec - startSec);
+    const rendered = await offline.startRendering();
+    return { mode, blob: encodeWav([rendered.getChannelData(0)], TARGET_RATE) };
+  }));
 }
 ```
 
@@ -411,7 +423,9 @@ git commit -m "feat(analyze): require a mode field, echo it, classify per-mode"
 
 **Interfaces:**
 - Consumes: `sliceAudio` (Task 2); `POST /api/analyze` (Task 4); `Mode` from `@/arrange/types`.
-- Produces: `AnalyzeResponse` gains `mode: Mode`. `onResult` signature becomes `(results: AnalyzeResponse[], fileName: string) => void` — one entry per analyzed window, in mode order.
+- Produces: `WindowResult` (discriminated on `ok`) — success carries `{ mode, ok: true, description, sections, candidates }`; failure carries `{ mode, ok: false, error }`. `onResult` signature becomes `(results: WindowResult[], fileName: string) => void` — one entry per analyzed window, in mode order. Each window resolves independently (never throws), so one failure never aborts the others.
+
+**Cap change:** the raw upload is decoded locally and never sent to the server, so the panel guards it only against browser-decode memory with a generous `MAX_DECODE_BYTES` (~150 MB). The 25 MB route cap still guards each ~18 MB slice.
 
 - [ ] **Step 1: Update `AnalyzePanel.tsx`**
 
@@ -422,18 +436,19 @@ import { config } from '@/config';
 import type { Mode } from '@/arrange/types';
 import { sliceAudio } from '@/rules/sliceAudio';
 
-export interface AnalyzeResponse {
-  mode: Mode;
-  description: string;
-  sections: Array<{ startSec: number; label: string }> | null;
-  candidates: unknown[];
-}
+export type WindowResult =
+  | { mode: Mode; ok: true; description: string; sections: Array<{ startSec: number; label: string }> | null; candidates: unknown[] }
+  | { mode: Mode; ok: false; error: string };
+
+// The original file is decoded in-browser and never uploaded (only ~18 MB slices are), so this is a
+// memory guard on decodeAudioData, not the OpenAI/route upload cap.
+const MAX_DECODE_BYTES = 150 * 1048576;
 
 export function AnalyzePanel({
   ready, onResult,
 }: {
   ready: boolean | null; // null = probing
-  onResult: (results: AnalyzeResponse[], fileName: string) => void;
+  onResult: (results: WindowResult[], fileName: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -444,9 +459,9 @@ export function AnalyzePanel({
   const analyze = async (file: File) => {
     setError(null);
     if (!/\.(mp3|mpeg|wav)$/i.test(file.name)) { setError('MP3, MPEG, or WAV only.'); return; }
-    if (file.size > config.analysis.maxUploadBytes) {
-      setError(`File is ${(file.size / 1048576).toFixed(1)} MB — the limit is ` +
-        `${Math.round(config.analysis.maxUploadBytes / 1048576)} MB. Re-encode around 128 kbps mono.`);
+    if (file.size > MAX_DECODE_BYTES) {
+      setError(`File is ${(file.size / 1048576).toFixed(1)} MB — too large to decode in the browser ` +
+        `(limit ${Math.round(MAX_DECODE_BYTES / 1048576)} MB).`);
       return;
     }
     setBusy(true);
@@ -461,18 +476,23 @@ export function AnalyzePanel({
       if (windows.length === 0) { setError('Track is too short to analyze.'); return; }
 
       let done = 0;
-      const results = await Promise.all(windows.map(async ({ mode, blob }) => {
-        const form = new FormData();
-        form.set('file', new File([blob], `${file.name}.${mode}.wav`, { type: 'audio/wav' }));
-        form.set('mode', mode);
-        const res = await fetch('/api/analyze', { method: 'POST', body: form });
-        setProgress(`Analyzed ${++done} of ${windows.length}…`);
-        if (!res.ok) throw new Error((await res.json()).error ?? `Analysis failed (${res.status})`);
-        return await res.json() as AnalyzeResponse;
+      // Each window resolves to a WindowResult and never throws → true per-tab isolation.
+      const results = await Promise.all(windows.map(async ({ mode, blob }): Promise<WindowResult> => {
+        try {
+          const form = new FormData();
+          form.set('file', new File([blob], `${file.name}.${mode}.wav`, { type: 'audio/wav' }));
+          form.set('mode', mode);
+          const res = await fetch('/api/analyze', { method: 'POST', body: form });
+          const body = await res.json();
+          setProgress(`Analyzed ${++done} of ${windows.length}…`);
+          if (!res.ok) return { mode, ok: false, error: body.error ?? `Analysis failed (${res.status})` };
+          return { mode, ok: true, description: body.description, sections: body.sections, candidates: body.candidates };
+        } catch (e) {
+          setProgress(`Analyzed ${++done} of ${windows.length}…`);
+          return { mode, ok: false, error: (e as Error).message };
+        }
       }));
       onResult(results, file.name);
-    } catch (e) {
-      setError((e as Error).message);
     } finally {
       setBusy(false);
       setProgress(null);
@@ -483,9 +503,9 @@ export function AnalyzePanel({
     <section className="rounded-[var(--radius-md)] border border-border bg-card p-4">
       <h2 className="mb-1 text-sm font-medium">Analyze a reference track</h2>
       <p className="mb-3 text-xs text-muted-foreground">
-        MP3/WAV up to {Math.round(config.analysis.maxUploadBytes / 1048576)} MB. The track is split
-        into three 10-minute passes — Introduction, Deep Relaxation, Return — each heard blind and
-        checked against that section&apos;s grammar.
+        MP3/WAV up to {Math.round(MAX_DECODE_BYTES / 1048576)} MB. The track is split into three
+        10-minute passes — Introduction, Deep Relaxation, Return — each heard blind and checked
+        against that section&apos;s grammar.
       </p>
       {ready === false && (
         <p className="mb-3 rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
@@ -532,12 +552,12 @@ git commit -m "feat(rules): AnalyzePanel slices + fires 3 parallel per-mode pass
 - Modify: `src/app/rules/page.tsx`
 
 **Interfaces:**
-- Consumes: `AnalyzeResponse[]` from `onResult` (Task 5); `Mode` from `@/arrange/types`; existing `keep`/`patch` handlers.
-- Produces: tabbed left panel; keep/promote per card unchanged.
+- Consumes: `WindowResult[]` from `onResult` (Task 5); `Mode` from `@/arrange/types`; existing `keep`/`patch` handlers.
+- Produces: tabbed left panel with per-tab error display; keep/promote per card unchanged.
 
 - [ ] **Step 1: Rework state + render in `page.tsx`**
 
-Replace the result state and the Discover render block. Key changes: hold `AnalyzeResponse[]` keyed by mode, track an active tab, and derive cards per mode. `keep` needs the file name (kept from `fileName` state) and now also which mode-group the card belongs to so its `keptId` maps back.
+Replace the result state and the Discover render block. Key changes: hold one error-aware `Group` per mode, track an active tab, and derive cards per mode. `keep` needs the file name (kept from `fileName` state) and now also which mode-group the card belongs to so its `keptId` maps back.
 
 ```tsx
 'use client';
@@ -546,7 +566,7 @@ import Link from 'next/link';
 import { config } from '@/config';
 import type { Mode } from '@/arrange/types';
 import type { CandidateRule, DiscoveredRule } from '@/rules/analysisSchema';
-import { AnalyzePanel, type AnalyzeResponse } from '@/components/rules/AnalyzePanel';
+import { AnalyzePanel, type WindowResult } from '@/components/rules/AnalyzePanel';
 import { CandidateCard } from '@/components/rules/CandidateCard';
 import { RuleLibrary } from '@/components/rules/RuleLibrary';
 
@@ -556,6 +576,7 @@ const MODE_LABEL: Record<Mode, string> = {
 
 type Group = {
   mode: Mode;
+  error: string | null;
   description: string;
   cards: Array<{ candidate: CandidateRule; keptId: string | null }>;
 };
@@ -576,13 +597,14 @@ export default function RulesPage() {
     void refresh();
   }, [refresh]);
 
-  const onResult = (results: AnalyzeResponse[], name: string) => {
+  const onResult = (results: WindowResult[], name: string) => {
     setFileName(name);
-    setGroups(results.map((r) => ({
-      mode: r.mode,
-      description: r.description,
-      cards: (r.candidates as CandidateRule[]).map((candidate) => ({ candidate, keptId: null })),
-    })));
+    setGroups(results.map((r) => r.ok
+      ? {
+          mode: r.mode, error: null, description: r.description,
+          cards: (r.candidates as CandidateRule[]).map((candidate) => ({ candidate, keptId: null })),
+        }
+      : { mode: r.mode, error: r.error, description: '', cards: [] }));
     setActiveTab(results[0]?.mode ?? null);
   };
 
@@ -652,11 +674,15 @@ export default function RulesPage() {
                         g.mode === activeTab
                           ? 'border-[var(--accent-ink)] text-foreground'
                           : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-                      {MODE_LABEL[g.mode]} ({g.cards.length})
+                      {MODE_LABEL[g.mode]} {g.error ? '⚠' : `(${g.cards.length})`}
                     </button>
                   ))}
                 </div>
-                {active && (
+                {active && (active.error ? (
+                  <p className="rounded-[var(--radius-md)] border border-border bg-card p-4 text-sm text-red-600 dark:text-red-400">
+                    {MODE_LABEL[active.mode]} pass failed: {active.error}
+                  </p>
+                ) : (
                   <>
                     <p className="whitespace-pre-wrap rounded-[var(--radius-md)] border border-border bg-card p-4 text-sm leading-relaxed">
                       {active.description}
@@ -668,7 +694,7 @@ export default function RulesPage() {
                         onPromote={() => { if (c.keptId) void patch(c.keptId, 'promote'); }} />
                     ))}
                   </>
-                )}
+                ))}
               </section>
             )}
           </div>
@@ -718,12 +744,13 @@ git commit -m "feat(rules): per-mode tabs for three-pass analysis results"
 - §4 route `mode` field, prompt stays blind → Task 4 (blind verified by existing test). ✓
 - §5 classify mode-explicit, delete `threeSections` → Task 3 (+ regression: no-sections still classifies). ✓
 - §6 tabs UI, keep/promote unchanged, source unchanged → Tasks 5–6. ✓
-- §7 error handling (decode fail; per-window failure) → Task 5 (decode try/catch, `Promise.all` surfaces first error). ✓
+- §7 error handling (decode fail; per-window isolation) → Task 5: decode try/catch; each window resolves to a `WindowResult` that never throws, so one failed pass shows in its tab while the others render. ✓
 - §8 tests (sliceWindows, encodeWav, classify regression + Deep-Relaxation intent, route validation) → Tasks 1, 3, 4. ✓
 - §9 out of scope → nothing implemented from it. ✓
+- Slice size / caps: raw 44.1 kHz WAV exceeds the 25 MB route cap and OpenAI's limit → Task 2 renders 16 kHz mono (~18 MB); Task 5 guards the raw upload with a separate `MAX_DECODE_BYTES` memory limit. ✓
 
 **Placeholder scan:** none — every code step shows full content.
 
 **Type consistency:** `classifyObservations(result, mode, cfg)` defined in Task 3, called with that arity in Task 4. `AnalyzeResponse` gains `mode: Mode` in Task 5, consumed in Task 6. `onResult(results: AnalyzeResponse[], fileName)` matches between Tasks 5 and 6. `Mode` order matches `MODES`.
 
-**Note on §7 "a single window's failure doesn't fail the others":** the plan uses `Promise.all`, which rejects on the first failed window (whole-analysis error). This is a deliberate simplification for the first cut — per-tab error isolation (`Promise.allSettled` with error state per tab) is a small follow-up. Flag if you want it in this pass instead.
+**Placeholder scan (2nd pass, post-revision):** none. **Type consistency:** `WindowResult` defined in Task 5, consumed in Task 6; `onResult(results: WindowResult[], fileName)` matches between them; `sliceAudio` return type unchanged by the resample rewrite. `MAX_DECODE_BYTES` is local to Task 5's file. ✓
