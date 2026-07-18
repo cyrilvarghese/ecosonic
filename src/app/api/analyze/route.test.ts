@@ -18,9 +18,10 @@ const openAiOk = () => Promise.resolve(new Response(JSON.stringify({
   choices: [{ message: { content: JSON.stringify(analysisBody) } }],
 }), { status: 200 }));
 
-const upload = (name: string, type: string, bytes = 4) => {
+const upload = (name: string, type: string, bytes = 4, mode = 'INTRODUCTION') => {
   const form = new FormData();
   form.set('file', new File([new Uint8Array(bytes)], name, { type }));
+  form.set('mode', mode);
   return new Request('http://test/api/analyze', { method: 'POST', body: form });
 };
 
@@ -41,6 +42,17 @@ describe('/api/analyze', () => {
     vi.stubEnv('OPENAI_API_KEY', 'k');
     expect((await POST(upload('t.ogg', 'audio/ogg'))).status).toBe(400);
     expect((await POST(upload('t.mp3', 'audio/mpeg', 26214401))).status).toBe(400);
+  });
+  it('400 when mode is missing or invalid', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'k');
+    vi.stubGlobal('fetch', vi.fn(openAiOk));
+    expect((await POST(upload('t.mp3', 'audio/mpeg', 4, 'NONSENSE'))).status).toBe(400);
+  });
+  it('echoes the analyzed mode in the response', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'k');
+    vi.stubGlobal('fetch', vi.fn(openAiOk));
+    const body = await (await POST(upload('t.mp3', 'audio/mpeg', 4, 'RETURN'))).json();
+    expect(body.mode).toBe('RETURN');
   });
   it('accepts a .mpeg upload (even with no MIME type) as mp3 format', async () => {
     vi.stubEnv('OPENAI_API_KEY', 'k');

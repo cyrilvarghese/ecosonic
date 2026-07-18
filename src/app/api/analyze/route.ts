@@ -1,5 +1,5 @@
 import { config } from '@/config';
-import { AnalysisResultSchema, OPENAI_ANALYSIS_JSON_SCHEMA } from '@/rules/analysisSchema';
+import { AnalysisResultSchema, MODES, OPENAI_ANALYSIS_JSON_SCHEMA } from '@/rules/analysisSchema';
 import { buildSystemPrompt } from '@/rules/inventory';
 import { classifyObservations } from '@/rules/match';
 
@@ -19,6 +19,11 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file');
   if (!(file instanceof File)) return Response.json({ error: 'file field required' }, { status: 400 });
+
+  const mode = form.get('mode');
+  if (typeof mode !== 'string' || !(MODES as readonly string[]).includes(mode)) {
+    return Response.json({ error: 'mode must be one of INTRODUCTION, DEEP_RELAXATION, RETURN' }, { status: 400 });
+  }
 
   // MPEG audio (.mp3/.mpeg, audio/mpeg) → OpenAI's "mp3" format; WAV → "wav".
   const name = file.name.toLowerCase();
@@ -69,8 +74,9 @@ export async function POST(req: Request) {
     return Response.json({ error: 'model returned a malformed analysis' }, { status: 502 });
   }
   return Response.json({
+    mode,
     description: result.description,
     sections: result.sections,
-    candidates: classifyObservations(result),
+    candidates: classifyObservations(result, mode as (typeof MODES)[number]),
   });
 }
