@@ -52,3 +52,33 @@ export function encodeWav(channels: Float32Array[], sampleRate: number): Blob {
   }
   return new Blob([buffer], { type: 'audio/wav' });
 }
+
+/** OpenAI audio input + our own 25 MB maxUploadBytes cap can't take a raw 44.1 kHz WAV (a 10-min
+ *  mono window is ~50 MB). Render to 16 kHz mono → ~18 MB/window; Nyquist 8 kHz still resolves
+ *  every layer role the model listens for. */
+const TARGET_RATE = 16000;
+
+/** Browser-only: decode once, then render each mode window to a 16 kHz mono WAV blob.
+ *  decodeAudioData holds the whole file as float PCM briefly (~0.5 GB for a 30-min track) — fine
+ *  for a one-off on desktop. */
+export async function sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: Blob }>> {
+  const Ctx: typeof AudioContext =
+    window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new Ctx();
+  let decoded: AudioBuffer;
+  try {
+    decoded = await ctx.decodeAudioData(await file.arrayBuffer());
+  } finally {
+    void ctx.close();
+  }
+  return Promise.all(sliceWindows(decoded.duration).map(async ({ mode, startSec, endSec }) => {
+    const frames = Math.max(1, Math.ceil((endSec - startSec) * TARGET_RATE));
+    const offline = new OfflineAudioContext(1, frames, TARGET_RATE);
+    const src = offline.createBufferSource();
+    src.buffer = decoded;                      // resampled to TARGET_RATE on render
+    src.connect(offline.destination);          // stereo → mono (destination is 1-channel)
+    src.start(0, startSec, endSec - startSec);
+    const rendered = await offline.startRendering();
+    return { mode, blob: encodeWav([rendered.getChannelData(0)], TARGET_RATE) };
+  }));
+}
