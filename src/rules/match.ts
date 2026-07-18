@@ -3,7 +3,6 @@ import type { Mode } from '@/arrange/types';
 import { stackIndex } from '@/arrange/types';
 import type { Category } from '@/types';
 import type { AnalysisResult, CandidateRule, Observation, PatchWireT } from '@/rules/analysisSchema';
-import { MODES } from '@/rules/analysisSchema';
 import { INVARIANTS, PRINCIPLES } from '@/rules/inventory';
 
 const TIMING_FIELDS = ['enter', 'exit', 'fadeIn', 'fadeOut'] as const;
@@ -88,20 +87,15 @@ function orderingCheck(
   return out;
 }
 
-/** Classify blind observations against the house rules — deterministic, pure. */
+/** Classify blind observations against ONE known mode's house rules — deterministic, pure. */
 export function classifyObservations(
-  result: AnalysisResult, cfg: EcosonicConfig = defaultConfig,
+  result: AnalysisResult, mode: Mode, cfg: EcosonicConfig = defaultConfig,
 ): CandidateRule[] {
-  const threeSections = (result.sections?.length ?? 0) === 3;
-  const modeFor = (o: Observation): Mode | null =>
-    threeSections && o.sectionIndex !== null && o.sectionIndex >= 1 && o.sectionIndex <= 3
-      ? (MODES[o.sectionIndex - 1] as Mode)
-      : null;
+  const modeFor = (): Mode => mode;
   const D = cfg.layerTwo.moduleSeconds;
 
   const out: CandidateRule[] = result.observations.map((o) => {
-    const mode = modeFor(o);
-    if (o.structured && mode) {
+    if (o.structured) {
       const rule = cfg.layerTwo.generation.modeRules[mode][o.structured.category];
       const verdict = rule
         ? compareToGrammar(o.structured.patch, rule, mode, o.structured.category, D)
@@ -109,7 +103,7 @@ export function classifyObservations(
       if (verdict) return { ...o, ...verdict, mode };
       return { ...o, kind: 'novel', relatedRule: null, mode };
     }
-    return { ...o, kind: 'novel', relatedRule: o.structured ? null : topicLink(o.text), mode };
+    return { ...o, kind: 'novel', relatedRule: topicLink(o.text), mode };
   });
 
   out.push(...orderingCheck(result.observations, modeFor));

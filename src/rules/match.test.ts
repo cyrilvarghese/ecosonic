@@ -20,7 +20,7 @@ describe('classifyObservations', () => {
     // Grammar: INTRODUCTION.ISO.enter = {canon:60, half:20} → tolerance max(30,20)=30.
     const [c] = classifyObservations(result([
       obs({ structured: { category: 'ISO', patch: patch({ enter: { canon: 75, half: 10 } }) } }),
-    ]));
+    ]), 'INTRODUCTION');
     expect(c.kind).toBe('confirms');
     expect(c.relatedRule).toBe('grammar:INTRODUCTION.ISO.enter');
     expect(c.mode).toBe('INTRODUCTION');
@@ -28,27 +28,27 @@ describe('classifyObservations', () => {
   it('contradicts a timing outside tolerance', () => {
     const [c] = classifyObservations(result([
       obs({ structured: { category: 'ISO', patch: patch({ enter: { canon: 200, half: 10 } }) } }),
-    ]));
+    ]), 'INTRODUCTION');
     expect(c.kind).toBe('contradicts');
     expect(c.relatedRule).toBe('grammar:INTRODUCTION.ISO.enter');
   });
   it('is novel when the grammar has no entry for that layer in that mode', () => {
-    // DEEP_RELAXATION has no BASS entry (section 2 → DEEP_RELAXATION).
+    // DEEP_RELAXATION has no BASS entry.
     const [c] = classifyObservations(result([
-      obs({ sectionIndex: 2, structured: { category: 'BASS', patch: patch({ enter: { canon: 100, half: 5 } }) } }),
-    ]));
+      obs({ structured: { category: 'BASS', patch: patch({ enter: { canon: 100, half: 5 } }) } }),
+    ]), 'DEEP_RELAXATION');
     expect(c.kind).toBe('novel');
     expect(c.mode).toBe('DEEP_RELAXATION');
   });
-  it('without exactly 3 sections, timing observations are novel with no mode', () => {
+  it('classifies against the passed mode even when the model returned no sections', () => {
     const [c] = classifyObservations(result([
       obs({ structured: { category: 'ISO', patch: patch({ enter: { canon: 60, half: 5 } }) } }),
-    ], null));
-    expect(c.kind).toBe('novel');
-    expect(c.mode).toBeNull();
+    ], null), 'INTRODUCTION');
+    expect(c.kind).toBe('confirms');
+    expect(c.mode).toBe('INTRODUCTION');
   });
   it('prose stays novel but gets a topic link', () => {
-    const [c] = classifyObservations(result([obs({ text: 'The noise bed never stops' })]));
+    const [c] = classifyObservations(result([obs({ text: 'The noise bed never stops' })]), 'INTRODUCTION');
     expect(c.kind).toBe('novel');
     expect(c.relatedRule).toBe('R7');
   });
@@ -56,7 +56,7 @@ describe('classifyObservations', () => {
     const cands = classifyObservations(result([
       obs({ structured: { category: 'MELODY', patch: patch({ enter: { canon: 30, half: 5 } }) } }),
       obs({ structured: { category: 'ISO', patch: patch({ enter: { canon: 300, half: 5 } }) } }),
-    ]));
+    ]), 'INTRODUCTION');
     const r2 = cands.find((c) => c.relatedRule === 'R2');
     expect(r2?.kind).toBe('contradicts');
   });
@@ -65,7 +65,7 @@ describe('classifyObservations', () => {
       obs({ structured: { category: 'ISO', patch: patch({ enter: { canon: 60, half: 5 } }) } }),
       obs({ structured: { category: 'PAD', patch: patch({ enter: { canon: 180, half: 5 } }) } }),
       obs({ structured: { category: 'MELODY', patch: patch({ enter: { canon: 400, half: 5 } }) } }),
-    ]));
+    ]), 'INTRODUCTION');
     const r2 = cands.find((c) => c.relatedRule === 'R2' && c.kind === 'confirms');
     expect(r2).toBeDefined();
   });
