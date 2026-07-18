@@ -33,6 +33,7 @@ export function AnalyzePanel({
     }
     setBusy(true);
     try {
+      console.info(`[three-pass] analyzing "${file.name}" (${(file.size / 1048576).toFixed(1)} MB)`);
       let windows: Array<{ mode: Mode; blob: Blob }>;
       try {
         setProgress('Decoding audio…');
@@ -46,19 +47,26 @@ export function AnalyzePanel({
       // Each window resolves to a WindowResult and never throws → true per-tab isolation.
       const results = await Promise.all(windows.map(async ({ mode, blob }): Promise<WindowResult> => {
         try {
+          console.info(`[three-pass] → POST /api/analyze (${mode})`);
           const form = new FormData();
           form.set('file', new File([blob], `${file.name}.${mode}.wav`, { type: 'audio/wav' }));
           form.set('mode', mode);
           const res = await fetch('/api/analyze', { method: 'POST', body: form });
           const body = await res.json();
           setProgress(`Analyzed ${++done} of ${windows.length}…`);
-          if (!res.ok) return { mode, ok: false, error: body.error ?? `Analysis failed (${res.status})` };
+          if (!res.ok) {
+            console.warn(`[three-pass] ✗ ${mode}: ${body.error ?? res.status}`);
+            return { mode, ok: false, error: body.error ?? `Analysis failed (${res.status})` };
+          }
+          console.info(`[three-pass] ✓ ${mode}: ${body.candidates?.length ?? 0} candidate(s)`);
           return { mode, ok: true, description: body.description, sections: body.sections, candidates: body.candidates };
         } catch (e) {
           setProgress(`Analyzed ${++done} of ${windows.length}…`);
+          console.warn(`[three-pass] ✗ ${mode}: ${(e as Error).message}`);
           return { mode, ok: false, error: (e as Error).message };
         }
       }));
+      console.info(`[three-pass] done — ${results.filter((r) => r.ok).length}/${results.length} window(s) analyzed`);
       onResult(results, file.name);
     } finally {
       setBusy(false);

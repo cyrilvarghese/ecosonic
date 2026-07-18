@@ -58,9 +58,11 @@ export function encodeWav(channels: Float32Array[], sampleRate: number): Blob {
  *  every layer role the model listens for. */
 const TARGET_RATE = 16000;
 
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+
 /** Browser-only: decode once, then render each mode window to a 16 kHz mono WAV blob.
  *  decodeAudioData holds the whole file as float PCM briefly (~0.5 GB for a 30-min track) — fine
- *  for a one-off on desktop. */
+ *  for a one-off on desktop. Logs the split and each rendered window under `[three-pass]`. */
 export async function sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: Blob }>> {
   const Ctx: typeof AudioContext =
     window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -71,7 +73,17 @@ export async function sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: 
   } finally {
     void ctx.close();
   }
-  return Promise.all(sliceWindows(decoded.duration).map(async ({ mode, startSec, endSec }) => {
+
+  const windows = sliceWindows(decoded.duration);
+  console.info(
+    `[three-pass] decoded "${file.name}" — ${clock(decoded.duration)}, ${decoded.sampleRate} Hz, ` +
+    `${decoded.numberOfChannels}ch → split into ${windows.length} window(s):`,
+  );
+  for (const { mode, startSec, endSec } of windows) {
+    console.info(`[three-pass]   ${mode}: ${clock(startSec)}–${clock(endSec)}`);
+  }
+
+  return Promise.all(windows.map(async ({ mode, startSec, endSec }) => {
     const frames = Math.max(1, Math.ceil((endSec - startSec) * TARGET_RATE));
     const offline = new OfflineAudioContext(1, frames, TARGET_RATE);
     const src = offline.createBufferSource();
@@ -79,6 +91,8 @@ export async function sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: 
     src.connect(offline.destination);          // stereo → mono (destination is 1-channel)
     src.start(0, startSec, endSec - startSec);
     const rendered = await offline.startRendering();
-    return { mode, blob: encodeWav([rendered.getChannelData(0)], TARGET_RATE) };
+    const blob = encodeWav([rendered.getChannelData(0)], TARGET_RATE);
+    console.info(`[three-pass]   rendered ${mode} → ${(blob.size / 1048576).toFixed(1)} MB @ ${TARGET_RATE} Hz mono`);
+    return { mode, blob };
   }));
 }
