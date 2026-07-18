@@ -16,6 +16,8 @@ describe('inventory', () => {
     for (const c of CATEGORIES) expect(p).toContain(c);
     expect(p).toContain('Never claim psychological, therapeutic, or neurological effects');
     expect(p).toContain('sectionIndex');
+    // `present` must be explained as a 0-1 fraction so the model doesn't emit seconds.
+    expect(p.toLowerCase()).toContain('fraction');
   });
   it('prompt contains no house grammar values or rule texts', () => {
     const p = buildSystemPrompt();

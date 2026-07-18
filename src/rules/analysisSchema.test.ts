@@ -27,6 +27,21 @@ describe('analysisSchema', () => {
   it('accepts a full AnalysisResult fixture', () => {
     expect(AnalysisResultSchema.parse(resultFixture)).toEqual(resultFixture);
   });
+  it('coerces an out-of-range present to null instead of failing the whole analysis', () => {
+    // The model sometimes emits `present` as seconds (e.g. 75); the schema wants a 0-1 fraction.
+    // One bad field must degrade to null, not 502 the entire track.
+    const parsed = AnalysisResultSchema.parse({
+      ...resultFixture,
+      observations: [{
+        ...observationFixture,
+        structured: {
+          category: 'NOISE' as const,
+          patch: { present: 75, enter: null, exit: null, fadeIn: null, fadeOut: null, after: null },
+        },
+      }],
+    });
+    expect(parsed.observations[0].structured?.patch.present).toBeNull();
+  });
   it('rejects confidence out of range and unknown layer', () => {
     expect(AnalysisResultSchema.safeParse({
       ...resultFixture,

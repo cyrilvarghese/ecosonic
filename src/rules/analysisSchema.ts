@@ -12,7 +12,10 @@ const ExitWire = z.union([GenRangeWire, z.literal('MODULE_END')]);
 
 // Wire optionality is `null`, never absent — OpenAI strict structured outputs require every key.
 const PatchWire = z.object({
-  present: z.number().min(0).max(1).nullable(),
+  // `present` is a 0-1 fraction. OpenAI strict schemas can't enforce numeric bounds, and the model
+  // sometimes emits it as seconds — coerce anything out of range to null so one bad field doesn't
+  // fail the whole analysis, rather than validating the entire track away.
+  present: z.number().min(0).max(1).nullable().catch(null),
   enter: GenRangeWire.nullable(),
   exit: ExitWire.nullable(),
   fadeIn: GenRangeWire.nullable(),

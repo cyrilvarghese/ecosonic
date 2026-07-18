@@ -64,6 +64,8 @@ export function buildSystemPrompt(): string {
     'inside `structured` are then relative to that section\'s start, otherwise relative to the',
     'track start. Attach `structured` timings only when you can honestly express the pattern as',
     'numbers (canon = the value you heard, half = your uncertainty in seconds); otherwise use null.',
+    'The `present` field is NOT a duration — it is the fraction of the section, from 0 to 1, that the',
+    'layer is audible (1 means it sounds throughout, ~0.3 means only briefly); use null if unsure.',
     '',
     'Describe compositional mechanics only (what happens, when).',
     'Never claim psychological, therapeutic, or neurological effects.',
