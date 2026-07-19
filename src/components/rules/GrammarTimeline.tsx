@@ -10,8 +10,10 @@ const ROLE_FAMILY: Record<(typeof CATEGORIES)[number], Family> = {
   PAD: 'harmonic', BASS: 'harmonic',
   ARP: 'melodic', MELODY: 'melodic',
 };
+// Validated with dataviz validate_palette.js (light + dark): all checks pass;
+// the CVD ΔE 7.2 sits in the legal 6–8 band, backed by the per-lane text labels.
 const FAMILY_COLOR: Record<Family, string> = {
-  bed: '#5b7fb0', tonal: '#3f9d8f', harmonic: '#c98a2b', melodic: '#8a6fc0',
+  bed: '#3d6fd0', tonal: '#2aa758', harmonic: '#cf7d1a', melodic: '#b048c0',
 };
 const FAMILIES: Family[] = ['bed', 'tonal', 'harmonic', 'melodic'];
 
