@@ -1,6 +1,6 @@
 # ECOSONIC Layer Two — Build Roadmap & Mode/Track Model
 
-**Status:** Living document · **Last updated:** 2026-07-09
+**Status:** Living document · **Last updated:** 2026-07-19
 **Related:** [PRD](./PRD.md) · [SPEC](./SPEC.md) · [ADR-0005 (single-module-first)](./adr/0005-single-module-first.md) ·
 [Generative framework](./generative/03-generation-framework.md)
 
@@ -163,7 +163,25 @@ composition scheduler.
   share one generated arrangement; varying each instance needs a small `Composition` model change.
 - **Tuning** wired to `playbackRate`; **effects** once Layer One models them; **persistence**.
 
-## 8. Phase summary
+## 8. Rule Discovery (adjacent tool — built)
+
+Separate from the Layer-Two build ladder, `/rules` is a workshop that **derives composition rules
+from real reference tracks** and folds the good ones into the generator's grammar (full description:
+[PRD §7](./PRD.md)). The model hears audio **blind** (told only what layers sound like, never the
+house rules); a **deterministic local matcher** tags each observation `confirms / contradicts /
+novel` against the grammar. It has grown in three steps:
+
+| Step | Scope | Status |
+|---|---|---|
+| **Blind analysis + Keep/Promote** | Single-pass blind analysis → candidates → keep to registry, promote structured rules into `layerTwo.generation` | ✅ done 2026-07-15 ([design](./superpowers/specs/2026-07-15-rule-discovery-page-design.md)) |
+| **Three-pass per-mode** | Slice the upload client-side into 3×10-min windows (16 kHz mono), analyze each as its known mode (Intro/Deep/Return) in parallel with per-tab isolation; deterministic mode replaces the fragile section-guess | ✅ done 2026-07-18 ([design](./superpowers/specs/2026-07-18-three-pass-analysis-design.md)) |
+| **Timeline view + Save/Reload** | Per-tab Timeline ⇄ Cards toggle (lanes + grammar ghost bands + verdict-tinted bars, 1-min axis); auto-save analyses server-side by file name, reload/delete from an accordion (no re-analysis cost) | ✅ done 2026-07-19 ([timeline](./superpowers/specs/2026-07-19-analysis-timeline-design.md) · [save/reload](./superpowers/specs/2026-07-19-analysis-save-reload-design.md)) |
+
+Next candidates (not scheduled): cross-module continuity checks (R7/R8 across passes), grammar
+"expected-but-absent" lanes on the timeline, and surfacing structured `enter/exit` on the cards so
+they reconcile with the timeline bars.
+
+## 9. Phase summary
 
 | Phase | Scope | Status |
 |---|---|---|
@@ -173,3 +191,4 @@ composition scheduler.
 | **D** | Regeneration, density dynamics, tuning, effects, persistence | ⏳ later |
 | **Gen-A** | Generative grammar → timing tables + Generate/drift UI (§5) | ✅ done 2026-07-09 |
 | **Gen-B** | Live generative scheduler (live-steerable playback) | ▶ in design — brainstorm resumed 2026-07-10 (§5) |
+| **Rules** | Rule Discovery — blind analysis → three-pass → timeline + save/reload (§8) | ✅ done 2026-07-15 → 07-19 |

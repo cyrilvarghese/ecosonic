@@ -1,6 +1,6 @@
 # ECOSONIC — Product Requirements Document
 
-**Status:** Living document · **Last updated:** 2026-07-09
+**Status:** Living document · **Last updated:** 2026-07-19
 **Related:** [SPEC.md](./SPEC.md) · [ROADMAP.md](./ROADMAP.md) · [ADRs](./adr/README.md) ·
 [Generative framework](./generative/03-generation-framework.md)
 
@@ -43,7 +43,7 @@ beats. The tool should feel like tending a garden, not sequencing a track.
 - Not a general-purpose DAW; no beat grid, MIDI, or piano-roll.
 - No rhythmic/quantized structures (explicitly avoided per the meditation brief).
 - No cloud accounts, sharing, or persistence layer yet (in-memory session).
-- No per-track effects UI yet (delay/reverb are not modeled — see §8).
+- No per-track effects UI yet (delay/reverb are not modeled — see §9).
 
 ## 3. Users & core use cases
 
@@ -64,7 +64,7 @@ Core flows:
 | `/` | Element selector | Choose EARTH / WATER / AIR / FIRE / ETHER |
 | `/layer1` | Builder | The multitrack sound ecosystem |
 | `/layer2` | Module Designer | Orchestrate track entrances/exits on a timeline |
-| `/rules` | Rule Discovery | List all composition rules; analyze a track into candidate rules; keep/promote |
+| `/rules` | Rule Discovery | List all composition rules; analyze a reference track (three blind per-mode passes) into candidate rules — Cards or Timeline view; keep/promote; save & reload analyses by file name (§7) |
 
 Navigation is one-way-friendly: `/` → `/layer1` → `/layer2`, with "back" links. State is held in
 memory; a hard refresh returns to `/`.
@@ -90,7 +90,7 @@ memory; a hard refresh returns to `/`.
 Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]):
 - **Non-muted tracks** (muted = "not selected") with their **volume ceiling** (Layer One volume).
 - The chosen **element** (for theming), **tuning**, and **master** (read-only passthrough).
-- *Not* effects (Layer One has none) — see §8.
+- *Not* effects (Layer One has none) — see §9.
 
 ### 6.2 The module designer (current MVP)
 - The handed-off tracks appear as **lanes** on a single **Wave Module** timeline (~10 min).
@@ -146,7 +146,52 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
   ISO↔PLANETS alternation & rarefaction dynamics, BPM/Key/Quantize, effects inheritance,
   per-instance variation (today repeated instances of a mode share one generated template).
 
-## 7. Glossary
+## 7. Rule Discovery — reference-track analysis (`/rules`)
+
+A workshop for **deriving composition rules from real reference tracks** and folding the good ones
+into the generator's grammar. Two columns: **Discover** (left — analyze a track, review candidates)
+and **Exists** (right — the principles R1–R9, invariants I1–I6, the live grammar, and rules you've
+kept). Built 2026-07-15 ([design](./superpowers/specs/2026-07-15-rule-discovery-page-design.md)),
+extended 2026-07-18/19.
+
+### 7.1 Blind analysis, deterministic verdict
+The model **hears the audio but is never told the house rules** — only what each of the 11 layer
+roles *sounds* like (`buildSystemPrompt` is zero-arg by construction). It returns raw, timestamped
+**observations**. A **local, deterministic matcher** (`src/rules/match.ts`) then classifies each
+against the grammar as **`confirms` / `contradicts` / `novel`**. The model observes; code judges —
+so a rule can never be "confirmed" just because the model was told about it.
+
+### 7.2 Three blind passes, one per mode
+The upload is sliced **client-side into three fixed 10-minute windows** and each is analyzed as its
+**known mode** — Introduction / Deep Relaxation / Return — shown as tabs. This replaced a single
+whole-file pass whose mode mapping only worked when the model happened to guess exactly three
+sections; supplying the mode makes the per-mode grammar comparison fire every time. Slicing decodes
+the file in the browser (Web Audio) and renders each window to **16 kHz mono WAV** (~18 MB) to stay
+under the API's audio-size limit; the three passes run in parallel with per-tab error isolation.
+(Audio models don't support strict structured outputs, so the JSON shape is requested in-prompt and
+parsed defensively — `extractJson` + tolerant validation.)
+
+### 7.3 Two views — Cards and Timeline
+A per-tab **Timeline ⇄ Cards** toggle:
+- **Cards** — each observation as text + evidence timestamps + confidence, with **Keep / Discard /
+  Promote** actions.
+- **Timeline** — a read-only lane-per-category view on a 0–10 min axis (1-minute steps): each
+  observation is a verdict-tinted bar/tick against a faint **grammar "ghost band"** (the expected
+  window), so `confirms` (bar inside) vs `contradicts` (bar outside) is *seen*, not read; prose /
+  ordering findings sit in a chip strip below the lanes.
+
+### 7.4 Keep → Promote lifecycle
+**Keep** writes a candidate to `config/discovered-rules.json` (the registry). **Promote** takes a
+kept *structured* rule and folds its timing into the live grammar (`layerTwo.generation`), after
+which the generator can emit it. Kept/promoted rules appear in the Exists column.
+
+### 7.5 Save & reload analyses
+Every completed analysis **auto-saves server-side** to `config/analyses.json`, keyed by **file name**
+(upsert — latest wins), so a paid analysis is never lost. A **"Saved analyses" accordion** below
+Discover lists them; **Load** repopulates the tabs/timeline instantly with **no model call**, and
+**Delete** prunes. Mirrors the rule-registry persistence pattern.
+
+## 8. Glossary
 
 - **Element** — EARTH/WATER/AIR/FIRE/ETHER; drives sample set + theme.
 - **Category** — a track's role (ISO, PLANET, NOISE, ELEMENT, ELEMENT_SUB/Sub-Elements, BASS, PAD,
@@ -166,7 +211,7 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
 - **Drift** — how far a generated draw may stray from the brief's canonical timings:
   `STRICT / MODERATE / EXPLORATORY`.
 
-## 8. Constraints & principles
+## 9. Constraints & principles
 
 - **Meditation-first:** slow changes (1–2 min scale), no abrupt cuts, no rhythmic/quantized
   structures, avoid evident repetition.
@@ -183,7 +228,7 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
     "effects inheritance" is blocked until Layer One grows them.
   - **No persistence** — sessions are in-memory only.
 
-## 9. Success criteria (current phase)
+## 10. Success criteria (current phase)
 
 - From `/layer1`, "Continue to Layer Two" lands on a themed `/layer2` seeded from the density table.
 - Every handed-off track is a draggable clip; dragging changes when it plays.
