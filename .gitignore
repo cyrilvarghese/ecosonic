@@ -1,6 +1,9 @@
 # Audio library — 5.8 GB of raw samples, never commit
 ECOSONIC FILES/
 
+# Runtime analysis cache (saved reference-track analyses)
+config/analyses.json
+
 # Dependencies
 node_modules/
 

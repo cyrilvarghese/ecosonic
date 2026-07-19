@@ -59,6 +59,23 @@ export const DiscoveredRuleSchema = CandidateRuleSchema.extend({
 export type DiscoveredRule = z.infer<typeof DiscoveredRuleSchema>;
 export const RegistrySchema = z.array(DiscoveredRuleSchema);
 
+/** A saved, reloadable analysis — the full per-window result, keyed by file name. */
+export const SavedWindowSchema = z.object({
+  mode: z.enum(MODES),
+  description: z.string(),
+  sections: z.array(z.object({ startSec: z.number(), label: z.string() })).nullable(),
+  candidates: z.array(CandidateRuleSchema),
+});
+export const SavedAnalysisSchema = z.object({
+  fileName: z.string().min(1),
+  savedAt: z.string(),
+  model: z.string(),
+  windows: z.array(SavedWindowSchema),
+});
+export const AnalysisStoreSchema = z.array(SavedAnalysisSchema);
+export type SavedWindow = z.infer<typeof SavedWindowSchema>;
+export type SavedAnalysis = z.infer<typeof SavedAnalysisSchema>;
+
 // ---- OpenAI strict response schema (hand-written: strict mode needs additionalProperties:false
 // and every property required; zod→JSONSchema emission isn't guaranteed to satisfy that). ----
 const jRange = {
