@@ -3,6 +3,7 @@ import type { Mode } from '@/arrange/types';
 import type { CandidateRule } from '@/rules/analysisSchema';
 import { config } from '@/config';
 import { partition, ghostBand, ruleFor } from '@/rules/timeline';
+import { explainRule } from '@/rules/explain';
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -65,11 +66,12 @@ export function AnalysisTimeline({ candidates, mode }: { candidates: CandidateRu
       })}
 
       {untimed.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1.5">
+        <div className="mt-1 flex flex-col gap-1.5">
           {untimed.map((c, i) => (
-            <span key={i} className={`rounded-full px-2.5 py-0.5 text-xs ${CHIP[c.kind]}`} title={c.text}>
-              {c.relatedRule ? `${c.relatedRule}: ` : ''}{c.text.length > 48 ? `${c.text.slice(0, 47)}…` : c.text}
-            </span>
+            <div key={i} className={`rounded-[6px] px-3 py-2 text-xs ${CHIP[c.kind]}`}>
+              <div className="font-medium">{explainRule(c.relatedRule, c.kind)}</div>
+              <div className="mt-0.5 leading-snug opacity-90">{c.text}</div>
+            </div>
           ))}
         </div>
       )}
