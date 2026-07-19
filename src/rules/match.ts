@@ -87,14 +87,38 @@ function orderingCheck(
   return out;
 }
 
+/** If the model sub-sectioned the window, structured `enter`/`exit` are relative to the sub-section
+ *  start (per the prompt) — resolve them to absolute window time. `fadeIn`/`fadeOut` are durations,
+ *  not positions, so they are left unshifted. No-op when there are no sections or the section starts
+ *  at 0. */
+function toAbsolute(o: Observation, sections: AnalysisResult['sections']): Observation {
+  if (!o.structured || o.sectionIndex === null || !sections
+    || o.sectionIndex < 1 || o.sectionIndex > sections.length) return o;
+  const start = sections[o.sectionIndex - 1].startSec;
+  if (start === 0) return o;
+  const p = o.structured.patch;
+  return {
+    ...o,
+    structured: {
+      ...o.structured,
+      patch: {
+        ...p,
+        enter: p.enter ? { canon: p.enter.canon + start, half: p.enter.half } : null,
+        exit: p.exit && p.exit !== 'MODULE_END' ? { canon: p.exit.canon + start, half: p.exit.half } : p.exit,
+      },
+    },
+  };
+}
+
 /** Classify blind observations against ONE known mode's house rules — deterministic, pure. */
 export function classifyObservations(
   result: AnalysisResult, mode: Mode, cfg: EcosonicConfig = defaultConfig,
 ): CandidateRule[] {
+  const observations = result.observations.map((o) => toAbsolute(o, result.sections));
   const modeFor = (): Mode => mode;
   const D = cfg.layerTwo.moduleSeconds;
 
-  const out: CandidateRule[] = result.observations.map((o) => {
+  const out: CandidateRule[] = observations.map((o) => {
     if (o.structured) {
       const rule = cfg.layerTwo.generation.modeRules[mode][o.structured.category];
       const verdict = rule
@@ -106,6 +130,6 @@ export function classifyObservations(
     return { ...o, kind: 'novel', relatedRule: topicLink(o.text), mode };
   });
 
-  out.push(...orderingCheck(result.observations, modeFor));
+  out.push(...orderingCheck(observations, modeFor));
   return out;
 }

@@ -40,6 +40,28 @@ describe('classifyObservations', () => {
     expect(c.kind).toBe('novel');
     expect(c.mode).toBe('DEEP_RELAXATION');
   });
+  it('resolves section-relative structured timings to absolute window time', () => {
+    // Model sub-sectioned the window (sections at 0/180/360) and gave a section-3 observation with
+    // timings relative to that section start → they must resolve to absolute (360 + value).
+    const sections = [
+      { startSec: 0, label: 'a' }, { startSec: 180, label: 'b' }, { startSec: 360, label: 'c' },
+    ];
+    const [c] = classifyObservations(result([
+      obs({ sectionIndex: 3, structured: { category: 'PLANET', patch: patch({ enter: { canon: 20, half: 5 }, exit: { canon: 150, half: 10 } }) } }),
+    ], sections), 'RETURN');
+    expect(c.structured?.patch.enter).toEqual({ canon: 380, half: 5 });   // 360 + 20
+    expect(c.structured?.patch.exit).toEqual({ canon: 510, half: 10 });   // 360 + 150
+  });
+  it('leaves durations (fadeIn/fadeOut) unshifted when resolving sections', () => {
+    const sections = [
+      { startSec: 0, label: 'a' }, { startSec: 180, label: 'b' }, { startSec: 360, label: 'c' },
+    ];
+    const [c] = classifyObservations(result([
+      obs({ sectionIndex: 3, structured: { category: 'PAD', patch: patch({ enter: { canon: 10, half: 2 }, fadeIn: { canon: 30, half: 5 } }) } }),
+    ], sections), 'RETURN');
+    expect(c.structured?.patch.enter).toEqual({ canon: 370, half: 2 });   // shifted
+    expect(c.structured?.patch.fadeIn).toEqual({ canon: 30, half: 5 });   // duration — unchanged
+  });
   it('classifies against the passed mode even when the model returned no sections', () => {
     const [c] = classifyObservations(result([
       obs({ structured: { category: 'ISO', patch: patch({ enter: { canon: 60, half: 5 } }) } }),

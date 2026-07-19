@@ -18,6 +18,8 @@ describe('inventory', () => {
     expect(p).toContain('sectionIndex');
     // `present` must be explained as a 0-1 fraction so the model doesn't emit seconds.
     expect(p.toLowerCase()).toContain('fraction');
+    // Each window is one section — timings must be absolute from 0:00, no sub-sectioning.
+    expect(p).toContain('absolute offset from 0:00');
   });
   it('prompt contains no house grammar values or rule texts', () => {
     const p = buildSystemPrompt();
