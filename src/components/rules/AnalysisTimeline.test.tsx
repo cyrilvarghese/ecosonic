@@ -23,4 +23,12 @@ describe('AnalysisTimeline', () => {
     expect(screen.getByText('PAD')).toBeInTheDocument();
     expect(screen.getByText(/noise bed never stops/i)).toBeInTheDocument();
   });
+  it('labels the axis at every minute', () => {
+    const one = [cand({ structured: { category: 'ISO', patch: patch({ enter: { canon: 60, half: 5 } }) } })];
+    render(<AnalysisTimeline candidates={one} mode="INTRODUCTION" />);
+    expect(screen.getByText('0:00')).toBeInTheDocument();
+    expect(screen.getByText('1:00')).toBeInTheDocument();
+    expect(screen.getByText('9:00')).toBeInTheDocument();
+    expect(screen.getByText('10:00')).toBeInTheDocument();
+  });
 });

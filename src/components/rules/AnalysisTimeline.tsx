@@ -21,6 +21,7 @@ export function AnalysisTimeline({ candidates, mode }: { candidates: CandidateRu
   const D = config.layerTwo.moduleSeconds;
   const { lanes, untimed } = partition(candidates, D);
   const pct = (s: number) => `${Math.max(0, Math.min(100, (s / D) * 100))}%`;
+  const minutes = Array.from({ length: Math.floor(D / 60) + 1 }, (_, i) => i * 60); // 0:00 … D at 1-min steps
 
   if (lanes.length === 0 && untimed.length === 0) {
     return <p className="text-sm text-muted-foreground">No candidates to plot.</p>;
@@ -30,7 +31,9 @@ export function AnalysisTimeline({ candidates, mode }: { candidates: CandidateRu
     <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-card p-4">
       <div className="flex gap-3 text-[11px] tabular-nums text-muted-foreground">
         <span className="w-24 shrink-0" />
-        <span className="flex flex-1 justify-between"><span>0:00</span><span>{clock(D / 2)}</span><span>{clock(D)}</span></span>
+        <span className="flex flex-1 justify-between">
+          {minutes.map((m) => <span key={m}>{clock(m)}</span>)}
+        </span>
       </div>
 
       {lanes.map(({ category, items }) => {
@@ -39,6 +42,10 @@ export function AnalysisTimeline({ candidates, mode }: { candidates: CandidateRu
           <div key={category} className="flex items-center gap-3">
             <div className="label w-24 shrink-0">{category}</div>
             <div className="relative h-8 flex-1 overflow-hidden rounded-md bg-muted">
+              {/* 1-minute gridlines (interior only — edges sit under the rounded border) */}
+              {minutes.slice(1, -1).map((m) => (
+                <div key={m} className="absolute inset-y-0 w-px bg-foreground/10" style={{ left: pct(m) }} aria-hidden />
+              ))}
               {ghost && (
                 <div className="absolute inset-y-0 bg-foreground/10"
                   style={{ left: pct(ghost.startSec), width: pct(ghost.endSec - ghost.startSec) }}
