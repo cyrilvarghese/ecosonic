@@ -5,6 +5,7 @@ import { config } from '@/config';
 import type { Mode } from '@/arrange/types';
 import type { CandidateRule, DiscoveredRule } from '@/rules/analysisSchema';
 import { AnalyzePanel, type WindowResult } from '@/components/rules/AnalyzePanel';
+import { AnalysisTimeline } from '@/components/rules/AnalysisTimeline';
 import { CandidateCard } from '@/components/rules/CandidateCard';
 import { RuleLibrary } from '@/components/rules/RuleLibrary';
 
@@ -25,6 +26,7 @@ export default function RulesPage() {
   const [fileName, setFileName] = useState<string>('');
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeTab, setActiveTab] = useState<Mode | null>(null);
+  const [view, setView] = useState<'timeline' | 'cards'>('timeline');
   const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -44,6 +46,7 @@ export default function RulesPage() {
         }
       : { mode: r.mode, error: r.error, description: '', cards: [] }));
     setActiveTab(results[0]?.mode ?? null);
+    setView('timeline');
   };
 
   const keep = async (mode: Mode, i: number) => {
@@ -123,15 +126,28 @@ export default function RulesPage() {
                   </p>
                 ) : (
                   <>
+                    <div className="flex gap-1 self-start rounded-full border border-border p-0.5 text-xs">
+                      {(['timeline', 'cards'] as const).map((v) => (
+                        <button key={v} type="button" onClick={() => setView(v)}
+                          className={`rounded-full px-3 py-1 capitalize transition-calm ${
+                            view === v ? 'bg-[var(--accent-ink)] text-white' : 'text-muted-foreground hover:text-foreground'}`}>
+                          {v}
+                        </button>
+                      ))}
+                    </div>
                     <p className="whitespace-pre-wrap rounded-[var(--radius-md)] border border-border bg-card p-4 text-sm leading-relaxed">
                       {active.description}
                     </p>
-                    {active.cards.map((c, i) => (
-                      <CandidateCard key={`${active.mode}-${i}`} candidate={c.candidate} keptId={c.keptId}
-                        onKeep={() => void keep(active.mode, i)}
-                        onDiscard={() => discard(active.mode, i)}
-                        onPromote={() => { if (c.keptId) void patch(c.keptId, 'promote'); }} />
-                    ))}
+                    {view === 'timeline' ? (
+                      <AnalysisTimeline candidates={active.cards.map((c) => c.candidate)} mode={active.mode} />
+                    ) : (
+                      active.cards.map((c, i) => (
+                        <CandidateCard key={`${active.mode}-${i}`} candidate={c.candidate} keptId={c.keptId}
+                          onKeep={() => void keep(active.mode, i)}
+                          onDiscard={() => discard(active.mode, i)}
+                          onPromote={() => { if (c.keptId) void patch(c.keptId, 'promote'); }} />
+                      ))
+                    )}
                   </>
                 ))}
               </section>
