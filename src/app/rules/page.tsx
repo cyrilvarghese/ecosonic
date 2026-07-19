@@ -8,6 +8,7 @@ import { AnalyzePanel, type WindowResult } from '@/components/rules/AnalyzePanel
 import { AnalysisTimeline } from '@/components/rules/AnalysisTimeline';
 import { CandidateCard } from '@/components/rules/CandidateCard';
 import { RuleLibrary } from '@/components/rules/RuleLibrary';
+import { SavedAnalyses, type SavedMeta } from '@/components/rules/SavedAnalyses';
 
 const MODE_LABEL: Record<Mode, string> = {
   INTRODUCTION: 'Introduction', DEEP_RELAXATION: 'Deep Relaxation', RETURN: 'Return',
@@ -27,17 +28,22 @@ export default function RulesPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeTab, setActiveTab] = useState<Mode | null>(null);
   const [view, setView] = useState<'timeline' | 'cards'>('timeline');
+  const [savedList, setSavedList] = useState<SavedMeta[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setDiscovered(await (await fetch('/api/rules')).json());
   }, []);
+  const refreshSaved = useCallback(async () => {
+    setSavedList(await (await fetch('/api/analyses')).json());
+  }, []);
   useEffect(() => {
     void fetch('/api/analyze').then(async (r) => setReady((await r.json()).ready));
     void refresh();
-  }, [refresh]);
+    void refreshSaved();
+  }, [refresh, refreshSaved]);
 
-  const onResult = (results: WindowResult[], name: string) => {
+  const showResults = (results: WindowResult[], name: string) => {
     setFileName(name);
     setGroups(results.map((r) => r.ok
       ? {
@@ -47,6 +53,38 @@ export default function RulesPage() {
       : { mode: r.mode, error: r.error, description: '', cards: [] }));
     setActiveTab(results[0]?.mode ?? null);
     setView('timeline');
+  };
+
+  const onResult = (results: WindowResult[], name: string) => {
+    showResults(results, name);
+    const windows = results
+      .filter((r): r is Extract<WindowResult, { ok: true }> => r.ok)
+      .map((r) => ({ mode: r.mode, description: r.description, sections: r.sections, candidates: r.candidates as CandidateRule[] }));
+    if (windows.length > 0) {
+      void fetch('/api/analyses', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: name, model: config.analysis.model, windows }),
+      }).then(() => refreshSaved());
+    }
+  };
+
+  const loadSaved = async (name: string) => {
+    setActionError(null);
+    const res = await fetch(`/api/analyses?file=${encodeURIComponent(name)}`);
+    if (!res.ok) { setActionError('Load failed'); return; }
+    const saved = await res.json() as {
+      fileName: string;
+      windows: Array<{ mode: Mode; description: string; sections: Array<{ startSec: number; label: string }> | null; candidates: CandidateRule[] }>;
+    };
+    showResults(
+      saved.windows.map((w) => ({ mode: w.mode, ok: true, description: w.description, sections: w.sections, candidates: w.candidates })),
+      saved.fileName,
+    );
+  };
+
+  const deleteSaved = async (name: string) => {
+    await fetch(`/api/analyses?file=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    void refreshSaved();
   };
 
   const keep = async (mode: Mode, i: number) => {
@@ -152,6 +190,9 @@ export default function RulesPage() {
                 ))}
               </section>
             )}
+            <SavedAnalyses items={savedList}
+              onLoad={(name) => void loadSaved(name)}
+              onDelete={(name) => void deleteSaved(name)} />
           </div>
 
           {/* RIGHT — Exists: the rules the generator already knows (promoted rules land here) */}
