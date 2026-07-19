@@ -99,3 +99,35 @@ export function grammarRows(cfg: EcosonicConfig = defaultConfig): GrammarRow[] {
   }
   return rows;
 }
+
+export interface GrammarSpan {
+  mode: string;
+  category: (typeof CATEGORIES)[number];
+  enterCanon: number; enterHalf: number;
+  exit: number | 'MODULE_END'; exitHalf: number;
+  fadeIn: number; fadeOut: number;
+  present: number;
+  after: string | null;
+}
+
+/** Live grammar as numeric spans for the timeline view. UI ONLY — never in the analysis prompt. */
+export function grammarSpans(cfg: EcosonicConfig = defaultConfig): GrammarSpan[] {
+  const spans: GrammarSpan[] = [];
+  for (const mode of cfg.layerTwo.modes) {
+    const mr = cfg.layerTwo.generation.modeRules[mode];
+    for (const category of CATEGORIES) {
+      const r = mr[category];
+      if (!r) continue;
+      spans.push({
+        mode, category,
+        enterCanon: r.enter.canon, enterHalf: r.enter.half,
+        exit: r.exit === 'MODULE_END' ? 'MODULE_END' : r.exit.canon,
+        exitHalf: r.exit === 'MODULE_END' ? 0 : r.exit.half,
+        fadeIn: r.fadeIn.canon, fadeOut: r.fadeOut.canon,
+        present: r.present,
+        after: r.after ?? null,
+      });
+    }
+  }
+  return spans;
+}
