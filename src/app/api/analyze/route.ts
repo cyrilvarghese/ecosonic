@@ -7,6 +7,16 @@ export const runtime = 'nodejs';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
+// Audio models don't support `response_format: json_schema`, so we ask for JSON in the prompt and
+// pull the object out of the reply ourselves (tolerating markdown fences or stray prose).
+function extractJson(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = fenced ? fenced[1] : text;
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  return start >= 0 && end > start ? body.slice(start, end + 1) : body;
+}
+
 export async function GET() {
   return Response.json({ ready: Boolean(process.env.OPENAI_API_KEY) });
 }
@@ -51,14 +61,14 @@ export async function POST(req: Request) {
           role: 'user',
           content: [
             { type: 'input_audio', input_audio: { data, format } },
-            { type: 'text', text: 'Analyze this track and return JSON exactly per the schema.' },
+            {
+              type: 'text',
+              text: 'Analyze this track. Respond with ONLY a JSON object — no markdown, no prose — '
+                + 'that conforms to this JSON Schema:\n' + JSON.stringify(OPENAI_ANALYSIS_JSON_SCHEMA),
+            },
           ],
         },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'track_analysis', strict: true, schema: OPENAI_ANALYSIS_JSON_SCHEMA },
-      },
     }),
   });
   if (!res.ok) {
@@ -67,10 +77,13 @@ export async function POST(req: Request) {
   }
 
   const payload = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const content = payload.choices?.[0]?.message?.content ?? '';
   let result;
   try {
-    result = AnalysisResultSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? ''));
-  } catch {
+    result = AnalysisResultSchema.parse(JSON.parse(extractJson(content)));
+  } catch (err) {
+    console.error('[analyze] malformed analysis — raw model reply:\n', content);
+    console.error('[analyze] parse/validation error:\n', err);
     return Response.json({ error: 'model returned a malformed analysis' }, { status: 502 });
   }
   return Response.json({

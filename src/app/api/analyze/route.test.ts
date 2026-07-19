@@ -63,6 +63,25 @@ describe('/api/analyze', () => {
     const audioPart = sent.messages[1].content.find((p: { type: string }) => p.type === 'input_audio');
     expect(audioPart.input_audio.format).toBe('mp3');
   });
+  it('does not use json_schema response_format (audio models reject it) and embeds the shape in the prompt', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'k');
+    vi.stubGlobal('fetch', vi.fn(openAiOk));
+    await POST(upload('t.mp3', 'audio/mpeg'));
+    const sent = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    expect(sent.response_format).toBeUndefined();
+    const text = sent.messages[1].content.find((p: { type: string }) => p.type === 'text').text;
+    expect(text).toContain('observations'); // the JSON shape is described in-prompt now
+  });
+  it('extracts JSON from a markdown-fenced model reply', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'k');
+    const fenced = '```json\n' + JSON.stringify(analysisBody) + '\n```';
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({
+      choices: [{ message: { content: fenced } }],
+    }), { status: 200 }))));
+    const res = await POST(upload('t.mp3', 'audio/mpeg'));
+    expect(res.status).toBe(200);
+    expect((await res.json()).description).toContain('noise floor');
+  });
   it('happy path: classifies observations locally (ISO enter 75 confirms)', async () => {
     vi.stubEnv('OPENAI_API_KEY', 'k');
     vi.stubGlobal('fetch', vi.fn(openAiOk));
