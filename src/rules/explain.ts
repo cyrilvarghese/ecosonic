@@ -30,19 +30,24 @@ function grammarPhrase(mode: string, category: string, field: string, cfg: Ecoso
   return `${label} expects ${category} to ${verb} ${val} (±${Math.round(v.half)}s)`;
 }
 
-/** Turn a `relatedRule` token + verdict into a readable sentence. Pure.
+/** The rule's meaning as a readable phrase, WITHOUT a verdict prefix — for surfaces that already
+ *  show the verdict separately (e.g. the card badge). Pure. null when there is no rule.
  *  `grammar:MODE.CATEGORY.field` → the grammar's expectation; `R#`/`I#` → the principle's own words. */
+export function rulePhrase(relatedRule: string | null, cfg: EcosonicConfig = defaultConfig): string | null {
+  if (!relatedRule) return null;
+  if (relatedRule.startsWith('grammar:')) {
+    const [mode, category, field] = relatedRule.slice('grammar:'.length).split('.');
+    return grammarPhrase(mode, category, field, cfg) ?? relatedRule;
+  }
+  const principle = [...PRINCIPLES, ...INVARIANTS].find((r) => r.id === relatedRule);
+  if (principle) return `${principle.id} ${principle.title}: ${principle.text}`;
+  return relatedRule;
+}
+
+/** `rulePhrase` prefixed with the verdict — for surfaces with no separate verdict badge (chips). */
 export function explainRule(
   relatedRule: string | null, kind: CandidateRule['kind'], cfg: EcosonicConfig = defaultConfig,
 ): string {
-  const verdict = VERDICT[kind];
-  if (!relatedRule) return verdict;
-  if (relatedRule.startsWith('grammar:')) {
-    const [mode, category, field] = relatedRule.slice('grammar:'.length).split('.');
-    const phrase = grammarPhrase(mode, category, field, cfg);
-    return `${verdict} — ${phrase ?? relatedRule}`;
-  }
-  const principle = [...PRINCIPLES, ...INVARIANTS].find((r) => r.id === relatedRule);
-  if (principle) return `${verdict} — ${principle.id} ${principle.title}: ${principle.text}`;
-  return `${verdict} — ${relatedRule}`;
+  const phrase = rulePhrase(relatedRule, cfg);
+  return phrase ? `${VERDICT[kind]} — ${phrase}` : VERDICT[kind];
 }

@@ -1,5 +1,6 @@
 'use client';
 import type { CandidateRule } from '@/rules/analysisSchema';
+import { rulePhrase } from '@/rules/explain';
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
@@ -19,12 +20,14 @@ export function CandidateCard({
   onPromote: () => void;
 }) {
   const badge = BADGE[candidate.kind];
+  const phrase = rulePhrase(candidate.relatedRule);
   const promotable = keptId !== null && candidate.structured !== null && candidate.mode !== null;
   return (
     <div className="rounded-[var(--radius-md)] border border-border bg-card p-4">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.cls}`}>
-          {badge.label}{candidate.relatedRule ? ` ${candidate.relatedRule}` : ''}
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.cls}`}
+          title={candidate.relatedRule ?? undefined}>
+          {badge.label}
         </span>
         {candidate.layer && <span className="label">{candidate.layer}</span>}
         {candidate.structured && (
@@ -34,6 +37,7 @@ export function CandidateCard({
           {(candidate.confidence * 100).toFixed(0)}%
         </span>
       </div>
+      {phrase && <p className="mb-2 text-xs font-medium text-muted-foreground">{phrase}</p>}
       <p className="text-sm text-foreground">{candidate.text}</p>
       {candidate.evidence.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">

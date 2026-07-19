@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { explainRule } from '@/rules/explain';
+import { explainRule, rulePhrase } from '@/rules/explain';
 
 describe('explainRule', () => {
   it('grammar timing → verdict + expected absolute time', () => {
@@ -29,5 +29,21 @@ describe('explainRule', () => {
   });
   it('null rule → just the verdict word', () => {
     expect(explainRule(null, 'novel')).toBe('New');
+  });
+});
+
+describe('rulePhrase', () => {
+  it('grammar token → the expectation, without a verdict prefix', () => {
+    const s = rulePhrase('grammar:RETURN.DRONE.enter');
+    expect(s).toContain('Return');
+    expect(s).toContain('DRONE');
+    expect(s).toContain('enter');
+    expect(s).not.toMatch(/^(Contradicts|Confirms|New)/);
+  });
+  it('principle id → title and text, no verdict prefix', () => {
+    expect(rulePhrase('R7')).toBe('R7 Unbroken continuity: Noise never breaks; the bed covers every seam.');
+  });
+  it('null → null', () => {
+    expect(rulePhrase(null)).toBeNull();
   });
 });
