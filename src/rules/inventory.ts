@@ -73,6 +73,36 @@ export function buildSystemPrompt(): string {
   ].join('\n');
 }
 
+/** Blind text-analysis prompt: convert a WRITTEN description into per-mode structured observations.
+ *  Zero-arg — grammar numbers cannot reach the model. */
+export function buildTextPrompt(): string {
+  const vocab = CATEGORIES.map((c) => `- ${c}: ${LAYER_VOCABULARY[c]}`).join('\n');
+  return [
+    'You convert a WRITTEN description of a long-form ambient / meditation production into structured',
+    'observations. You are given text only — there is no audio.',
+    '',
+    'These productions have three ~10-minute sections, in order:',
+    '- INTRODUCTION — layers enter staggered and build.',
+    '- DEEP_RELAXATION — stripped back to the environmental bed.',
+    '- RETURN — mirrors the Introduction, then fades out.',
+    '',
+    'Layer roles:',
+    vocab,
+    '',
+    'Read the description and produce one `windows` entry for EACH section the text describes. Set its',
+    '`mode` to INTRODUCTION, DEEP_RELAXATION, or RETURN; give a short `description`; set `sections` to',
+    'null; and fill `observations` — testable statements about layer entrances, exits, and fades.',
+    '',
+    'All timing values inside `structured` are seconds measured from the START of that section (0:00):',
+    'enter/exit are positions within the section; fadeIn/fadeOut are durations; `present` is the',
+    'fraction (0 to 1) of the section the layer is audible. Use null for any value the text does not',
+    'state. Attach `structured` only when the text gives you something concrete; otherwise use null.',
+    '',
+    'Report only what the text says — never invent layers or timings.',
+    'Never claim psychological, therapeutic, or neurological effects.',
+  ].join('\n');
+}
+
 export interface GrammarRow {
   mode: string; category: string; enter: string; exit: string;
   fadeIn: string; fadeOut: string; present: string; after: string;

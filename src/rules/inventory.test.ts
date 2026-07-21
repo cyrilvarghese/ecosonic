@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PRINCIPLES, INVARIANTS, LAYER_VOCABULARY, buildSystemPrompt, grammarRows, grammarSpans } from '@/rules/inventory';
+import { PRINCIPLES, INVARIANTS, LAYER_VOCABULARY, buildSystemPrompt, buildTextPrompt, grammarRows, grammarSpans } from '@/rules/inventory';
 import { CATEGORIES } from '@/rules/analysisSchema';
 
 describe('inventory', () => {
@@ -32,6 +32,14 @@ describe('inventory', () => {
     const rows = grammarRows();
     expect(rows.some((r) => r.mode === 'INTRODUCTION' && r.category === 'ISO')).toBe(true);
     expect(rows.some((r) => r.category === 'DRONE')).toBe(true);
+  });
+  it('buildTextPrompt is blind, zero-arg, and names the three modes + every layer', () => {
+    expect(buildTextPrompt.length).toBe(0); // zero-arg — cannot receive config
+    const p = buildTextPrompt();
+    for (const m of ['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN']) expect(p).toContain(m);
+    for (const c of CATEGORIES) expect(p).toContain(c);
+    for (const n of ['540', '270', '390', '480', '570']) expect(p).not.toContain(n);
+    expect(p).toContain('Never claim psychological, therapeutic, or neurological effects');
   });
 });
 
