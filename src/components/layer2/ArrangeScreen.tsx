@@ -97,7 +97,7 @@ export function ArrangeScreen() {
         masterDb,
         onProgress: (f) => setRenderPct(f),
       });
-      downloadBlob(blob, `ecosonic-session.wav`);
+      downloadBlob(blob, el ? `session_${el}.wav` : 'session.wav');
     } catch {
       window.alert('Session WAV render failed — check the console for details.');
     } finally {

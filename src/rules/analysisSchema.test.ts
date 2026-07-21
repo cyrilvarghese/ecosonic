@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   AnalysisResultSchema, CandidateRuleSchema, DiscoveredRuleSchema,
-  OPENAI_ANALYSIS_JSON_SCHEMA,
+  OPENAI_ANALYSIS_JSON_SCHEMA, extractJsonObject,
 } from '@/rules/analysisSchema';
 
 export const observationFixture = {
@@ -61,5 +61,24 @@ describe('analysisSchema', () => {
       }
     };
     check(OPENAI_ANALYSIS_JSON_SCHEMA);
+  });
+});
+
+describe('extractJsonObject', () => {
+  const obj = '{"description":"x","sections":[]}';
+  it('returns a bare JSON object unchanged', () => {
+    expect(extractJsonObject(obj)).toBe(obj);
+  });
+  it('strips ```json code fences', () => {
+    expect(extractJsonObject('```json\n' + obj + '\n```')).toBe(obj);
+  });
+  it('strips plain ``` fences', () => {
+    expect(extractJsonObject('```\n' + obj + '\n```')).toBe(obj);
+  });
+  it('carves the object out of surrounding prose', () => {
+    expect(extractJsonObject('Here is the analysis:\n' + obj + '\nHope that helps!')).toBe(obj);
+  });
+  it('round-trips through JSON.parse after extraction', () => {
+    expect(JSON.parse(extractJsonObject('```json ' + obj + ' ```'))).toEqual({ description: 'x', sections: [] });
   });
 });

@@ -1,5 +1,5 @@
 import { config } from '@/config';
-import { AnalysisResultSchema, OPENAI_ANALYSIS_JSON_SCHEMA } from '@/rules/analysisSchema';
+import { AnalysisResultSchema, extractJsonObject } from '@/rules/analysisSchema';
 import { buildSystemPrompt } from '@/rules/inventory';
 import { classifyObservations } from '@/rules/match';
 
@@ -46,14 +46,15 @@ export async function POST(req: Request) {
           role: 'user',
           content: [
             { type: 'input_audio', input_audio: { data, format } },
-            { type: 'text', text: 'Analyze this track and return JSON exactly per the schema.' },
+            {
+              type: 'text',
+              // Audio models support neither json_schema nor json_object response_format,
+              // so we ask for raw JSON in the prompt and validate the reply with zod below.
+              text: 'Analyze this track and reply with ONLY the JSON object required by the schema — no prose, no markdown, no code fences.',
+            },
           ],
         },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'track_analysis', strict: true, schema: OPENAI_ANALYSIS_JSON_SCHEMA },
-      },
     }),
   });
   if (!res.ok) {
@@ -62,10 +63,13 @@ export async function POST(req: Request) {
   }
 
   const payload = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const raw = payload.choices?.[0]?.message?.content ?? '';
   let result;
   try {
-    result = AnalysisResultSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? ''));
-  } catch {
+    result = AnalysisResultSchema.parse(JSON.parse(extractJsonObject(raw)));
+  } catch (err) {
+    console.error('[analyze] malformed analysis — raw model reply:\n', raw);
+    console.error('[analyze] parse/validation error:\n', err);
     return Response.json({ error: 'model returned a malformed analysis' }, { status: 502 });
   }
   return Response.json({

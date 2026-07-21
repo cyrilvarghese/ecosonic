@@ -56,6 +56,18 @@ export const DiscoveredRuleSchema = CandidateRuleSchema.extend({
 export type DiscoveredRule = z.infer<typeof DiscoveredRuleSchema>;
 export const RegistrySchema = z.array(DiscoveredRuleSchema);
 
+/** Pull the JSON object out of a model reply. Audio models can't be constrained by
+ *  response_format, so replies may arrive fenced (```json … ```) or wrapped in prose —
+ *  strip fences and, failing that, take the outermost { … } span. */
+export function extractJsonObject(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const body = (fenced ? fenced[1] : text).trim();
+  if (body.startsWith('{')) return body;
+  const first = body.indexOf('{');
+  const last = body.lastIndexOf('}');
+  return first !== -1 && last > first ? body.slice(first, last + 1) : body;
+}
+
 // ---- OpenAI strict response schema (hand-written: strict mode needs additionalProperties:false
 // and every property required; zod→JSONSchema emission isn't guaranteed to satisfy that). ----
 const jRange = {

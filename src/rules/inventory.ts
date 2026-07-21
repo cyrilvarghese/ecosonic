@@ -1,5 +1,5 @@
 import { config as defaultConfig, type EcosonicConfig } from '@/config';
-import { CATEGORIES } from '@/rules/analysisSchema';
+import { CATEGORIES, OPENAI_ANALYSIS_JSON_SCHEMA } from '@/rules/analysisSchema';
 
 export interface RuleText { id: string; title: string; text: string; keywords: string[] }
 
@@ -67,6 +67,16 @@ export function buildSystemPrompt(): string {
     '',
     'Describe compositional mechanics only (what happens, when).',
     'Never claim psychological, therapeutic, or neurological effects.',
+    '',
+    'Reply with ONLY a JSON object — no prose, no markdown, no code fences — conforming EXACTLY',
+    'to this JSON Schema. Use these exact field names and include every required key (use null',
+    'where a value is unknown, never omit keys):',
+    JSON.stringify(OPENAI_ANALYSIS_JSON_SCHEMA),
+    '',
+    'Put your prose summary in `description`, the section boundaries in `sections` (each with',
+    '`startSec` + `label`), and every layer observation in the top-level `observations` array',
+    '(NOT nested inside sections). Each observation uses `layer` (one of the roles above),',
+    '`text`, `sectionIndex`, `structured`, `evidence`, and `confidence`.',
   ].join('\n');
 }
 
