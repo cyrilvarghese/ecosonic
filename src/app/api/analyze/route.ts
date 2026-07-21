@@ -1,11 +1,21 @@
 import { config } from '@/config';
-import { AnalysisResultSchema, extractJsonObject } from '@/rules/analysisSchema';
+import { AnalysisResultSchema, MODES, OPENAI_ANALYSIS_JSON_SCHEMA } from '@/rules/analysisSchema';
 import { buildSystemPrompt } from '@/rules/inventory';
 import { classifyObservations } from '@/rules/match';
 
 export const runtime = 'nodejs';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Audio models don't support `response_format: json_schema`, so we ask for JSON in the prompt and
+// pull the object out of the reply ourselves (tolerating markdown fences or stray prose).
+function extractJson(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = fenced ? fenced[1] : text;
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  return start >= 0 && end > start ? body.slice(start, end + 1) : body;
+}
 
 export async function GET() {
   return Response.json({ ready: Boolean(process.env.OPENAI_API_KEY) });
@@ -19,6 +29,11 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file');
   if (!(file instanceof File)) return Response.json({ error: 'file field required' }, { status: 400 });
+
+  const mode = form.get('mode');
+  if (typeof mode !== 'string' || !(MODES as readonly string[]).includes(mode)) {
+    return Response.json({ error: 'mode must be one of INTRODUCTION, DEEP_RELAXATION, RETURN' }, { status: 400 });
+  }
 
   // MPEG audio (.mp3/.mpeg, audio/mpeg) → OpenAI's "mp3" format; WAV → "wav".
   const name = file.name.toLowerCase();
@@ -48,9 +63,8 @@ export async function POST(req: Request) {
             { type: 'input_audio', input_audio: { data, format } },
             {
               type: 'text',
-              // Audio models support neither json_schema nor json_object response_format,
-              // so we ask for raw JSON in the prompt and validate the reply with zod below.
-              text: 'Analyze this track and reply with ONLY the JSON object required by the schema — no prose, no markdown, no code fences.',
+              text: 'Analyze this track. Respond with ONLY a JSON object — no markdown, no prose — '
+                + 'that conforms to this JSON Schema:\n' + JSON.stringify(OPENAI_ANALYSIS_JSON_SCHEMA),
             },
           ],
         },
@@ -63,18 +77,19 @@ export async function POST(req: Request) {
   }
 
   const payload = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  const raw = payload.choices?.[0]?.message?.content ?? '';
+  const content = payload.choices?.[0]?.message?.content ?? '';
   let result;
   try {
-    result = AnalysisResultSchema.parse(JSON.parse(extractJsonObject(raw)));
+    result = AnalysisResultSchema.parse(JSON.parse(extractJson(content)));
   } catch (err) {
-    console.error('[analyze] malformed analysis — raw model reply:\n', raw);
+    console.error('[analyze] malformed analysis — raw model reply:\n', content);
     console.error('[analyze] parse/validation error:\n', err);
     return Response.json({ error: 'model returned a malformed analysis' }, { status: 502 });
   }
   return Response.json({
+    mode,
     description: result.description,
     sections: result.sections,
-    candidates: classifyObservations(result),
+    candidates: classifyObservations(result, mode as (typeof MODES)[number]),
   });
 }

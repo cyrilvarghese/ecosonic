@@ -47,23 +47,26 @@ export function buildSystemPrompt(): string {
   return [
     'You are an expert analyst of long-form ambient / meditation productions.',
     '',
-    'Describe the uploaded track as a chronological, section-by-section narrative of layer',
-    'entrances, exits, and fades, with approximate mm:ss timestamps. Example of the format',
-    '(numbers are illustrative only, from a different production):',
+    'Describe the uploaded track as a chronological narrative of layer entrances, exits, and fades,',
+    'with approximate mm:ss timestamps. Example of the format (numbers are illustrative only, from a',
+    'different production):',
     '"The piece opens on a rain bed. Around 0:45 a low drone swells in over roughly 50 seconds.',
-    'Near 2:10 a sparse bell melody appears, and a second section begins around 4:20 as the',
-    'texture thins."',
+    'Near 2:10 a sparse bell melody appears, and the texture thins around 4:20."',
     '',
     'Listen for these layer roles:',
     vocab,
     '',
     'Then report observations as testable statements with timestamp evidence. Report everything',
     'notable, including patterns that may seem unremarkable — you have no knowledge of what is',
-    'expected, and unremarkable regularities are valuable. If the track has distinct sections,',
-    'list them in `sections` and set each observation\'s `sectionIndex` (1-based); timing values',
-    'inside `structured` are then relative to that section\'s start, otherwise relative to the',
-    'track start. Attach `structured` timings only when you can honestly express the pattern as',
-    'numbers (canon = the value you heard, half = your uncertainty in seconds); otherwise use null.',
+    'expected, and unremarkable regularities are valuable.',
+    '',
+    'This audio is a SINGLE continuous ~10-minute section. Report every timestamp — in prose, in',
+    'evidence, and inside `structured` — as an absolute offset from 0:00 of this audio. Do NOT',
+    'subdivide it: leave `sections` null and every observation\'s `sectionIndex` null. Attach',
+    '`structured` timings only when you can honestly express the pattern as numbers (canon = the',
+    'value you heard in seconds from 0:00, half = your uncertainty in seconds); otherwise use null.',
+    'The `present` field is NOT a duration — it is the fraction of the section, from 0 to 1, that the',
+    'layer is audible (1 means it sounds throughout, ~0.3 means only briefly); use null if unsure.',
     '',
     'Describe compositional mechanics only (what happens, when).',
     'Never claim psychological, therapeutic, or neurological effects.',
@@ -77,6 +80,36 @@ export function buildSystemPrompt(): string {
     '`startSec` + `label`), and every layer observation in the top-level `observations` array',
     '(NOT nested inside sections). Each observation uses `layer` (one of the roles above),',
     '`text`, `sectionIndex`, `structured`, `evidence`, and `confidence`.',
+  ].join('\n');
+}
+
+/** Blind text-analysis prompt: convert a WRITTEN description into per-mode structured observations.
+ *  Zero-arg — grammar numbers cannot reach the model. */
+export function buildTextPrompt(): string {
+  const vocab = CATEGORIES.map((c) => `- ${c}: ${LAYER_VOCABULARY[c]}`).join('\n');
+  return [
+    'You convert a WRITTEN description of a long-form ambient / meditation production into structured',
+    'observations. You are given text only — there is no audio.',
+    '',
+    'These productions have three ~10-minute sections, in order:',
+    '- INTRODUCTION — layers enter staggered and build.',
+    '- DEEP_RELAXATION — stripped back to the environmental bed.',
+    '- RETURN — mirrors the Introduction, then fades out.',
+    '',
+    'Layer roles:',
+    vocab,
+    '',
+    'Read the description and produce one `windows` entry for EACH section the text describes. Set its',
+    '`mode` to INTRODUCTION, DEEP_RELAXATION, or RETURN; give a short `description`; set `sections` to',
+    'null; and fill `observations` — testable statements about layer entrances, exits, and fades.',
+    '',
+    'All timing values inside `structured` are seconds measured from the START of that section (0:00):',
+    'enter/exit are positions within the section; fadeIn/fadeOut are durations; `present` is the',
+    'fraction (0 to 1) of the section the layer is audible. Use null for any value the text does not',
+    'state. Attach `structured` only when the text gives you something concrete; otherwise use null.',
+    '',
+    'Report only what the text says — never invent layers or timings.',
+    'Never claim psychological, therapeutic, or neurological effects.',
   ].join('\n');
 }
 
@@ -105,4 +138,36 @@ export function grammarRows(cfg: EcosonicConfig = defaultConfig): GrammarRow[] {
     }
   }
   return rows;
+}
+
+export interface GrammarSpan {
+  mode: string;
+  category: (typeof CATEGORIES)[number];
+  enterCanon: number; enterHalf: number;
+  exit: number | 'MODULE_END'; exitHalf: number;
+  fadeIn: number; fadeOut: number;
+  present: number;
+  after: string | null;
+}
+
+/** Live grammar as numeric spans for the timeline view. UI ONLY — never in the analysis prompt. */
+export function grammarSpans(cfg: EcosonicConfig = defaultConfig): GrammarSpan[] {
+  const spans: GrammarSpan[] = [];
+  for (const mode of cfg.layerTwo.modes) {
+    const mr = cfg.layerTwo.generation.modeRules[mode];
+    for (const category of CATEGORIES) {
+      const r = mr[category];
+      if (!r) continue;
+      spans.push({
+        mode, category,
+        enterCanon: r.enter.canon, enterHalf: r.enter.half,
+        exit: r.exit === 'MODULE_END' ? 'MODULE_END' : r.exit.canon,
+        exitHalf: r.exit === 'MODULE_END' ? 0 : r.exit.half,
+        fadeIn: r.fadeIn.canon, fadeOut: r.fadeOut.canon,
+        present: r.present,
+        after: r.after ?? null,
+      });
+    }
+  }
+  return spans;
 }

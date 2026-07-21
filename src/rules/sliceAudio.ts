@@ -1,0 +1,98 @@
+import { config } from '@/config';
+import type { Mode } from '@/arrange/types';
+
+const MODE_ORDER: readonly Mode[] = ['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN'];
+
+/** Fixed 10-min clock windows. Drops any window that starts past the track end;
+ *  clamps the final window's end to the track duration. Pure. */
+export function sliceWindows(
+  durationSec: number,
+  moduleSeconds: number = config.layerTwo.moduleSeconds,
+): Array<{ mode: Mode; startSec: number; endSec: number }> {
+  const out: Array<{ mode: Mode; startSec: number; endSec: number }> = [];
+  for (let i = 0; i < MODE_ORDER.length; i++) {
+    const startSec = i * moduleSeconds;
+    if (startSec >= durationSec) break;
+    const endSec = Math.min((i + 1) * moduleSeconds, durationSec);
+    out.push({ mode: MODE_ORDER[i], startSec, endSec });
+  }
+  return out;
+}
+
+/** Minimal 16-bit PCM WAV encoder — no deps. Interleaves channels. */
+export function encodeWav(channels: Float32Array[], sampleRate: number): Blob {
+  const numChannels = channels.length;
+  const frames = channels[0]?.length ?? 0;
+  const buffer = new ArrayBuffer(44 + frames * numChannels * 2);
+  const view = new DataView(buffer);
+  const writeStr = (offset: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i));
+  };
+  const byteRate = sampleRate * numChannels * 2;
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + frames * numChannels * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);       // PCM chunk size
+  view.setUint16(20, 1, true);        // audio format = PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, numChannels * 2, true); // block align
+  view.setUint16(34, 16, true);       // bits per sample
+  writeStr(36, 'data');
+  view.setUint32(40, frames * numChannels * 2, true);
+  let offset = 44;
+  for (let f = 0; f < frames; f++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const s = Math.max(-1, Math.min(1, channels[ch][f]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+/** OpenAI audio input + our own 25 MB maxUploadBytes cap can't take a raw 44.1 kHz WAV (a 10-min
+ *  mono window is ~50 MB). Render to 16 kHz mono → ~18 MB/window; Nyquist 8 kHz still resolves
+ *  every layer role the model listens for. */
+const TARGET_RATE = 16000;
+
+const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+
+/** Browser-only: decode once, then render each mode window to a 16 kHz mono WAV blob.
+ *  decodeAudioData holds the whole file as float PCM briefly (~0.5 GB for a 30-min track) — fine
+ *  for a one-off on desktop. Logs the split and each rendered window under `[three-pass]`. */
+export async function sliceAudio(file: File): Promise<Array<{ mode: Mode; blob: Blob }>> {
+  const Ctx: typeof AudioContext =
+    window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new Ctx();
+  let decoded: AudioBuffer;
+  try {
+    decoded = await ctx.decodeAudioData(await file.arrayBuffer());
+  } finally {
+    void ctx.close();
+  }
+
+  const windows = sliceWindows(decoded.duration);
+  console.info(
+    `[three-pass] decoded "${file.name}" — ${clock(decoded.duration)}, ${decoded.sampleRate} Hz, ` +
+    `${decoded.numberOfChannels}ch → split into ${windows.length} window(s):`,
+  );
+  for (const { mode, startSec, endSec } of windows) {
+    console.info(`[three-pass]   ${mode}: ${clock(startSec)}–${clock(endSec)}`);
+  }
+
+  return Promise.all(windows.map(async ({ mode, startSec, endSec }) => {
+    const frames = Math.max(1, Math.ceil((endSec - startSec) * TARGET_RATE));
+    const offline = new OfflineAudioContext(1, frames, TARGET_RATE);
+    const src = offline.createBufferSource();
+    src.buffer = decoded;                      // resampled to TARGET_RATE on render
+    src.connect(offline.destination);          // stereo → mono (destination is 1-channel)
+    src.start(0, startSec, endSec - startSec);
+    const rendered = await offline.startRendering();
+    const blob = encodeWav([rendered.getChannelData(0)], TARGET_RATE);
+    console.info(`[three-pass]   rendered ${mode} → ${(blob.size / 1048576).toFixed(1)} MB @ ${TARGET_RATE} Hz mono`);
+    return { mode, blob };
+  }));
+}

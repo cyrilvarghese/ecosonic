@@ -1,44 +1,76 @@
 'use client';
 import { useRef, useState } from 'react';
-import { config } from '@/config';
+import type { Mode } from '@/arrange/types';
+import { sliceAudio } from '@/rules/sliceAudio';
 
-export interface AnalyzeResponse {
-  description: string;
-  sections: Array<{ startSec: number; label: string }> | null;
-  candidates: unknown[];
-}
+export type WindowResult =
+  | { mode: Mode; ok: true; description: string; sections: Array<{ startSec: number; label: string }> | null; candidates: unknown[] }
+  | { mode: Mode; ok: false; error: string };
+
+// The original file is decoded in-browser and never uploaded (only ~18 MB slices are), so this is a
+// memory guard on decodeAudioData, not the OpenAI/route upload cap.
+const MAX_DECODE_BYTES = 150 * 1048576;
 
 export function AnalyzePanel({
   ready, onResult,
 }: {
   ready: boolean | null; // null = probing
-  onResult: (r: AnalyzeResponse, fileName: string) => void;
+  onResult: (results: WindowResult[], fileName: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
 
   const analyze = async (file: File) => {
     setError(null);
     if (!/\.(mp3|mpeg|wav)$/i.test(file.name)) { setError('MP3, MPEG, or WAV only.'); return; }
-    if (file.size > config.analysis.maxUploadBytes) {
-      setError(`File is ${(file.size / 1048576).toFixed(1)} MB — the limit is ` +
-        `${Math.round(config.analysis.maxUploadBytes / 1048576)} MB. Re-encode around 128 kbps mono.`);
+    if (file.size > MAX_DECODE_BYTES) {
+      setError(`File is ${(file.size / 1048576).toFixed(1)} MB — too large to decode in the browser ` +
+        `(limit ${Math.round(MAX_DECODE_BYTES / 1048576)} MB).`);
       return;
     }
     setBusy(true);
     try {
-      const form = new FormData();
-      form.set('file', file);
-      const res = await fetch('/api/analyze', { method: 'POST', body: form });
-      const body = await res.json();
-      if (!res.ok) { setError(body.error ?? `Analysis failed (${res.status})`); return; }
-      onResult(body as AnalyzeResponse, file.name);
-    } catch (e) {
-      setError((e as Error).message);
+      console.info(`[three-pass] analyzing "${file.name}" (${(file.size / 1048576).toFixed(1)} MB)`);
+      let windows: Array<{ mode: Mode; blob: Blob }>;
+      try {
+        setProgress('Decoding audio…');
+        windows = await sliceAudio(file);
+      } catch {
+        setError('Could not decode this audio file.'); return;
+      }
+      if (windows.length === 0) { setError('Track is too short to analyze.'); return; }
+
+      let done = 0;
+      // Each window resolves to a WindowResult and never throws → true per-tab isolation.
+      const results = await Promise.all(windows.map(async ({ mode, blob }): Promise<WindowResult> => {
+        try {
+          console.info(`[three-pass] → POST /api/analyze (${mode})`);
+          const form = new FormData();
+          form.set('file', new File([blob], `${file.name}.${mode}.wav`, { type: 'audio/wav' }));
+          form.set('mode', mode);
+          const res = await fetch('/api/analyze', { method: 'POST', body: form });
+          const body = await res.json();
+          setProgress(`Analyzed ${++done} of ${windows.length}…`);
+          if (!res.ok) {
+            console.warn(`[three-pass] ✗ ${mode}: ${body.error ?? res.status}`);
+            return { mode, ok: false, error: body.error ?? `Analysis failed (${res.status})` };
+          }
+          console.info(`[three-pass] ✓ ${mode}: ${body.candidates?.length ?? 0} candidate(s)`);
+          return { mode, ok: true, description: body.description, sections: body.sections, candidates: body.candidates };
+        } catch (e) {
+          setProgress(`Analyzed ${++done} of ${windows.length}…`);
+          console.warn(`[three-pass] ✗ ${mode}: ${(e as Error).message}`);
+          return { mode, ok: false, error: (e as Error).message };
+        }
+      }));
+      console.info(`[three-pass] done — ${results.filter((r) => r.ok).length}/${results.length} window(s) analyzed`);
+      onResult(results, file.name);
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -46,9 +78,9 @@ export function AnalyzePanel({
     <section className="rounded-[var(--radius-md)] border border-border bg-card p-4">
       <h2 className="mb-1 text-sm font-medium">Analyze a reference track</h2>
       <p className="mb-3 text-xs text-muted-foreground">
-        MP3/WAV up to {Math.round(config.analysis.maxUploadBytes / 1048576)} MB. The model hears the
-        audio blind — it is told what layers sound like, never the house rules. Timings on long
-        tracks are approximate; the Keep gate is the filter.
+        MP3/WAV up to {Math.round(MAX_DECODE_BYTES / 1048576)} MB. The track is split into three
+        10-minute passes — Introduction, Deep Relaxation, Return — each heard blind and checked
+        against that section&apos;s grammar.
       </p>
       {ready === false && (
         <p className="mb-3 rounded bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
@@ -66,7 +98,7 @@ export function AnalyzePanel({
           {busy ? 'Analyzing…' : picked ? 'Analyze another track' : 'Choose a track'}
         </button>
         {busy
-          ? <span className="text-xs text-muted-foreground">a long track can take a minute…</span>
+          ? <span className="text-xs text-muted-foreground">{progress ?? 'working…'}</span>
           : picked && <span className="text-xs text-muted-foreground">{picked}</span>}
       </div>
       {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}

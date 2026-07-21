@@ -12,7 +12,10 @@ const ExitWire = z.union([GenRangeWire, z.literal('MODULE_END')]);
 
 // Wire optionality is `null`, never absent — OpenAI strict structured outputs require every key.
 const PatchWire = z.object({
-  present: z.number().min(0).max(1).nullable(),
+  // `present` is a 0-1 fraction. OpenAI strict schemas can't enforce numeric bounds, and the model
+  // sometimes emits it as seconds — coerce anything out of range to null so one bad field doesn't
+  // fail the whole analysis, rather than validating the entire track away.
+  present: z.number().min(0).max(1).nullable().catch(null),
   enter: GenRangeWire.nullable(),
   exit: ExitWire.nullable(),
   fadeIn: GenRangeWire.nullable(),
@@ -56,17 +59,22 @@ export const DiscoveredRuleSchema = CandidateRuleSchema.extend({
 export type DiscoveredRule = z.infer<typeof DiscoveredRuleSchema>;
 export const RegistrySchema = z.array(DiscoveredRuleSchema);
 
-/** Pull the JSON object out of a model reply. Audio models can't be constrained by
- *  response_format, so replies may arrive fenced (```json … ```) or wrapped in prose —
- *  strip fences and, failing that, take the outermost { … } span. */
-export function extractJsonObject(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const body = (fenced ? fenced[1] : text).trim();
-  if (body.startsWith('{')) return body;
-  const first = body.indexOf('{');
-  const last = body.lastIndexOf('}');
-  return first !== -1 && last > first ? body.slice(first, last + 1) : body;
-}
+/** A saved, reloadable analysis — the full per-window result, keyed by file name. */
+export const SavedWindowSchema = z.object({
+  mode: z.enum(MODES),
+  description: z.string(),
+  sections: z.array(z.object({ startSec: z.number(), label: z.string() })).nullable(),
+  candidates: z.array(CandidateRuleSchema),
+});
+export const SavedAnalysisSchema = z.object({
+  fileName: z.string().min(1),
+  savedAt: z.string(),
+  model: z.string(),
+  windows: z.array(SavedWindowSchema),
+});
+export const AnalysisStoreSchema = z.array(SavedAnalysisSchema);
+export type SavedWindow = z.infer<typeof SavedWindowSchema>;
+export type SavedAnalysis = z.infer<typeof SavedAnalysisSchema>;
 
 // ---- OpenAI strict response schema (hand-written: strict mode needs additionalProperties:false
 // and every property required; zod→JSONSchema emission isn't guaranteed to satisfy that). ----
@@ -138,6 +146,36 @@ export const OPENAI_ANALYSIS_JSON_SCHEMA = {
             },
           },
           confidence: { type: 'number' },
+        },
+      },
+    },
+  },
+} as const;
+
+/** One per-mode result inside a text analysis (audio's AnalysisResult + which mode it is). */
+export const TextWindowSchema = AnalysisResultSchema.extend({ mode: z.enum(MODES) });
+export const TextAnalysisSchema = z.object({ windows: z.array(TextWindowSchema) });
+export type TextWindow = z.infer<typeof TextWindowSchema>;
+export type TextAnalysis = z.infer<typeof TextAnalysisSchema>;
+
+// Strict OpenAI schema for the text path: reuse the audio observation/sections/description
+// sub-schemas verbatim, wrapped in { windows: [ { mode, description, sections, observations } ] }.
+const { description: jDescription, sections: jSections, observations: jObservations } =
+  OPENAI_ANALYSIS_JSON_SCHEMA.properties;
+export const OPENAI_TEXT_ANALYSIS_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['windows'],
+  properties: {
+    windows: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        required: ['mode', 'description', 'sections', 'observations'],
+        properties: {
+          mode: { type: 'string', enum: [...MODES] },
+          description: jDescription,
+          sections: jSections,
+          observations: jObservations,
         },
       },
     },

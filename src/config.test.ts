@@ -14,7 +14,7 @@ const valid = {
     ARP: { min: 1, max: 1 }, MELODY: { min: 1, max: 1 }, FX: { min: 1, max: 2 },
   },
   motion: { durFastMs: 200, durMs: 400, durSlowMs: 800 },
-  analysis: { model: 'gpt-audio-1.5', maxUploadBytes: 26214400 },
+  analysis: { model: 'gpt-audio-1.5', textModel: 'gpt-5.6-luna', maxUploadBytes: 26214400 },
   layerTwo: {
     moduleSeconds: 600, bridgeSeconds: 120, regionFadeSeconds: 12, secondElementEnterSec: 300,
     peakFrac: 0.5, schedulerTickMs: 250, durationPresetsMin: [10, 20, 30, 40],
@@ -106,6 +106,7 @@ describe('config', () => {
   });
   it('parses the analysis block', () => {
     expect(config.analysis.model).toBe('gpt-audio-1.5');
+    expect(config.analysis.textModel).toBe('gpt-5.6-luna');
     expect(config.analysis.maxUploadBytes).toBe(26214400);
   });
   it('rejects a non-positive maxUploadBytes', () => {

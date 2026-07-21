@@ -1,5 +1,7 @@
 'use client';
-import { INVARIANTS, PRINCIPLES, grammarRows } from '@/rules/inventory';
+import { useState } from 'react';
+import { INVARIANTS, PRINCIPLES, grammarRows, grammarSpans } from '@/rules/inventory';
+import { GrammarTimeline } from '@/components/rules/GrammarTimeline';
 import type { DiscoveredRule } from '@/rules/analysisSchema';
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
@@ -19,6 +21,8 @@ export function RuleLibrary({
   onDiscard: (id: string) => void;
 }) {
   const rows = grammarRows();
+  const spans = grammarSpans();
+  const [grammarView, setGrammarView] = useState<'table' | 'timeline'>('timeline');
   return (
     <section className="flex flex-col gap-2">
       <Group title="Principles (R1–R9)">
@@ -42,27 +46,41 @@ export function RuleLibrary({
         </ul>
       </Group>
       <Group title="Live grammar (what Generate draws from)">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs tabular-nums">
-            <thead className="text-left text-muted-foreground">
-              <tr>
-                <th className="pr-3">mode</th><th className="pr-3">layer</th><th className="pr-3">enter</th>
-                <th className="pr-3">exit</th><th className="pr-3">fadeIn</th><th className="pr-3">fadeOut</th>
-                <th className="pr-3">present</th><th>after</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={i} className="border-t border-border">
-                  <td className="pr-3">{r.mode}</td><td className="pr-3">{r.category}</td>
-                  <td className="pr-3">{r.enter}</td><td className="pr-3">{r.exit}</td>
-                  <td className="pr-3">{r.fadeIn}</td><td className="pr-3">{r.fadeOut}</td>
-                  <td className="pr-3">{r.present}</td><td>{r.after}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mb-2 flex gap-1">
+          {(['timeline', 'table'] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setGrammarView(v)}
+              className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${
+                grammarView === v ? 'border-[var(--accent)] text-[var(--accent-ink)]' : 'border-border text-muted-foreground'
+              }`}>
+              {v}
+            </button>
+          ))}
         </div>
+        {grammarView === 'timeline' ? (
+          <GrammarTimeline spans={spans} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs tabular-nums">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="pr-3">mode</th><th className="pr-3">layer</th><th className="pr-3">enter</th>
+                  <th className="pr-3">exit</th><th className="pr-3">fadeIn</th><th className="pr-3">fadeOut</th>
+                  <th className="pr-3">present</th><th>after</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} className="border-t border-border">
+                    <td className="pr-3">{r.mode}</td><td className="pr-3">{r.category}</td>
+                    <td className="pr-3">{r.enter}</td><td className="pr-3">{r.exit}</td>
+                    <td className="pr-3">{r.fadeIn}</td><td className="pr-3">{r.fadeOut}</td>
+                    <td className="pr-3">{r.present}</td><td>{r.after}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Group>
       <Group title={`Discovered (${discovered.length})`}>
         {discovered.length === 0 && (
