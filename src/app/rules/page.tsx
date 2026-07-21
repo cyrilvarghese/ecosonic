@@ -5,6 +5,7 @@ import { config } from '@/config';
 import type { Mode } from '@/arrange/types';
 import type { CandidateRule, DiscoveredRule } from '@/rules/analysisSchema';
 import { AnalyzePanel, type WindowResult } from '@/components/rules/AnalyzePanel';
+import { AnalyzeTextPanel } from '@/components/rules/AnalyzeTextPanel';
 import { AnalysisTimeline } from '@/components/rules/AnalysisTimeline';
 import { CandidateCard } from '@/components/rules/CandidateCard';
 import { RuleLibrary } from '@/components/rules/RuleLibrary';
@@ -142,6 +143,7 @@ export default function RulesPage() {
               </p>
             </div>
             <AnalyzePanel ready={ready} onResult={onResult} />
+            <AnalyzeTextPanel ready={ready} onResult={onResult} />
             {actionError && <p className="text-sm text-red-600 dark:text-red-400">{actionError}</p>}
             {groups.length > 0 && (
               <section className="flex flex-col gap-3">
