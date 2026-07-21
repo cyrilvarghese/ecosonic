@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   AnalysisResultSchema, CandidateRuleSchema, DiscoveredRuleSchema,
-  OPENAI_ANALYSIS_JSON_SCHEMA,
+  OPENAI_ANALYSIS_JSON_SCHEMA, TextAnalysisSchema, OPENAI_TEXT_ANALYSIS_JSON_SCHEMA,
 } from '@/rules/analysisSchema';
 
 export const observationFixture = {
@@ -76,5 +76,29 @@ describe('analysisSchema', () => {
       }
     };
     check(OPENAI_ANALYSIS_JSON_SCHEMA);
+  });
+});
+
+describe('text analysis schema', () => {
+  const window_ = { mode: 'INTRODUCTION' as const, ...resultFixture };
+  it('accepts a windows[] payload of per-mode results', () => {
+    const parsed = TextAnalysisSchema.parse({ windows: [window_] });
+    expect(parsed.windows[0].mode).toBe('INTRODUCTION');
+    expect(parsed.windows[0].observations).toHaveLength(1);
+  });
+  it('rejects an unknown mode', () => {
+    expect(TextAnalysisSchema.safeParse({ windows: [{ ...window_, mode: 'CODA' }] }).success).toBe(false);
+  });
+  it('OpenAI text schema is strict-compatible (all objects require every property)', () => {
+    const check = (node: unknown): void => {
+      if (typeof node !== 'object' || node === null) return;
+      const o = node as Record<string, unknown>;
+      if (o.type === 'object') {
+        expect(o.additionalProperties).toBe(false);
+        expect((o.required as string[]).slice().sort()).toEqual(Object.keys(o.properties as object).sort());
+      }
+      for (const v of Object.values(o)) { if (Array.isArray(v)) v.forEach(check); else check(v); }
+    };
+    check(OPENAI_TEXT_ANALYSIS_JSON_SCHEMA);
   });
 });

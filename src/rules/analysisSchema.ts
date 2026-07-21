@@ -151,3 +151,33 @@ export const OPENAI_ANALYSIS_JSON_SCHEMA = {
     },
   },
 } as const;
+
+/** One per-mode result inside a text analysis (audio's AnalysisResult + which mode it is). */
+export const TextWindowSchema = AnalysisResultSchema.extend({ mode: z.enum(MODES) });
+export const TextAnalysisSchema = z.object({ windows: z.array(TextWindowSchema) });
+export type TextWindow = z.infer<typeof TextWindowSchema>;
+export type TextAnalysis = z.infer<typeof TextAnalysisSchema>;
+
+// Strict OpenAI schema for the text path: reuse the audio observation/sections/description
+// sub-schemas verbatim, wrapped in { windows: [ { mode, description, sections, observations } ] }.
+const { description: jDescription, sections: jSections, observations: jObservations } =
+  OPENAI_ANALYSIS_JSON_SCHEMA.properties;
+export const OPENAI_TEXT_ANALYSIS_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['windows'],
+  properties: {
+    windows: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        required: ['mode', 'description', 'sections', 'observations'],
+        properties: {
+          mode: { type: 'string', enum: [...MODES] },
+          description: jDescription,
+          sections: jSections,
+          observations: jObservations,
+        },
+      },
+    },
+  },
+} as const;
