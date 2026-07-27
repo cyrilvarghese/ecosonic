@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import type { AudioEngine } from '@/audio/AudioEngine';
 import { arrangementStore } from '@/arrange/arrangementStore';
-import { regionEnvAt } from '@/arrange/regionEnv';
+import { regionAt, regionEnvAt } from '@/arrange/regionEnv';
 import { config } from '@/config';
 
 /** Loop the module clock and control each track's PLAYBACK: when the playhead enters a
@@ -56,8 +56,9 @@ export function useModuleScheduler(engine: AudioEngine): void {
         if (doTick) sinceTick = 0;
 
         for (const track of st.tracks) {
-          const region = st.moduleRegions.find((r) => r.trackId === track.id);
-          const inside = !!region && pos >= region.enterSec && pos < region.exitSec;
+          // Whichever phrase is under the playhead — a free-mix rule can contribute several.
+          const region = regionAt(st.moduleRegions, track.id, pos);
+          const inside = !!region;
           const was = active.has(track.id);
           if (inside && region && (!was || resync)) {
             active.add(track.id);
