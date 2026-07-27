@@ -59,6 +59,17 @@ describe('parseSessionTimeline', () => {
     expect(mel.phrases.map((p) => [p.enterSec, p.exitSec])).toEqual([[165, 273], [327, 435]]);
   });
 
+  it('stamps every rule with the session it came from', () => {
+    const { rules } = parseSessionTimeline(md, 'WATER', 'water-ocean-drift');
+    expect(rules.length).toBeGreaterThan(0);
+    expect(rules.every((r) => r.source.sessionId === 'water-ocean-drift')).toBe(true);
+  });
+
+  it('falls back to the element when no session id is given', () => {
+    const { rules } = parseSessionTimeline(md, 'WATER');
+    expect(rules[0].source.sessionId).toBe('WATER');
+  });
+
   it('records the section window start each rule was authored in', () => {
     const air = `## Section 2 - Deep Relaxation (9:30-19:00)
 

@@ -33,6 +33,10 @@ function spansFrom(starts: string, endClock: number | null, sectionEnd: number) 
 export function parseSessionTimeline(
   md: string,
   element: ElementName,
+  /** Which session these rules came from — an element may have several, and a rule has to name its
+   *  own or they are indistinguishable in the pool. Defaults to the element for callers that have
+   *  no file behind them. */
+  sessionId: string = element,
 ): { rules: AuthoredRule[]; warnings: string[] } {
   const rules: AuthoredRule[] = [];
   const warnings: string[] = [];
@@ -98,7 +102,7 @@ export function parseSessionTimeline(
         section,
         sectionStartSec: sectionStart,
         phrases,
-        source: { element, sessionId: element, track: name },
+        source: { element, sessionId, track: name },
       };
       byKey.set(key, rule);
       rules.push(rule);

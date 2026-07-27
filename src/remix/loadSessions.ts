@@ -17,7 +17,13 @@ export function elementFromFilename(name: string): ElementName | null {
  *
  *  Everything outside `[a-z0-9]` becomes a hyphen, which also makes the result path-safe — a name
  *  like `../../etc/passwd.md` cannot escape the sessions directory. */
-export function sessionFilename(originalName: string, element: ElementName): string {
+export function sessionFilename(
+  originalName: string,
+  element: ElementName,
+  /** Names already in the sessions directory. An element may hold several sessions, so a clash
+   *  gets a suffix rather than silently replacing what is already there. */
+  taken: readonly string[] = [],
+): string {
   const prefix = element.toLowerCase();
   const slug = originalName
     .replace(/\.md$/i, '')
@@ -26,7 +32,11 @@ export function sessionFilename(originalName: string, element: ElementName): str
     .replace(/^-+|-+$/g, '');
   const elementPrefix = new RegExp(`^(${ELEMENTS.join('|').toLowerCase()})-`);
   const stem = (slug === prefix ? '' : slug.replace(elementPrefix, '')) || 'session';
-  return `${prefix}-${stem}.md`;
+
+  const claimed = new Set(taken);
+  let name = `${prefix}-${stem}.md`;
+  for (let n = 2; claimed.has(name); n++) name = `${prefix}-${stem}-${n}.md`;
+  return name;
 }
 
 /** Read + parse every `*.md` in `dir` (default config/sessions/) into a RuleStore. One SessionDoc
@@ -43,9 +53,12 @@ export function loadSessions(
       continue;
     }
     const md = readFileSync(path.join(dir, file), 'utf8');
-    const { rules, warnings: w } = parseSessionTimeline(md, element);
+    const id = file.replace(/\.md$/, '');
+    // The file's id, not the element — an element may hold several sessions and each rule has to
+    // name the one it came from.
+    const { rules, warnings: w } = parseSessionTimeline(md, element, id);
     warnings.push(...w);
-    const doc: SessionDoc = { id: file.replace(/\.md$/, ''), element, label: file, rules };
+    const doc: SessionDoc = { id, element, label: file, rules };
     store[element].push(doc);
   }
   return { store, warnings };

@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { ELEMENTS, type ElementName } from '@/types';
@@ -31,11 +31,14 @@ export async function POST(req: Request) {
   if (!element) {
     return Response.json({ error: 'choose an element for this session' }, { status: 400 });
   }
-  const { rules, warnings } = parseSessionTimeline(parsed.data.markdown, element);
+  // Never replace an existing session — an element may hold several.
+  const taken = readdirSync(dir()).filter((f) => f.endsWith('.md'));
+  const stored = sessionFilename(parsed.data.filename, element, taken);
+  const id = stored.replace(/\.md$/, '');
+
+  const { rules, warnings } = parseSessionTimeline(parsed.data.markdown, element, id);
   if (rules.length === 0) return Response.json({ error: 'no parsable rules', warnings }, { status: 422 });
 
-  const stored = sessionFilename(parsed.data.filename, element);
   writeFileSync(path.join(dir(), stored), parsed.data.markdown);
-  const doc = { id: stored.replace(/\.md$/, ''), element, label: stored, rules };
-  return Response.json({ doc, warnings }, { status: 201 });
+  return Response.json({ doc: { id, element, label: stored, rules }, warnings }, { status: 201 });
 }

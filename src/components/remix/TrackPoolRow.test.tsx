@@ -12,16 +12,18 @@ const track: ArrTrack = {
 const rule = (
   phrases: AuthoredRule['phrases'],
   section: AuthoredRule['section'] = 'INTRODUCTION',
+  sessionId = 'water-session-layer-timeline',
 ): AuthoredRule => ({
   category: 'MELODY', section, sectionStartSec: 0, phrases,
-  source: { element: 'WATER', sessionId: 'w', track: 'MELODY' },
+  source: { element: 'WATER', sessionId, track: 'MELODY' },
 });
 
 describe('TrackPoolRow', () => {
   it('names the element, section and interval on hover', () => {
     const r = rule([{ enterSec: 60, exitSec: 540, fadeInSec: 0, fadeOutSec: 0 }]);
     render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
-    expect(screen.getByText('Water·I')).toHaveAttribute('title', 'WATER · Introduction · 1:00–9:00');
+    expect(screen.getByText('Water·I'))
+      .toHaveAttribute('title', 'WATER · water-session-layer-timeline · Introduction · 1:00–9:00');
   });
 
   it('lists every phrase of a multi-phrase rule', () => {
@@ -31,7 +33,8 @@ describe('TrackPoolRow', () => {
     ]);
     render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·I'))
-      .toHaveAttribute('title', 'WATER · Introduction · 2:45–4:33, 5:27–7:15');
+      .toHaveAttribute('title',
+        'WATER · water-session-layer-timeline · Introduction · 2:45–4:33, 5:27–7:15');
   });
 
   it('lights every rule the draw picked, not just one', () => {
@@ -51,7 +54,20 @@ describe('TrackPoolRow', () => {
     const r = rule([{ enterSec: 1200, exitSec: 1500, fadeInSec: 0, fadeOutSec: 0 }], 'DEEP_RELAXATION');
     render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·Rx'))
-      .toHaveAttribute('title', 'WATER · Deep Relaxation · 20:00–25:00');
+      .toHaveAttribute('title',
+        'WATER · water-session-layer-timeline · Deep Relaxation · 20:00–25:00');
+  });
+
+  it('names the session, so two sessions of one element can be told apart', () => {
+    const ocean = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }], 'INTRODUCTION', 'water-ocean');
+    render(<TrackPoolRow track={track} candidates={[ocean]} picked={new Set()} />);
+    expect(screen.getByText('Water·I')).toHaveAttribute('title', expect.stringContaining('water-ocean'));
+  });
+
+  it('leaves the session off when it adds nothing beyond the element', () => {
+    const r = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }], 'INTRODUCTION', 'WATER');
+    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    expect(screen.getByText('Water·I')).toHaveAttribute('title', 'WATER · Introduction · 0:00–1:00');
   });
 
   it('tags each chip with its element so it takes that element colour', () => {

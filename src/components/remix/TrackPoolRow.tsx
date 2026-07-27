@@ -20,9 +20,13 @@ const clock = (s: number): string =>
 /** Hover detail: which element and section a candidate came from, and when it actually sounds.
  *  A `title` matches how GrammarTimeline and AnalysisTimeline expose the same kind of detail, and
  *  stays cheap across the ~135 chips a full pool renders. */
-const chipTitle = (r: AuthoredRule): string =>
-  `${r.source.element} · ${SECTION_LABEL[r.section]} · ` +
-  r.phrases.map((p) => `${clock(p.enterSec)}–${clock(p.exitSec)}`).join(', ');
+const chipTitle = (r: AuthoredRule): string => {
+  // An element can hold several sessions, so name the one this rule came from — unless it carries
+  // no more than the element already says.
+  const session = r.source.sessionId === r.source.element ? '' : ` · ${r.source.sessionId}`;
+  return `${r.source.element}${session} · ${SECTION_LABEL[r.section]} · `
+    + r.phrases.map((p) => `${clock(p.enterSec)}–${clock(p.exitSec)}`).join(', ');
+};
 
 /** One row of layout A: the track, its pool of authored candidates, and the count. A full-session
  *  draw takes one rule per section, so several chips in a row can be lit at once. */
