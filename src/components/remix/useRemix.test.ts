@@ -182,13 +182,27 @@ describe('useRemix', () => {
       expect(arrangementStore.getState().durationSec).toBe(config.layerTwo.moduleSeconds));
   });
 
-  it('seeds the store with the module length when a section is picked', async () => {
+  it('never overwrites the store session length with a section module length', async () => {
     const { result } = renderHook(() => useRemix());
     await waitFor(() => expect(arrangementStore.getState().tracks).toHaveLength(3));
 
     act(() => result.current.setSection('RETURN'));
+    await waitFor(() => expect(arrangementStore.getState().durationSec).toBe(600));
 
-    await waitFor(() =>
-      expect(arrangementStore.getState().durationMin).toBe(config.layerTwo.moduleSeconds / 60));
+    // durationMin means the SESSION length. Writing 10 here is what made a later mount read 10
+    // and hand back a ten-minute "full session".
+    expect(arrangementStore.getState().durationMin).toBe(30);
+  });
+
+  it('still draws a full session on a remount that follows a section draw', async () => {
+    const first = renderHook(() => useRemix());
+    await waitFor(() => expect(first.result.current.tracks).toHaveLength(3));
+    act(() => first.result.current.setSection('RETURN'));
+    expect(first.result.current.totalSec).toBe(600);
+    first.unmount();
+
+    const second = renderHook(() => useRemix());
+    await waitFor(() => expect(second.result.current.tracks).toHaveLength(3));
+    expect(second.result.current.totalSec).toBe(1800);
   });
 });

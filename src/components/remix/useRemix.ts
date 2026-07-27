@@ -90,12 +90,15 @@ export function useRemix(): RemixState {
         tuningHz: config.audio.tuning.defaultHz,
         masterDb: config.audio.volume.defaultMasterDb,
       },
-      draw.totalSec / 60,
+      // The SESSION length, never the draw's. durationMin is what a later mount reads back as the
+      // session length, so seeding a 10-minute section module here made the next "full session"
+      // ten minutes long. The draw's own length belongs in durationSec.
+      sessionMin,
     );
     // initFrom leaves durationSec at the Layer Two module default; seek() clamps against it, so
     // without this the playhead could not be dragged past 10 minutes of a 30-minute mix.
     arrangementStore.setState({ durationSec: draw.totalSec });
-  }, [draw, scopedTo]);
+  }, [draw, scopedTo, sessionMin]);
 
   const candidatesFor = useCallback(
     (c: Category) => pool.filter((r) => r.category === c && (!scopedTo || r.source.element === scopedTo)),
