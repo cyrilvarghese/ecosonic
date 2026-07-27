@@ -46,4 +46,33 @@ describe('parseSessionTimeline', () => {
     expect(rules).toHaveLength(0);
     expect(warnings.some((w) => w.includes('start') && w.includes('NOISE'))).toBe(true);
   });
+
+  it('expands a comma phrase-list into multiple phrases (fades on outer edges)', () => {
+    const m = `## Section 1 - Introduction (0:00-10:00)
+
+| Layer | Starts | Full Level | Starts Leaving | Ends |
+|---|---|---|---|---|
+| MELODY | 2:45-4:33, 5:27-7:15 | Immediate | End of each phrase | 7:15 |
+`;
+    const { rules } = parseSessionTimeline(m, 'AIR');
+    const mel = rules.find((r) => r.category === 'MELODY')!;
+    expect(mel.phrases.map((p) => [p.enterSec, p.exitSec])).toEqual([[165, 273], [327, 435]]);
+  });
+
+  it('merges two rows of one layer in a section into one rule with per-phrase fades', () => {
+    const m = `## Section 2 - Deep Relaxation (10:00-20:00)
+
+| Layer | Starts | Full Level | Starts Leaving | Ends |
+|---|---|---|---|---|
+| ELEMENTS | 10:00 | Immediate | 10:00 | 12:00 |
+| ELEMENTS | 19:00 | 20:00 (Fade in) | - | 20:00 |
+`;
+    const { rules } = parseSessionTimeline(m, 'FIRE');
+    const el = rules.filter((r) => r.category === 'ELEMENT');
+    expect(el).toHaveLength(1);
+    expect(el[0].phrases).toEqual([
+      { enterSec: 600, exitSec: 720, fadeInSec: 0, fadeOutSec: 120 },
+      { enterSec: 1140, exitSec: 1200, fadeInSec: 60, fadeOutSec: 0 },
+    ]);
+  });
 });

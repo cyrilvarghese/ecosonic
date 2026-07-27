@@ -14,9 +14,22 @@ export function parseClock(s: string): number | null {
 
 const isBlank = (s: string): boolean => s.trim() === '' || s.trim() === '-';
 
+/** Split the Starts cell into absolute {enter,exit} spans. A comma list yields several spans;
+ *  each `a-b` span exits at b; a lone clock exits at `endClock` (the Ends cell) or the section end. */
+function spansFrom(starts: string, endClock: number | null, sectionEnd: number) {
+  return starts.split(',').map((s) => s.trim()).filter(Boolean).map((part) => {
+    const [a, b] = part.split('-').map((x) => x.trim());
+    return {
+      enterSec: parseClock(a) ?? 0,
+      exitSec: b !== undefined ? (parseClock(b) ?? sectionEnd) : (endClock ?? sectionEnd),
+    };
+  });
+}
+
 /** Parse an authored session-timeline markdown table into absolute-timestamped rules.
  *  Section headers give the Mode tag + the section window (used only to resolve "End of section");
- *  times themselves stay absolute. Impossible/unknown rows are skipped with a warning. */
+ *  times themselves stay absolute. Multi-phrase (comma) cells and repeated same-layer rows within a
+ *  section merge into one rule; impossible phrases and unknown rows are skipped with a warning. */
 export function parseSessionTimeline(
   md: string,
   element: ElementName,
@@ -26,12 +39,14 @@ export function parseSessionTimeline(
   const lines = md.split(/\r?\n/);
   let section: Mode | null = null;
   let sectionEnd = 0;
+  let byKey = new Map<string, AuthoredRule>(); // merge repeated same-layer rows within a section
 
   for (const line of lines) {
     const header = line.match(/^##\s*Section\s*(\d)\s*-\s*[^(]*\((\d+:\d{2})-(\d+:\d{2})\)/i);
     if (header) {
       section = SECTION_BY_INDEX[Number(header[1]) - 1] ?? null;
       sectionEnd = parseClock(header[3]) ?? 0;
+      byKey = new Map();
       continue;
     }
     if (!section || !line.trim().startsWith('|')) continue;
@@ -47,25 +62,44 @@ export function parseSessionTimeline(
       continue;
     }
 
-    const enterSec = parseClock(starts) ?? 0;
-    const exitSec = parseClock(ends) ?? sectionEnd; // "End of section"/blank → section end
+    const spans = spansFrom(starts, parseClock(ends), sectionEnd);
+    if (spans.length === 0) continue;
+    const first = spans[0];
+    const last = spans[spans.length - 1];
     const fullClock = parseClock(full);
-    const fadeInSec = fullClock !== null ? Math.max(0, fullClock - enterSec) : 0;
     const leaveClock = parseClock(leaving);
-    const fadeOutSec = leaveClock !== null ? Math.max(0, exitSec - leaveClock) : 0;
+    const fadeInSec = fullClock !== null ? Math.max(0, fullClock - first.enterSec) : 0;
+    const fadeOutSec = leaveClock !== null ? Math.max(0, last.exitSec - leaveClock) : 0;
 
-    if (enterSec >= exitSec) {
-      warnings.push(`${element} · ${section} · ${name}: start ${enterSec}s after end ${exitSec}s — skipped`);
-      continue;
-    }
-    const phrase: Phrase = { enterSec, exitSec, fadeInSec, fadeOutSec };
-    rules.push({
-      category: mapped.category,
-      variant: mapped.variant,
-      section,
-      phrases: [phrase],
-      source: { element, sessionId: element, track: name },
+    const phrases: Phrase[] = [];
+    spans.forEach((s, i) => {
+      if (s.enterSec >= s.exitSec) {
+        warnings.push(`${element} · ${section} · ${name}: start ${s.enterSec}s after end ${s.exitSec}s — skipped`);
+        return;
+      }
+      phrases.push({
+        ...s,
+        fadeInSec: i === 0 ? fadeInSec : 0,
+        fadeOutSec: i === spans.length - 1 ? fadeOutSec : 0,
+      });
     });
+    if (phrases.length === 0) continue;
+
+    const key = `${mapped.category}|${mapped.variant ?? ''}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.phrases.push(...phrases);
+    } else {
+      const rule: AuthoredRule = {
+        category: mapped.category,
+        variant: mapped.variant,
+        section,
+        phrases,
+        source: { element, sessionId: element, track: name },
+      };
+      byKey.set(key, rule);
+      rules.push(rule);
+    }
   }
   return { rules, warnings };
 }
