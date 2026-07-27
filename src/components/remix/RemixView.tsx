@@ -158,7 +158,8 @@ export function RemixView() {
         </details>
       )}
 
-      <section className="flex flex-wrap items-center gap-3">
+      <section className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <div className="inline-flex rounded-md border border-border p-0.5">
           {MODES.map((m) => (
             <button
@@ -208,6 +209,40 @@ export function RemixView() {
               ? 'one module, rules rebased to the section start'
               : 'the whole authored session on one timeline'}
           </span>
+        </div>
+        </div>
+
+        {/* Adding source material, kept away from the controls that shape the current mix. */}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            <label className={`${BTN} cursor-pointer whitespace-nowrap`}>
+              ⬆ Upload session
+              <input
+                type="file"
+                accept=".md"
+                aria-label="Session file"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onUpload(f);
+                  e.target.value = ''; // let the same file be re-uploaded after a fix
+                }}
+              />
+            </label>
+            <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+              Upload as
+              <select
+                value={uploadAs}
+                onChange={(e) => setUploadAs(e.target.value as ElementName)}
+                className="rounded-md border border-border bg-transparent px-1.5 py-1 text-xs"
+              >
+                {ELEMENTS.map((el) => <option key={el} value={el}>{el}</option>)}
+              </select>
+            </label>
+          </div>
+          {uploadError && (
+            <p className="text-xs text-red-600 dark:text-red-400">Upload failed — {uploadError}</p>
+          )}
         </div>
       </section>
 
@@ -279,34 +314,7 @@ export function RemixView() {
           >
             {exportLabel}
           </button>
-          <label className={`${BTN} cursor-pointer`}>
-            ⬆ Upload session
-            <input
-              type="file"
-              accept=".md"
-              aria-label="Session file"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void onUpload(f);
-                e.target.value = ''; // let the same file be re-uploaded after a fix
-              }}
-            />
-          </label>
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Upload as
-            <select
-              value={uploadAs}
-              onChange={(e) => setUploadAs(e.target.value as ElementName)}
-              className="rounded-md border border-border bg-transparent px-1.5 py-1 text-xs"
-            >
-              {ELEMENTS.map((el) => <option key={el} value={el}>{el}</option>)}
-            </select>
-          </label>
         </div>
-        {uploadError && (
-          <p className="mt-2 text-xs text-red-600 dark:text-red-400">Upload failed — {uploadError}</p>
-        )}
         {exportFailed && (
           <p className="mt-2 text-xs text-red-600 dark:text-red-400">
             Export failed — check the sample files are reachable, or try a single section rather than
