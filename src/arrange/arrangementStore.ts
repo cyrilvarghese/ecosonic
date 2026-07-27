@@ -35,11 +35,12 @@ export interface ArrangementState {
   initFrom: (sel: Selection, durationMin: number) => void;
   setDurationMin: (min: number) => void;
   play: () => void;
-  /** Play a free-mix arrangement: a flat absolute region set over one module of `totalSec`. */
-  playFreeMix: (regions: TemplateRegion[], totalSec: number) => void;
+  /** Play a free-mix arrangement: a flat absolute region set over one module of `totalSec`.
+   *  `startSec` resumes mid-mix — always go through here rather than just setting `playing`, or the
+   *  scheduler runs whatever regions the store happens to hold (initFrom seeds a Layer Two
+   *  template that stops at `moduleSeconds`). */
+  playFreeMix: (regions: TemplateRegion[], totalSec: number, startSec?: number) => void;
   pause: () => void;
-  /** Resume after a pause without moving the playhead or resizing the timeline. */
-  resume: () => void;
   seek: (sec: number) => void;
   setPosition: (sec: number) => void;
   setScrubbing: (b: boolean) => void;
@@ -115,10 +116,9 @@ export function createArrangementStore() {
         set({ composition: buildComposition(selection, min * 60), durationMin: min });
       },
       play: () => set({ playing: true, session: null, durationSec: config.layerTwo.moduleSeconds }),
-      playFreeMix: (regions, totalSec) =>
-        set({ moduleRegions: regions, durationSec: totalSec, session: null, activeMode: 'INTRODUCTION', positionSec: 0, playing: true }),
+      playFreeMix: (regions, totalSec, startSec = 0) =>
+        set({ moduleRegions: regions, durationSec: totalSec, session: null, activeMode: 'INTRODUCTION', positionSec: startSec, playing: true }),
       pause: () => set({ playing: false }),
-      resume: () => set({ playing: true }),
       seek: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setPosition: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setScrubbing: (b) => set({ scrubbing: b }),

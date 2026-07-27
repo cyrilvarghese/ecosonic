@@ -157,6 +157,21 @@ describe('RemixView', () => {
     expect(arrangementStore.getState().playing).toBe(false);
   });
 
+  it('installs the mix even when starting from a scrubbed position', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    // Drag the playhead before ever pressing Play — the store still holds the Layer Two module
+    // template that initFrom seeded, which only spans config.layerTwo.moduleSeconds.
+    act(() => { arrangementStore.setState({ positionSec: 900 }); });
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+
+    const st = arrangementStore.getState();
+    expect(st.durationSec).toBe(1800);
+    expect(st.moduleRegions.some((r) => r.enterSec >= 600)).toBe(true); // not a 0..600 template
+    expect(st.positionSec).toBeGreaterThanOrEqual(900); // and it did not jump back to the start
+  });
+
   it('resumes from the paused position instead of restarting', async () => {
     render(<RemixView />);
     await screen.findByTestId('region-PAD-0');

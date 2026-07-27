@@ -50,16 +50,15 @@ export function RemixView() {
   const playing = useArrangement((s) => s.playing);
   const positionSec = useArrangement((s) => s.positionSec);
   const pause = useArrangement((s) => s.pause);
-  const resume = useArrangement((s) => s.resume);
   const seek = useArrangement((s) => s.seek);
   const setScrubbing = useArrangement((s) => s.setScrubbing);
 
-  // Mid-mix, resume where we paused; from a standstill (or after a redraw, which resets the
-  // playhead) start the mix fresh so the scheduler picks up the current regions.
+  // Always install the mix, even when resuming: initFrom seeds moduleRegions with a Layer Two
+  // module template that stops at moduleSeconds, so merely flipping `playing` played ten minutes
+  // of the wrong arrangement.
   const onTransport = () => {
     if (playing) pause();
-    else if (positionSec > 0) resume();
-    else playFreeMix(regions, totalSec);
+    else playFreeMix(regions, totalSec, positionSec);
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
