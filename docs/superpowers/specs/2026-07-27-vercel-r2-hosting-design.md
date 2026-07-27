@@ -208,8 +208,18 @@ fetch it directly. Signed URLs would require a server and are out of scope.
 
 ## Staging
 
-1. **Stage 1 — prove the static export.** `BUILD_TARGET=web` + stash script → does
-   `next build` produce `out/`? Fail fast, before any transcoding work.
+1. ~~**Stage 1 — prove the static export.**~~ **✅ Done (commit 5ff79ec).** `npm run build:web`
+   prerenders `/`, `/layer1`, `/layer2` to a 2.9 MB `out/`. **No SSR `window`/`AudioContext`
+   crash** — the risk the July Electron spec flagged, and the main reason this design was
+   uncertain, does not exist. Two things surfaced that the design had not anticipated; both
+   are folded into `scripts/build-web.mjs`:
+   - `.next/dev` must be cleared first. `next dev` generates a per-route type validator there,
+     and a stale one referencing a stashed route fails the build's TypeScript check even
+     though the app itself compiles.
+   - The stash/restore must **verify**, not assume. `build-electron.mjs` logs
+     `restored src/app/api` unconditionally from its `finally`; observed in practice leaving
+     the directory in `.electron-build-tmp` while reporting success, which would silently
+     lose uncommitted work. `build-web.mjs` throws with the stash path instead.
 2. **Stage 2 — the seam.** `resolveSampleUrl()` + env var, with tests covering both branches
    and the ISO extension rule.
 3. **Stage 3 — codec gate.** Transcode one pad to AAC and one ISO file to FLAC, hand-upload
@@ -227,10 +237,13 @@ Stages 1–3 are all cheap and all falsifiable; every expensive step is behind t
 
 ## Risks & mitigations
 
-- **The static export has never been run.** The July Electron spec flagged that module-level
-  `window`/`AudioContext` access would crash `next build`, and it was never proven either
-  way since that build was never executed. Mitigation: Stage 1 exists precisely to find out
-  first, and any offending top-level access moves into an effect.
+- ~~**The static export has never been run.**~~ **Retired — it builds.** Stage 1 confirmed
+  no module-level `window`/`AudioContext` access breaks the export.
+- **The stash trick relocates real source files.** A crashed build can leave `src/app/api` or
+  `src/app/rules` outside the tree; this happened once during Stage 1 via
+  `build-electron.mjs`. `build-web.mjs` now fails loudly with the stash path. If it ever
+  fires, move the files back by hand — do **not** `git checkout` those paths, which would
+  discard uncommitted changes still held in the stash.
 - **The 2026-07-10 Electron spec is now stale** — it asserts the app is "client-only except
   one route", which stopped being true when the analysis and rules routes landed. Its build
   script would today produce a desktop app silently missing those features. Out of scope to
