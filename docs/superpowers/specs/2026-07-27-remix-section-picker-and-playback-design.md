@@ -142,9 +142,12 @@ Full-session export stays known-heavy — measure before optimising.
 
 ## 8. Timeline affordances
 
-- **Hover a candidate chip** in `TrackPoolRow` → its rule's phrase intervals, formatted `M:SS`, e.g.
-  `0:00–3:39, 5:27–8:09`, plus the section. Use the existing `src/components/ui/tooltip.tsx`
-  (base-ui) rather than a bare `title`.
+- **Hover a candidate chip** in `TrackPoolRow` → its element, section, and the rule's phrase
+  intervals formatted `M:SS`, e.g. `WATER · Introduction · 2:45–4:33, 5:27–7:15`. Use a `title`
+  attribute, which is the pattern already used for timeline hover detail in `GrammarTimeline.tsx:74`
+  and `AnalysisTimeline.tsx:61`. `src/components/ui/tooltip.tsx` exists but is unused shadcn
+  boilerplate, and a pool row renders ~15 chips across ~9 rows — a portal-backed tooltip per chip is
+  the wrong trade at that density.
 - **Time scale on `ResultTimeline`.** A tick row above the lanes, aligned to the same label gutter,
   with labels at "nice" intervals chosen to yield ~5–8 ticks (e.g. every 5 min over 1800s, every
   2 min over 600s). Replaces the two hardcoded dividers at 33.3%/66.7%, which are wrong for a
