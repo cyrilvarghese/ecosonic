@@ -18,12 +18,12 @@ export function useModuleScheduler(engine: AudioEngine): void {
     let sinceSteer = 0; // live-playback time accrued toward the next auto-steer
     let lastMode = arrangementStore.getState().activeMode; // detect session boundaries
     const active = new Set<string>();
-    const D = config.layerTwo.moduleSeconds;
     const tickSec = config.layerTwo.schedulerTickMs / 1000;
     const autoSteerSec = 60; // live playback: recompose the un-played future this often
 
     const frame = (now: number) => {
       const st = arrangementStore.getState();
+      const D = st.durationSec ?? config.layerTwo.moduleSeconds; // free-mix loops over totalSec
       if (st.playing) {
         const t = now / 1000;
         const dt = last === null ? 0 : t - last;

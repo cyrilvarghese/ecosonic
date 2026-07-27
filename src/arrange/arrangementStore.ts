@@ -23,6 +23,7 @@ export interface ArrangementState {
   positionSec: number;
   scrubbing: boolean; // true while dragging the position slider — holds the clock
   masterDb: number;
+  durationSec: number; // length the scheduler loops over — moduleSeconds, or totalSec for a free-mix
   // Phase 2 machinery (built + tested, not yet surfaced in the UI).
   composition: Composition | null;
   durationMin: number;
@@ -34,6 +35,8 @@ export interface ArrangementState {
   initFrom: (sel: Selection, durationMin: number) => void;
   setDurationMin: (min: number) => void;
   play: () => void;
+  /** Play a free-mix arrangement: a flat absolute region set over one module of `totalSec`. */
+  playFreeMix: (regions: TemplateRegion[], totalSec: number) => void;
   pause: () => void;
   seek: (sec: number) => void;
   setPosition: (sec: number) => void;
@@ -62,8 +65,6 @@ export interface ArrangementState {
   setTrackCeilingDb: (trackId: string, db: number) => void;
 }
 
-const clampModule = (sec: number) => Math.max(0, Math.min(config.layerTwo.moduleSeconds, sec));
-
 /** Seed the module from a mode's density table (continuity bed spans the module; active/sparse
  *  drivers stagger toward the peak). */
 function seedModuleFromTable(tracks: ArrTrack[], mode: Mode): TemplateRegion[] {
@@ -84,6 +85,7 @@ export function createArrangementStore() {
       positionSec: 0,
       scrubbing: false,
       masterDb: 0,
+      durationSec: config.layerTwo.moduleSeconds,
       composition: null,
       durationMin: 30,
       activeMode: 'INTRODUCTION',
@@ -110,10 +112,12 @@ export function createArrangementStore() {
         if (!selection) { set({ durationMin: min }); return; }
         set({ composition: buildComposition(selection, min * 60), durationMin: min });
       },
-      play: () => set({ playing: true, session: null }),
+      play: () => set({ playing: true, session: null, durationSec: config.layerTwo.moduleSeconds }),
+      playFreeMix: (regions, totalSec) =>
+        set({ moduleRegions: regions, durationSec: totalSec, session: null, activeMode: 'INTRODUCTION', positionSec: 0, playing: true }),
       pause: () => set({ playing: false }),
-      seek: (sec) => set({ positionSec: clampModule(sec) }),
-      setPosition: (sec) => set({ positionSec: clampModule(sec) }),
+      seek: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
+      setPosition: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setScrubbing: (b) => set({ scrubbing: b }),
       setActiveMode: (mode) => set({ activeMode: mode }),
       loadMode: (mode) =>
@@ -135,6 +139,7 @@ export function createArrangementStore() {
           const first = built.order[0];
           return {
             session: { ...built, index: 0 },
+            durationSec: config.layerTwo.moduleSeconds,
             activeMode: first,
             moduleRegions: built.regionsByMode[first],
             positionSec: 0,
