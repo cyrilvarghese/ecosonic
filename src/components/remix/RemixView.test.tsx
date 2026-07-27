@@ -297,6 +297,17 @@ describe('RemixView', () => {
     expect(posts[0].filename).toBe('My Session.md');
   });
 
+  it('opens the file picker as soon as an element is chosen', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    const picker = vi.spyOn(screen.getByLabelText(/session file/i), 'click').mockImplementation(() => {});
+
+    await userEvent.click(screen.getByRole('button', { name: /upload as/i }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'FIRE' }));
+
+    expect(picker).toHaveBeenCalled();
+  });
+
   it('carries the element it will file under on the control itself', async () => {
     render(<RemixView />);
     await screen.findByTestId('region-PAD-0');

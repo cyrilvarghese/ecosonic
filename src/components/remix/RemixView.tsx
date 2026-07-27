@@ -130,14 +130,23 @@ export function RemixView() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const onUpload = async (file: File) => {
+  // The element is captured when the picker is opened, not read back when the file arrives — the
+  // menu sets state and opens the dialog in one gesture, and the two must not be able to disagree.
+  const pendingElement = useRef<ElementName>(uploadAs);
+  const pickFileFor = (element: ElementName) => {
+    setUploadAs(element);
+    pendingElement.current = element;
+    fileInput.current?.click();
+  };
+
+  const onUpload = async (file: File, element: ElementName) => {
     setUploadError(null);
     try {
       const markdown = await file.text();
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, markdown, element: uploadAs }),
+        body: JSON.stringify({ filename: file.name, markdown, element }),
       });
       const body = (await res.json()) as { error?: string };
       if (!res.ok) { setUploadError(body.error ?? 'upload failed'); return; }
@@ -221,7 +230,7 @@ export function RemixView() {
           <div className="inline-flex overflow-hidden rounded-md border border-border shadow-sm">
             <button
               type="button"
-              onClick={() => fileInput.current?.click()}
+              onClick={() => pickFileFor(uploadAs)}
               className="whitespace-nowrap px-3 py-1.5 text-sm transition-calm hover:bg-muted/40"
             >
               ⬆ Upload session
@@ -243,7 +252,7 @@ export function RemixView() {
                     {ELEMENTS.map((el) => (
                       <Menu.Item
                         key={el}
-                        onClick={() => setUploadAs(el)}
+                        onClick={() => pickFileFor(el)}
                         className="flex cursor-pointer items-center justify-between gap-6 rounded px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-muted"
                       >
                         {el}
@@ -262,7 +271,7 @@ export function RemixView() {
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) void onUpload(f);
+                if (f) void onUpload(f, pendingElement.current);
                 e.target.value = ''; // let the same file be re-uploaded after a fix
               }}
             />
