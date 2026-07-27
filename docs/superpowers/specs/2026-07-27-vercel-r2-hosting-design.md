@@ -17,7 +17,9 @@ handful of people can open, at $0/month, without changing how authoring works lo
 | Web audio format | **AAC 128 kbps**, **except `ISO/**` which stays lossless (FLAC, with a WAV fallback)**. |
 | Originals | Untouched. Transcodes land in a separate `web-audio/` folder. |
 | R2 exposure | **`r2.dev` subdomain** for this test; custom domain if it outlives the test. |
-| Access control | **Unlisted URL.** Vercel's Hobby-tier protection cannot admit a guest (see below). |
+| Access control | **Unlisted URL, no password** (user: "dont password protect its fine"). |
+| Git remote | `origin` → `github.com/cyrilvarghese/ecosonic` — personal account, satisfies Hobby's org restriction. |
+| Repo visibility | **Public**, deliberately (user confirmed). Repo visibility does not affect audio exposure either way: `NEXT_PUBLIC_SAMPLE_BASE_URL` ships in the client bundle by definition. |
 
 ## Platform facts (verified against vendor docs, 2026-07-27)
 
@@ -166,28 +168,25 @@ to work in Safari, re-run this gate there before assuming it does.
 
 ## Access control
 
-Static export cannot run middleware, so a password gate is not free-with-code — and the
-platform options are narrower than they first appear:
+**Decided: none.** The URL is unlisted and that is deemed sufficient — no password, no auth
+layer, no gate of any kind. This is the simplest branch and removes work rather than adding it.
 
-1. **Unlisted URL** — chosen. Obscurity only, adequate for handing a link to one trusted person.
-2. **Vercel Authentication** (the only Hobby protection) — *actively wrong here.* It admits
-   only accounts belonging to the team, and a Hobby account has no team members, so it would
-   lock the friend out rather than let him in.
-3. **Password Protection / Sharable Links** — Pro-only add-on. Not worth $20/mo to share one
-   test link.
-4. **Cloudflare Access** on a custom domain — real authentication, free tier covers 50 users.
-   The upgrade path if this outlives the test.
+Recorded for the future, since the options are narrower than they look: Vercel Authentication
+is Hobby's only protection and would *lock the friend out* rather than let him in (it admits
+team members, and Hobby has none); Password Protection and Sharable Links are Pro-only; and
+Cloudflare Access on a custom domain is the real answer if this ever needs actual auth.
 
-Stated plainly: the R2 bucket is public, so anyone holding a sample URL can fetch that audio
-regardless of how the app itself is gated. Signed URLs would require a server and are out of
-scope.
+Stated plainly, so nobody is surprised later: the R2 bucket is public and its base URL ships
+inside the client JS bundle, so anyone who opens the app can read where the audio lives and
+fetch it directly. Signed URLs would require a server and are out of scope.
 
 ## Prerequisites (verified missing as of 2026-07-27)
 
 - **ffmpeg** — not on PATH. `winget install Gyan.FFmpeg`.
-- **git remote** — this repo has none. Vercel needs either a private GitHub repo to build
-  from, or deployment via the `vercel` CLI from local. If using Git: the repo must live under
-  a **personal** GitHub account, since Hobby cannot connect to org-owned repositories.
+- ~~**git remote**~~ — **done.** `origin` → `github.com/cyrilvarghese/ecosonic`, currently
+  empty and **public**. Personal account, so Hobby's org restriction is satisfied. Verified
+  safe to push: no `.env*` file is tracked or has ever been committed, `.env.local` is
+  ignored at `.gitignore:25`, and no tracked file contains a real key.
 - **Cloudflare account** with an R2 bucket created.
 - **A Mac running Chrome** to run the codec gate — the friend's machine is fine, it is two
   page loads.
