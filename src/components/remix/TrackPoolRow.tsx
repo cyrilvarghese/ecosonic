@@ -1,6 +1,6 @@
 import type { ArrTrack } from '@/arrange/types';
 import type { AuthoredRule } from '@/remix/sessionRules';
-import type { Pick } from '@/remix/generateFreeMix';
+import type { RemixPick } from '@/remix/generateRemix';
 
 const SECTION_ABBR: Record<AuthoredRule['section'], string> = {
   INTRODUCTION: 'I', DEEP_RELAXATION: 'Rx', RETURN: 'Rt',
@@ -14,7 +14,7 @@ const chip = (r: AuthoredRule): string => {
 export function TrackPoolRow({ track, candidates, pick }: {
   track: ArrTrack;
   candidates: AuthoredRule[];
-  pick: Pick | undefined;
+  pick: RemixPick | undefined;
 }) {
   return (
     <div className="grid grid-cols-[140px_1fr] items-center gap-3 border-t border-border py-2">
