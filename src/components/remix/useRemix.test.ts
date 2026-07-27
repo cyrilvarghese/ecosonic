@@ -128,6 +128,18 @@ describe('useRemix', () => {
     expect(result.current.candidatesFor('PAD')).toHaveLength(0);
   });
 
+  it('offers only the candidates the current section can draw from', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+    expect(result.current.candidatesFor('BASS')).toHaveLength(1); // its one RETURN rule
+
+    act(() => result.current.setSection('INTRODUCTION'));
+
+    // BASS was only ever authored in RETURN, so nothing here is drawable.
+    expect(result.current.candidatesFor('BASS')).toHaveLength(0);
+    expect(result.current.candidatesFor('MELODY')).toHaveLength(2);
+  });
+
   it('surfaces parser warnings and generator warnings together', async () => {
     stubSessions({
       store: { ...STORE, ETHER: [{ id: 'e', element: 'ETHER', label: 'e', rules: [rule('DRONE', 'ETHER')] }] },

@@ -100,9 +100,13 @@ export function useRemix(): RemixState {
     arrangementStore.setState({ durationSec: draw.totalSec });
   }, [draw, scopedTo, sessionMin]);
 
+  // Mirrors the generator's filters exactly — a chip the draw could never pick would be a lie.
   const candidatesFor = useCallback(
-    (c: Category) => pool.filter((r) => r.category === c && (!scopedTo || r.source.element === scopedTo)),
-    [pool, scopedTo],
+    (c: Category) => pool.filter((r) =>
+      r.category === c
+      && (!scopedTo || r.source.element === scopedTo)
+      && (!section || r.section === section)),
+    [pool, scopedTo, section],
   );
 
   return {
