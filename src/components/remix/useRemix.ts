@@ -39,6 +39,8 @@ export function useRemix(): RemixState {
     setLoading(false);
   }, []);
 
+  // Standard fetch-on-mount: refetch only setStates after the awaited fetch resolves.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void refetch(); }, [refetch]);
 
   const { regions, picks } = useMemo(
