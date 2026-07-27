@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ResultTimeline, tickStep } from './ResultTimeline';
 
 const lane = [{
@@ -62,21 +62,56 @@ describe('ResultTimeline element colour', () => {
 });
 
 describe('ResultTimeline playhead', () => {
-  it('shows no playhead when there is no position', () => {
-    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} />);
-    expect(screen.queryAllByTestId('playhead')).toHaveLength(0);
+  const twoLanes = [
+    lane[0],
+    { ...lane[0], id: 'u', label: 'PAD' },
+  ];
+
+  it('draws one playhead across every lane, not one per lane', () => {
+    render(<ResultTimeline totalSec={1800} tracks={twoLanes} regions={[]} positionSec={450} />);
+    const heads = screen.getAllByTestId('playhead');
+    expect(heads).toHaveLength(1);
+    expect(heads[0].style.left).toBe('25%');
   });
 
-  it('places a playhead in each lane at its fraction of the timeline', () => {
-    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} positionSec={450} />);
-    const heads = screen.getAllByTestId('playhead');
-    expect(heads).toHaveLength(lane.length);
-    expect(heads[0].style.left).toBe('25%');
+  it('sits at the start when nothing has played yet, so it can be dragged', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} />);
+    expect(screen.getByTestId('playhead').style.left).toBe('0%');
   });
 
   it('keeps the playhead on the timeline when the position overruns', () => {
     render(<ResultTimeline totalSec={600} tracks={lane} regions={[]} positionSec={9999} />);
-    expect(screen.getAllByTestId('playhead')[0].style.left).toBe('100%');
+    expect(screen.getByTestId('playhead').style.left).toBe('100%');
+  });
+
+  it('seeks to the point pressed on the scrub strip', () => {
+    const onScrub = vi.fn();
+    render(
+      <ResultTimeline totalSec={1800} tracks={lane} regions={[]} positionSec={0}
+        onScrub={onScrub} onScrubStart={vi.fn()} onScrubEnd={vi.fn()} />,
+    );
+    const strip = screen.getByTestId('scrub-strip');
+    strip.getBoundingClientRect = () => ({ left: 100, width: 400, right: 500, top: 0, bottom: 0, height: 0, x: 100, y: 0, toJSON: () => ({}) });
+    strip.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(strip, { clientX: 200, pointerId: 1 });
+
+    expect(onScrub).toHaveBeenCalledWith(450); // (200-100)/400 = 0.25 of 1800
+  });
+
+  it('clamps a drag that leaves the strip', () => {
+    const onScrub = vi.fn();
+    render(
+      <ResultTimeline totalSec={600} tracks={lane} regions={[]} positionSec={0}
+        onScrub={onScrub} onScrubStart={vi.fn()} onScrubEnd={vi.fn()} />,
+    );
+    const strip = screen.getByTestId('scrub-strip');
+    strip.getBoundingClientRect = () => ({ left: 100, width: 400, right: 500, top: 0, bottom: 0, height: 0, x: 100, y: 0, toJSON: () => ({}) });
+    strip.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(strip, { clientX: 9999, pointerId: 1 });
+
+    expect(onScrub).toHaveBeenCalledWith(600);
   });
 });
 

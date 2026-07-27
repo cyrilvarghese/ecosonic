@@ -92,6 +92,9 @@ export function useRemix(): RemixState {
       },
       draw.totalSec / 60,
     );
+    // initFrom leaves durationSec at the Layer Two module default; seek() clamps against it, so
+    // without this the playhead could not be dragged past 10 minutes of a 30-minute mix.
+    arrangementStore.setState({ durationSec: draw.totalSec });
   }, [draw, scopedTo]);
 
   const candidatesFor = useCallback(

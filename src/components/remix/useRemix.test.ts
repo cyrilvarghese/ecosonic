@@ -62,7 +62,7 @@ beforeEach(() => {
   stubSessions({ store: STORE, warnings: [] });
   // durationMin must be reset too: seeding a section draw writes the module length into the shared
   // store, and the next test would read 10 min as its session length.
-  arrangementStore.setState({ tracks: [], durationMin: 30 });
+  arrangementStore.setState({ tracks: [], durationMin: 30, durationSec: 600 });
 });
 
 describe('useRemix', () => {
@@ -169,6 +169,17 @@ describe('useRemix', () => {
     // Seeding the section module wrote 10 min into the store; the session length must survive it.
     expect(result.current.totalSec).toBe(1800);
     expect(result.current.tracks).toHaveLength(3);
+  });
+
+  it('sizes the store timeline to the draw, so scrubbing spans it before play', async () => {
+    const { result } = renderHook(() => useRemix());
+    // seek() clamps to durationSec, which otherwise sits at the Layer Two module default.
+    await waitFor(() => expect(arrangementStore.getState().durationSec).toBe(1800));
+
+    act(() => result.current.setSection('RETURN'));
+
+    await waitFor(() =>
+      expect(arrangementStore.getState().durationSec).toBe(config.layerTwo.moduleSeconds));
   });
 
   it('seeds the store with the module length when a section is picked', async () => {

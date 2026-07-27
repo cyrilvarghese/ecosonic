@@ -51,6 +51,8 @@ export function RemixView() {
   const positionSec = useArrangement((s) => s.positionSec);
   const pause = useArrangement((s) => s.pause);
   const resume = useArrangement((s) => s.resume);
+  const seek = useArrangement((s) => s.seek);
+  const setScrubbing = useArrangement((s) => s.setScrubbing);
 
   // Mid-mix, resume where we paused; from a standstill (or after a redraw, which resets the
   // playhead) start the mix fresh so the scheduler picks up the current regions.
@@ -202,8 +204,11 @@ export function RemixView() {
           regions={regions}
           totalSec={totalSec}
           tracks={tracks}
-          positionSec={playing || positionSec > 0 ? positionSec : undefined}
+          positionSec={positionSec}
           trackElements={trackElements}
+          onScrub={seek}
+          onScrubStart={() => setScrubbing(true)}
+          onScrubEnd={() => setScrubbing(false)}
         />
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>

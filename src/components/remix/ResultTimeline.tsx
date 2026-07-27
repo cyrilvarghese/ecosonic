@@ -11,24 +11,36 @@ export function tickStep(totalSec: number): number {
 const clock = (s: number): string =>
   `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-/** The assembled free-mix on one continuous 0–totalSec timeline: a time scale, then one lane per
- *  track with each region positioned by its absolute time. Section boundaries are not hard cuts —
- *  the scale is the only reference, and it rescales with the draw. */
-export function ResultTimeline({ regions, totalSec, tracks, positionSec, trackElements }: {
+/** The assembled free-mix on one continuous 0–totalSec timeline: a time scale, one lane per track
+ *  with each region positioned by its absolute time and coloured by its element, and a single
+ *  playhead sweeping every lane — draggable, like Layer Two's module designer. */
+export function ResultTimeline({
+  regions, totalSec, tracks, positionSec = 0, trackElements, onScrub, onScrubStart, onScrubEnd,
+}: {
   regions: TemplateRegion[];
   totalSec: number;
   tracks: ArrTrack[];
-  /** Playhead position; omitted when nothing is playing. */
+  /** Playhead position in seconds. */
   positionSec?: number;
   /** trackId → the element its rules came from, colouring its bars. */
   trackElements?: Record<string, string>;
+  /** Omit all three to render a non-interactive timeline. */
+  onScrub?: (sec: number) => void;
+  onScrubStart?: () => void;
+  onScrubEnd?: () => void;
 }) {
   const pct = (sec: number) => `${(Math.min(Math.max(sec, 0), totalSec) / totalSec) * 100}%`;
   const step = tickStep(totalSec);
   const ticks = Array.from({ length: Math.floor(totalSec / step) + 1 }, (_, i) => i * step);
 
+  const secondsAt = (clientX: number, el: HTMLElement): number => {
+    const rect = el.getBoundingClientRect();
+    const frac = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
+    return Math.min(Math.max(frac, 0), 1) * totalSec;
+  };
+
   return (
-    <div className="flex flex-col gap-1">
+    <div className="relative flex flex-col gap-1">
       <div className="flex items-end gap-2">
         <span className="w-28 shrink-0" aria-hidden />
         <div className="relative h-4 flex-1">
@@ -63,19 +75,37 @@ export function ResultTimeline({ regions, totalSec, tracks, positionSec, trackEl
                 style={{ left: pct(r.enterSec), width: pct(r.exitSec - r.enterSec) }}
               />
             ))}
-            {positionSec !== undefined && (
-              <div
-                data-testid="playhead"
-                aria-hidden
-                // White core with a dark outline: element bars run from bright fire orange to
-                // near-black air, and a single-colour playhead disappears against one end or the other.
-                className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_0_1px_var(--foreground)]"
-                style={{ left: pct(positionSec) }}
-              />
-            )}
           </div>
         </div>
       ))}
+
+      {/* One playhead over every lane, aligned to the same label gutter as the rows above. */}
+      <div className="pointer-events-none absolute inset-0 z-20 flex gap-2">
+        <span className="w-28 shrink-0" aria-hidden />
+        <div
+          data-testid="scrub-strip"
+          className={`relative flex-1 ${onScrub ? 'pointer-events-auto cursor-ew-resize' : ''}`}
+          onPointerDown={onScrub && ((e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            onScrubStart?.();
+            onScrub(secondsAt(e.clientX, e.currentTarget));
+          })}
+          onPointerMove={onScrub && ((e) => {
+            if (e.buttons === 0) return; // hovering, not dragging
+            onScrub(secondsAt(e.clientX, e.currentTarget));
+          })}
+          onPointerUp={onScrub && (() => onScrubEnd?.())}
+          onPointerCancel={onScrub && (() => onScrubEnd?.())}
+        >
+          <div
+            data-testid="playhead"
+            className="pointer-events-none absolute inset-y-0 w-[2px] -translate-x-1/2 rounded bg-[var(--accent-ink)]"
+            style={{ left: pct(positionSec) }}
+          >
+            <div className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[var(--accent-ink)]" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
