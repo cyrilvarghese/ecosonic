@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:electron": "node scripts/build-electron.mjs",
+    "build:web": "node scripts/build-web.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
