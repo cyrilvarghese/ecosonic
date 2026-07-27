@@ -52,6 +52,8 @@ export function RemixView() {
   const pause = useArrangement((s) => s.pause);
   const seek = useArrangement((s) => s.seek);
   const setScrubbing = useArrangement((s) => s.setScrubbing);
+  // Real sample lengths, filled in by useLayer2Engine once each file has loaded.
+  const trackDurations = useArrangement((s) => s.trackDurations);
 
   // Always install the mix, even when resuming: initFrom seeds moduleRegions with a Layer Two
   // module template that stops at moduleSeconds, so merely flipping `playing` played ten minutes
@@ -228,6 +230,7 @@ export function RemixView() {
           onScrubEnd={() => setScrubbing(false)}
           mutedIds={mutedIds}
           onToggleMute={toggleMute}
+          trackDurations={trackDurations}
         />
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>

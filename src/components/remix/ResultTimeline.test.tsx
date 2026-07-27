@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ResultTimeline, tickStep } from './ResultTimeline';
 
@@ -63,23 +63,74 @@ describe('ResultTimeline element colour', () => {
 });
 
 describe('ResultTimeline interval labels', () => {
-  it('names each interval and how long it runs', () => {
-    render(
-      <ResultTimeline totalSec={1800} tracks={lane}
-        regions={[{ trackId: 't', enterSec: 300, exitSec: 900, fadeInSec: 0, fadeOutSec: 0 }]} />,
-    );
+  const bar600 = [{ trackId: 't', enterSec: 300, exitSec: 900, fadeInSec: 0, fadeOutSec: 0 }];
+
+  it('names the source material on the left and the interval length on the right', () => {
+    // 3:30 sample under a 10:00 interval → it plays 3 times over.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 210 }} />);
     const bar = screen.getByTestId('region-t-300');
-    expect(bar).toHaveTextContent('MELODY');
-    expect(bar).toHaveTextContent('10:00'); // 900 − 300
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY 3:30 ×3');
+    expect(within(bar).getByTestId('interval-length')).toHaveTextContent('10:00');
   });
 
-  it('spells the interval out in full on hover, for bars too narrow to read', () => {
-    render(
-      <ResultTimeline totalSec={1800} tracks={lane}
-        regions={[{ trackId: 't', enterSec: 300, exitSec: 900, fadeInSec: 0, fadeOutSec: 0 }]} />,
-    );
+  it('never multiplies the interval length by the loop count', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 210 }} />);
+    // "10:00 ×3" would read as thirty minutes of audio; the ×N belongs to the sample.
+    expect(within(screen.getByTestId('region-t-300')).getByTestId('interval-source'))
+      .not.toHaveTextContent('10:00');
+  });
+
+  it('spells the whole thing out on hover, for bars too narrow to read', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 210 }} />);
     expect(screen.getByTestId('region-t-300'))
-      .toHaveAttribute('title', 'MELODY · 5:00–15:00 · 10:00');
+      .toHaveAttribute('title', 'MELODY · 5:00–15:00 · sample 3:30 ×3 · interval 10:00');
+  });
+
+  it('shows only the interval until the sample length is known', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} />);
+    const bar = screen.getByTestId('region-t-300');
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY');
+    expect(within(bar).getByTestId('interval-length')).toHaveTextContent('10:00');
+    expect(bar).toHaveAttribute('title', 'MELODY · 5:00–15:00 · interval 10:00');
+  });
+});
+
+describe('ResultTimeline loop length', () => {
+  const tenMinBar = [{ trackId: 't', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 }];
+
+  it('reports how many times a short sample repeats to fill the interval', () => {
+    // 1:56 sample under a 10:00 interval → ceil(600/116) = 6 repeats, the last one partial.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 116 }} />);
+    const bar = screen.getByTestId('region-t-0');
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56 ×6');
+    expect(bar).toHaveAttribute('title', 'MELODY · 0:00–10:00 · sample 1:56 ×6 · interval 10:00');
+  });
+
+  it('draws one segment per repeat so the loop points are visible', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 116 }} />);
+    expect(within(screen.getByTestId('region-t-0')).getAllByTestId('loop-seg')).toHaveLength(6);
+  });
+
+  it('says how much of the sample is heard when the interval is shorter than it', () => {
+    const shortBar = [{ trackId: 't', enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }];
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={shortBar} trackDurations={{ t: 116 }} />);
+    expect(screen.getByTestId('region-t-0'))
+      .toHaveAttribute('title', 'MELODY · 0:00–1:00 · sample 1:56, 1:00 heard · interval 1:00');
+  });
+
+  it('does not segment when the sample fills the interval once', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 600 }} />);
+    const bar = screen.getByTestId('region-t-0');
+    expect(within(bar).getByTestId('interval-source')).not.toHaveTextContent('×');
+    expect(within(bar).queryAllByTestId('loop-seg')).toHaveLength(0);
+  });
+
+  it('stops drawing segments when a sample is so short it would be a picket fence', () => {
+    // 5s under 10:00 = 120 repeats; the ×N readout still carries the count.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 5 }} />);
+    const bar = screen.getByTestId('region-t-0');
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('0:05 ×120');
+    expect(within(bar).queryAllByTestId('loop-seg')).toHaveLength(0);
   });
 });
 
