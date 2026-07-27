@@ -20,11 +20,21 @@ vi.mock('@/audio/AudioEngine', () => ({
   },
 }));
 
-// One renderer mock with a flag the tests flip — more robust than re-importing the module mid-test.
-const { exportShouldFail } = vi.hoisted(() => ({ exportShouldFail: { value: false } }));
+// One renderer mock the tests drive — `hold` keeps a render open so progress can be observed.
+const { exportCtl } = vi.hoisted(() => ({
+  exportCtl: {
+    fail: false,
+    hold: false,
+    release: null as null | (() => void),
+    progress: null as null | ((frac: number) => void),
+  },
+}));
 vi.mock('@/remix/renderFreeMix', () => ({
-  exportFreeMixWav: vi.fn(async () => {
-    if (exportShouldFail.value) throw new Error('decode failed');
+  estimatedWavBytes: (totalSec: number) => totalSec * 44100 * 4 + 44,
+  exportFreeMixWav: vi.fn(async (args: { onProgress?: (frac: number) => void }) => {
+    if (exportCtl.fail) throw new Error('decode failed');
+    exportCtl.progress = args.onProgress ?? null;
+    if (exportCtl.hold) await new Promise<void>((r) => { exportCtl.release = r; });
     return new Blob(['fake'], { type: 'audio/wav' });
   }),
 }));
@@ -76,7 +86,10 @@ beforeEach(() => {
   vi.stubGlobal('URL', { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} });
   // ...and clicking the download anchor makes jsdom log "navigation to another Document".
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-  exportShouldFail.value = false;
+  exportCtl.fail = false;
+  exportCtl.hold = false;
+  exportCtl.release = null;
+  exportCtl.progress = null;
   // durationMin resets too — seeding a section draw writes the module length into the shared store.
   arrangementStore.setState({ tracks: [], durationMin: 30 });
 });
@@ -159,8 +172,33 @@ describe('RemixView', () => {
     expect(screen.getByTestId('transport-clock')).toHaveTextContent('15:30 / 30:00');
   });
 
+  it('reports loading then render progress while exporting', async () => {
+    exportCtl.hold = true;
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+    // Nothing reports until every sample is decoded, so say so rather than showing a bare 0%.
+    expect(screen.getByRole('button', { name: /Loading samples/ })).toBeInTheDocument();
+
+    act(() => exportCtl.progress?.(0.42));
+    expect(screen.getByRole('button', { name: /42%/ })).toBeInTheDocument();
+
+    await act(async () => { exportCtl.release?.(); });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Export WAV/ })).toBeInTheDocument());
+  });
+
+  it('spells out each warning rather than only counting them', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      json: async () => ({ store: STORE, warnings: ['ELEMENT_SUB: no ETHER sample for the picked rule'] }),
+    })));
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    expect(await screen.findByText(/no ETHER sample/)).toBeInTheDocument();
+  });
+
   it('surfaces an export failure instead of failing silently', async () => {
-    exportShouldFail.value = true;
+    exportCtl.fail = true;
     render(<RemixView />);
     await screen.findByTestId('region-PAD-0');
 

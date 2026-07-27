@@ -5,7 +5,7 @@ import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
-import { exportFreeMixWav } from '@/remix/renderFreeMix';
+import { estimatedWavBytes, exportFreeMixWav } from '@/remix/renderFreeMix';
 import { useRemix, type RemixMode } from './useRemix';
 import { TrackPoolRow } from './TrackPoolRow';
 import { ResultTimeline } from './ResultTimeline';
@@ -61,25 +61,37 @@ export function RemixView() {
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
-  const [exportState, setExportState] = useState<'idle' | 'rendering' | 'error'>('idle');
+  // null = not exporting. 0 = samples still downloading/decoding, which is the slow part and
+  // reports nothing — the render only starts emitting progress once every sample is decoded.
+  const [renderPct, setRenderPct] = useState<number | null>(null);
+  const [exportFailed, setExportFailed] = useState(false);
 
   const onExport = async () => {
-    setExportState('rendering');
+    setExportFailed(false);
+    setRenderPct(0);
     try {
-      const blob = await exportFreeMixWav({ tracks, regions, totalSec, masterDb });
+      const blob = await exportFreeMixWav({
+        tracks, regions, totalSec, masterDb, onProgress: setRenderPct,
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = section ? `remix-${section.toLowerCase()}.wav` : 'remix.wav';
       a.click();
       URL.revokeObjectURL(url);
-      setExportState('idle');
     } catch {
       // Offline rendering decodes whole samples; a missing file or an out-of-memory render both
       // land here, and both used to look identical to nothing happening.
-      setExportState('error');
+      setExportFailed(true);
+    } finally {
+      setRenderPct(null);
     }
   };
+
+  const exportLabel =
+    renderPct === null ? '⬇ Export WAV'
+      : renderPct === 0 ? '⏳ Loading samples…'
+        : `⏳ Rendering ${Math.round(renderPct * 100)}%`;
 
   const onUpload = async (file: File) => {
     const markdown = await file.text();
@@ -95,7 +107,14 @@ export function RemixView() {
     <div className="flex flex-col gap-4">
       {loading && <p className="text-sm text-muted-foreground">Loading rules…</p>}
       {warnings.length > 0 && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">{warnings.length} warning(s)</p>
+        <details className="text-xs text-amber-600 dark:text-amber-400">
+          <summary className="cursor-pointer">
+            {warnings.length} warning{warnings.length > 1 ? 's' : ''}
+          </summary>
+          <ul className="mt-1 list-disc pl-5">
+            {warnings.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
+        </details>
       )}
 
       <section className="flex flex-wrap items-center gap-3">
@@ -194,10 +213,11 @@ export function RemixView() {
           <button
             type="button"
             className={BTN}
-            disabled={exportState === 'rendering'}
+            disabled={renderPct !== null}
+            title={`≈${Math.round(estimatedWavBytes(totalSec) / 1e6)} MB WAV — samples are decoded whole, so a full session is heavy`}
             onClick={() => void onExport()}
           >
-            {exportState === 'rendering' ? '⏳ Rendering…' : '⬇ Export WAV'}
+            {exportLabel}
           </button>
           <label className={`${BTN} cursor-pointer`}>
             ⬆ Upload session
@@ -212,7 +232,7 @@ export function RemixView() {
             />
           </label>
         </div>
-        {exportState === 'error' && (
+        {exportFailed && (
           <p className="mt-2 text-xs text-red-600 dark:text-red-400">
             Export failed — check the sample files are reachable, or try a single section rather than
             the full session.
