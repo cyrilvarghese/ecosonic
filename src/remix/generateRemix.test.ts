@@ -56,12 +56,16 @@ describe('generateRemix', () => {
     }
   });
 
-  it('counts only the filtered candidates in poolSize', () => {
-    const pool = [rule('MELODY', 'WATER'), rule('MELODY', 'FIRE')];
+  it('counts the candidates a pick was actually drawn from', () => {
+    // The draw is two-stage — an element for the track, then a rule per section within it — so
+    // poolSize is that element+section pool, not the whole cross pool.
+    const pool = [rule('MELODY', 'WATER'), rule('MELODY', 'WATER'), rule('MELODY', 'FIRE')];
+
     const cross = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
-    const scoped = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1, element: 'FIRE' });
-    expect(cross.picks[0].poolSize).toBe(2);
-    expect(scoped.picks[0].poolSize).toBe(1);
+    expect(cross.picks[0].poolSize).toBe(cross.picks[0].rule.source.element === 'WATER' ? 2 : 1);
+
+    const scoped = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1, element: 'WATER' });
+    expect(scoped.picks[0].poolSize).toBe(2);
   });
 
   it("takes each track's sample from the element of the rule it picked", () => {
@@ -126,6 +130,63 @@ describe('generateRemix', () => {
     const redraws = Array.from({ length: 20 }, (_, i) =>
       generateRemix(pool, manifest, { ...SESSION, seed: i + 1 }).picks[0].rule);
     expect(redraws.some((r) => r !== first)).toBe(true);
+  });
+});
+
+describe('generateRemix — a full session spans every section', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  // One element authoring a bed across all three sections — the shape a real session file has.
+  const bedAcrossSession = [
+    rule('NOISE', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+    rule('NOISE', 'EARTH', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600),
+    rule('NOISE', 'EARTH', [ph(1200, 1800)], undefined, 'RETURN', 1200),
+  ];
+
+  it('draws one rule per section so a bed sounds for the whole session', () => {
+    const { picks, regions } = generateRemix(bedAcrossSession, fakeManifest(), BASE);
+    expect(picks.map((p) => p.rule.section)).toEqual(['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN']);
+    expect(regions.map((r) => [r.enterSec, r.exitSec])).toEqual([[0, 600], [600, 1200], [1200, 1800]]);
+  });
+
+  it('still derives a single track carrying a single sample', () => {
+    const { tracks, picks } = generateRemix(bedAcrossSession, fakeManifest(), BASE);
+    expect(tracks).toHaveLength(1);
+    expect(picks.every((p) => p.track === tracks[0])).toBe(true);
+    expect(tracks[0].sample.name).toBe('EARTH-NOISE');
+  });
+
+  it('takes every rule of a track from one element, so its windows match its sample', () => {
+    const pool = [
+      ...bedAcrossSession,
+      rule('NOISE', 'FIRE', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+      rule('NOISE', 'FIRE', [ph(1200, 1800)], undefined, 'RETURN', 1200),
+    ];
+    for (let seed = 1; seed <= 10; seed++) {
+      const { tracks, picks } = generateRemix(pool, fakeManifest(), { ...BASE, seed });
+      const element = picks[0].rule.source.element;
+      expect(picks.every((p) => p.rule.source.element === element)).toBe(true);
+      expect(tracks[0].sample.name).toBe(`${element}-NOISE`);
+    }
+  });
+
+  it('accepts absence — a section the element never authored is simply silent', () => {
+    const pool = [
+      rule('MELODY', 'EARTH', [ph(0, 300)], undefined, 'INTRODUCTION', 0),
+      rule('MELODY', 'EARTH', [ph(1200, 1500)], undefined, 'RETURN', 1200),
+    ];
+    const { picks } = generateRemix(pool, fakeManifest(), BASE);
+    expect(picks.map((p) => p.rule.section)).toEqual(['INTRODUCTION', 'RETURN']);
+  });
+
+  it('counts each pool size against the section it was drawn from', () => {
+    const pool = [
+      rule('NOISE', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+      rule('NOISE', 'EARTH', [ph(0, 300)], undefined, 'INTRODUCTION', 0),
+      rule('NOISE', 'EARTH', [ph(1200, 1800)], undefined, 'RETURN', 1200),
+    ];
+    const { picks } = generateRemix(pool, fakeManifest(), BASE);
+    expect(picks.map((p) => p.poolSize)).toEqual([2, 1]);
   });
 });
 

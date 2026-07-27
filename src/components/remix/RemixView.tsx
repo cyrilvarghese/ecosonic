@@ -44,7 +44,8 @@ export function RemixView() {
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
-  const pickByTrack = new Map(picks.map((p) => [p.track.id, p]));
+  // A full-session draw takes one rule per section, so a track can have several picks lit.
+  const pickedRules = new Set(picks.map((p) => p.rule));
   const [exportState, setExportState] = useState<'idle' | 'rendering' | 'error'>('idle');
 
   const onExport = async () => {
@@ -151,7 +152,7 @@ export function RemixView() {
               key={t.id}
               track={t}
               candidates={candidatesFor(t.category)}
-              pick={pickByTrack.get(t.id)}
+              picked={pickedRules}
             />
           ))
         )}
