@@ -15,10 +15,17 @@ const { MANIFEST } = vi.hoisted(() => {
 });
 vi.mock('@/manifest.json', () => ({ default: MANIFEST }));
 
-const rule = (category: string, element: string) => ({
+const rule = (
+  category: string,
+  element: string,
+  section = 'INTRODUCTION',
+  sectionStartSec = 0,
+  phrases = [{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }],
+) => ({
   category,
-  section: 'INTRODUCTION',
-  phrases: [{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }],
+  section,
+  sectionStartSec,
+  phrases,
   source: { element, sessionId: `${element}-1`, track: category },
 });
 

@@ -34,6 +34,7 @@ const rule = (
   category,
   variant,
   section: 'INTRODUCTION',
+  sectionStartSec: 0,
   phrases,
   source: { element, sessionId: `${element}-1`, track: category },
 });

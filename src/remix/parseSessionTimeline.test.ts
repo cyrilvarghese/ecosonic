@@ -59,6 +59,28 @@ describe('parseSessionTimeline', () => {
     expect(mel.phrases.map((p) => [p.enterSec, p.exitSec])).toEqual([[165, 273], [327, 435]]);
   });
 
+  it('records the section window start each rule was authored in', () => {
+    const air = `## Section 2 - Deep Relaxation (9:30-19:00)
+
+| Layer | Starts | Full Level | Starts Leaving | Ends |
+|---|---|---|---|---|
+| NOISE | 9:30 | Immediate | Continuous | End of section |
+`;
+    const earth = `## Section 2 - Deep Relaxation (10:00-20:00)
+
+| Layer | Starts | Full Level | Starts Leaving | Ends |
+|---|---|---|---|---|
+| NOISE | 10:00 | Immediate | Continuous | End of section |
+`;
+    expect(parseSessionTimeline(air, 'AIR').rules[0].sectionStartSec).toBe(570);
+    expect(parseSessionTimeline(earth, 'EARTH').rules[0].sectionStartSec).toBe(600);
+  });
+
+  it('starts the Introduction window at zero', () => {
+    const { rules } = parseSessionTimeline(md, 'WATER');
+    expect(rules.every((r) => r.sectionStartSec === 0)).toBe(true);
+  });
+
   it('merges two rows of one layer in a section into one rule with per-phrase fades', () => {
     const m = `## Section 2 - Deep Relaxation (10:00-20:00)
 

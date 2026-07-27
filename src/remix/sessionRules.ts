@@ -15,6 +15,10 @@ export interface AuthoredRule {
   category: Category;
   variant?: string;
   section: Mode;
+  /** Absolute seconds at which this rule's section window opens — AIR authors Deep Relaxation at
+   *  9:30, every other element at 10:00. The origin a section-scoped draw rebases against, so it
+   *  must come from the authored header, never from a section index. */
+  sectionStartSec: number;
   phrases: Phrase[];
   source: { element: ElementName; sessionId: string; track: string };
 }

@@ -4,6 +4,7 @@ import { poolFor, type RuleStore, type AuthoredRule } from './sessionRules';
 const rule = (category: AuthoredRule['category'], element: 'WATER' | 'FIRE'): AuthoredRule => ({
   category,
   section: 'INTRODUCTION',
+  sectionStartSec: 0,
   phrases: [{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }],
   source: { element, sessionId: `${element}-1`, track: category },
 });

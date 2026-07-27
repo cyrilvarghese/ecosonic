@@ -38,6 +38,7 @@ export function parseSessionTimeline(
   const warnings: string[] = [];
   const lines = md.split(/\r?\n/);
   let section: Mode | null = null;
+  let sectionStart = 0;
   let sectionEnd = 0;
   let byKey = new Map<string, AuthoredRule>(); // merge repeated same-layer rows within a section
 
@@ -45,6 +46,7 @@ export function parseSessionTimeline(
     const header = line.match(/^##\s*Section\s*(\d)\s*-\s*[^(]*\((\d+:\d{2})-(\d+:\d{2})\)/i);
     if (header) {
       section = SECTION_BY_INDEX[Number(header[1]) - 1] ?? null;
+      sectionStart = parseClock(header[2]) ?? 0;
       sectionEnd = parseClock(header[3]) ?? 0;
       byKey = new Map();
       continue;
@@ -94,6 +96,7 @@ export function parseSessionTimeline(
         category: mapped.category,
         variant: mapped.variant,
         section,
+        sectionStartSec: sectionStart,
         phrases,
         source: { element, sessionId: element, track: name },
       };
