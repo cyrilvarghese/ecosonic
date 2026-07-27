@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { AudioEngine, type TrackAudioSpec } from '@/audio/AudioEngine';
-import { arrangementStore } from '@/arrange/arrangementStore';
+import { arrangementStore, useArrangement } from '@/arrange/arrangementStore';
 import { config } from '@/config';
 
 /** Mount an audio engine for Layer Two: load the handed-off tracks (not started), and
@@ -18,9 +18,14 @@ export function useLayer2Engine(): AudioEngine {
   }
   const engine = ref.current;
 
+  // Reload whenever the set of tracks or their samples changes. Layer Two hands its tracks over once
+  // before mount, but /remix derives its own after a fetch and redraws them on every regenerate — a
+  // mount-only load would leave the engine empty there forever. A joined string, so an unchanged
+  // track list is Object.is-equal and costs no re-render.
+  const trackKey = useArrangement((s) => s.tracks.map((t) => `${t.id}:${t.sample.path}`).join('|'));
+
   useEffect(() => {
     const st = arrangementStore.getState();
-    if (!st.tracks.length) return;
     const specs: TrackAudioSpec[] = st.tracks.map((t) => ({
       id: t.id, path: t.sample.path, bytes: t.sample.bytes,
       volumeDb: t.ceilingDb, muted: false, playing: false, // loaded, not started; scheduler triggers from 0
@@ -60,7 +65,7 @@ export function useLayer2Engine(): AudioEngine {
       }
     });
     return () => { cancelled = true; unsub(); engine.clear(); };
-  }, [engine]);
+  }, [engine, trackKey]);
 
   return engine;
 }
