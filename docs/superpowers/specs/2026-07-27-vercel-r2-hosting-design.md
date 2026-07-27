@@ -25,7 +25,7 @@ handful of people can open, at $0/month, without changing how authoring works lo
 
 | Fact | Source | Consequence here |
 | --- | --- | --- |
-| R2 free tier: **10 GB-month storage, 1M Class A, 10M Class B ops, egress free** | [R2 pricing](https://developers.cloudflare.com/r2/pricing/) | ~330 MB–1.9 GB of audio and one listener sit far inside every dimension. $0. |
+| R2 free tier: **10 GB-month storage, 1M Class A, 10M Class B ops, egress free** | [R2 pricing](https://developers.cloudflare.com/r2/pricing/) | ~580 MB of audio and one listener sit far inside every dimension — about 6% of the storage tier. $0. |
 | `r2.dev` public access is **rate-limited and "should only be used for development purposes"** | [R2 public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/) | Acceptable for one friend testing; a custom domain is the upgrade path, and it is also what unlocks Cloudflare caching and Zero Trust Access. |
 | R2 CORS is set per-bucket via dashboard or `wrangler r2 bucket cors set <BUCKET> --file cors.json`, with `AllowedOrigins` / `AllowedMethods` / `AllowedHeaders` / `ExposeHeaders` | [R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/) | One `GET` rule scoped to the Vercel origin. |
 | Vercel Functions cap request **and response** bodies at **4.5 MB**, all plans (`FUNCTION_PAYLOAD_TOO_LARGE`) | [Function limits](https://vercel.com/docs/functions/limitations) | Confirms the analyze route could never work hosted — it accepts up to 25 MB. Excluding it is the fix, not a workaround. |
@@ -65,7 +65,7 @@ None of these need fixing, because none of that code ships.
 ┌────────────────────────────────┐     ┌────────────────────────────────────┐
 │  /   /layer1   /layer2         │     │  EARTH/ISO/1hz.flac                │
 │  HTML + JS + manifest.json     │ ──► │  EARTH/PAD/….m4a                   │
-│  no server, no API, no key     │     │  198 files, ~0.5–1.9 GB            │
+│  no server, no API, no key     │     │  198 files, ~580 MB (measured)     │
 │                                │     │  CORS: GET from the Vercel origin  │
 └────────────────────────────────┘     └────────────────────────────────────┘
 
@@ -141,8 +141,20 @@ The library is 5.9 GB across 198 audio files — the largest are ~170 MB, and
 [Layer.ts:83-85](../../../src/audio/Layer.ts) downloads each file *in full* before it can
 play a note. Off local disk that is instant; over the internet it is a multi-minute wait and
 a real risk of exhausting tab memory once several layers are loaded (decoded float samples
-run ~1.3× the WAV size). AAC 128 k is roughly an 18× reduction — a ~10-minute bed becomes
-~9 MB, which is a few seconds to first sound.
+run ~1.3× the WAV size).
+
+**Measured on 2026-07-27** with ffmpeg 8.1.2, one real file of each kind:
+
+| Sample | Source | Encoded | Ratio |
+| --- | --- | --- | --- |
+| `BOWLS.wav` (largest in the library) | 171.8 MB | **9.7 MB** AAC 128 k | 17.7× |
+| `18hz.wav` (largest ISO) | 82.4 MB | **17.6 MB** FLAC | 4.7× |
+
+Projected across the library: ~4.3 GB of non-ISO at 17.7× ≈ 243 MB, plus 1.6 GB of ISO at
+4.7× ≈ 340 MB — **~580 MB total**, about 6% of R2's free tier. Note the inversion this
+reveals: ISO is 27% of the source library but **58% of the hosted payload**, because lossless
+cannot compete with lossy. The largest single download becomes a 17.6 MB ISO file rather than
+a 170 MB pad.
 
 **`ISO/**` is the exception — and it is not a rounding error: 40 files, 1.6 GB, 27% of the
 library.** That material is isochronic/binaural, where the effect lives entirely in the
@@ -182,7 +194,10 @@ fetch it directly. Signed URLs would require a server and are out of scope.
 
 ## Prerequisites (verified missing as of 2026-07-27)
 
-- **ffmpeg** — not on PATH. `winget install Gyan.FFmpeg`.
+- ~~**ffmpeg**~~ — **done.** 8.1.2 installed via `winget install Gyan.FFmpeg`; native `aac`
+  and `flac` encoders both confirmed present. (No `libfdk_aac` in this GPL build, which is
+  fine — the native AAC encoder is adequate at 128 k for this material.) Note the installer
+  modifies PATH, so an already-running shell needs to reload it.
 - ~~**git remote**~~ — **done.** `origin` → `github.com/cyrilvarghese/ecosonic`, currently
   empty and **public**. Personal account, so Hobby's org restriction is satisfied. Verified
   safe to push: no `.env*` file is tracked or has ever been committed, `.env.local` is
