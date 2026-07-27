@@ -11,6 +11,24 @@ export function elementFromFilename(name: string): ElementName | null {
   return (ELEMENTS as string[]).includes(prefix ?? '') ? (prefix as ElementName) : null;
 }
 
+/** The name an uploaded session is stored under, so `elementFromFilename` finds it again on the
+ *  next load: the chosen element, then a slug of the original name. An existing element prefix is
+ *  replaced rather than stacked, so re-assigning an element does not give `water-fire-…`.
+ *
+ *  Everything outside `[a-z0-9]` becomes a hyphen, which also makes the result path-safe — a name
+ *  like `../../etc/passwd.md` cannot escape the sessions directory. */
+export function sessionFilename(originalName: string, element: ElementName): string {
+  const prefix = element.toLowerCase();
+  const slug = originalName
+    .replace(/\.md$/i, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const elementPrefix = new RegExp(`^(${ELEMENTS.join('|').toLowerCase()})-`);
+  const stem = (slug === prefix ? '' : slug.replace(elementPrefix, '')) || 'session';
+  return `${prefix}-${stem}.md`;
+}
+
 /** Read + parse every `*.md` in `dir` (default config/sessions/) into a RuleStore. One SessionDoc
  *  per file, element from the filename prefix. Aggregates all parser warnings. */
 export function loadSessions(

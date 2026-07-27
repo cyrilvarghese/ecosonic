@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { arrangementStore } from '@/arrange/arrangementStore';
 import { RemixView } from './RemixView';
@@ -20,6 +20,14 @@ vi.mock('@/audio/AudioEngine', () => ({
     releaseTrack = vi.fn();
     clear = vi.fn();
   },
+}));
+
+// The scheduler's requestAnimationFrame loop mutates positionSec continuously, which races every
+// assertion about the transport. Its behaviour is covered by useModuleScheduler.test.ts; here we
+// only care that RemixView mounts it, which `mountedScheduler` records.
+const { mountedScheduler } = vi.hoisted(() => ({ mountedScheduler: { count: 0 } }));
+vi.mock('@/arrange/useModuleScheduler', () => ({
+  useModuleScheduler: vi.fn(() => { mountedScheduler.count += 1; }),
 }));
 
 // One renderer mock the tests drive — `hold` keeps a render open so progress can be observed.
@@ -103,7 +111,10 @@ beforeEach(() => {
   exportCtl.progress = null;
   exportCtl.lastArgs = null;
   // durationMin resets too — seeding a section draw writes the module length into the shared store.
-  arrangementStore.setState({ tracks: [], durationMin: 30 });
+  // Transport state as well: the scheduler keeps running against a store shared across tests.
+  arrangementStore.setState({
+    tracks: [], durationMin: 30, durationSec: 600, positionSec: 0, playing: false, scrubbing: false,
+  });
 });
 
 describe('RemixView', () => {
@@ -111,6 +122,13 @@ describe('RemixView', () => {
     render(<RemixView />);
     await screen.findByTestId('region-MELODY-0');
     expect(screen.queryByText(/Set up an Arrangement first/i)).toBeNull();
+  });
+
+  it('mounts the scheduler, without which nothing it plays can sound', async () => {
+    mountedScheduler.count = 0;
+    render(<RemixView />);
+    await screen.findByTestId('region-MELODY-0');
+    expect(mountedScheduler.count).toBeGreaterThan(0);
   });
 
   it('hides the element chips until scoped mode is on', async () => {
@@ -166,8 +184,20 @@ describe('RemixView', () => {
     await screen.findByTestId('region-PAD-0');
 
     // Drag the playhead before ever pressing Play — the store still holds the Layer Two module
-    // template that initFrom seeded, which only spans config.layerTwo.moduleSeconds.
-    act(() => { arrangementStore.setState({ positionSec: 900 }); });
+    // template that initFrom seeded, which only spans config.layerTwo.moduleSeconds. Scrub through
+    // the real strip rather than poking the store, so the view is guaranteed to be in step.
+    // seek() clamps to durationSec, which useRemix sizes in an effect — scrubbing before that lands
+    // would clamp 15:00 down to the 10:00 default and the test would be measuring the wrong thing.
+    await waitFor(() => expect(arrangementStore.getState().durationSec).toBe(1800));
+
+    const strip = screen.getByTestId('scrub-strip');
+    strip.getBoundingClientRect = () => ({
+      left: 0, width: 1000, right: 1000, top: 0, bottom: 0, height: 0, x: 0, y: 0, toJSON: () => ({}),
+    });
+    strip.setPointerCapture = vi.fn();
+    fireEvent.pointerDown(strip, { clientX: 500, pointerId: 1 }); // halfway = 15:00 of 30:00
+
+    await waitFor(() => expect(screen.getByTestId('transport-clock')).toHaveTextContent('15:00'));
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
 
     const st = arrangementStore.getState();
@@ -186,8 +216,7 @@ describe('RemixView', () => {
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
 
     expect(arrangementStore.getState().playing).toBe(true);
-    // Not exactly 420 — the scheduler's clock is already advancing, which is the point.
-    expect(arrangementStore.getState().positionSec).toBeGreaterThanOrEqual(420);
+    expect(arrangementStore.getState().positionSec).toBe(420); // resumed, not restarted at 0
   });
 
   it('reads out the playhead against the total length', async () => {
@@ -243,6 +272,44 @@ describe('RemixView', () => {
 
     const pad = arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD');
     expect(pad?.exitSec).toBe(80);
+  });
+
+  it('uploads a session under the element chosen for it', async () => {
+    const posts: { element?: string; filename?: string }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: { body?: string }) => {
+      if (init?.body) posts.push(JSON.parse(init.body));
+      return { ok: true, json: async () => ({ store: STORE, warnings: [] }) };
+    }));
+
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.selectOptions(screen.getByLabelText(/upload as/i), 'FIRE');
+    await userEvent.upload(
+      screen.getByLabelText(/session file/i),
+      new File(['# timeline'], 'My Session.md', { type: 'text/markdown' }),
+    );
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].element).toBe('FIRE');
+    expect(posts[0].filename).toBe('My Session.md');
+  });
+
+  it('reports an upload the server rejected', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: { body?: string }) => {
+      if (init?.body) return { ok: false, json: async () => ({ error: 'no parsable rules' }) };
+      return { ok: true, json: async () => ({ store: STORE, warnings: [] }) };
+    }));
+
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.upload(
+      screen.getByLabelText(/session file/i),
+      new File(['nonsense'], 'bad.md', { type: 'text/markdown' }),
+    );
+
+    expect(await screen.findByText(/no parsable rules/i)).toBeInTheDocument();
   });
 
   it('leaves a muted track out of the exported mix', async () => {

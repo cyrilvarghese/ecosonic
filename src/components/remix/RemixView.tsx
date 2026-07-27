@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ELEMENTS } from '@/types';
+import { ELEMENTS, type ElementName } from '@/types';
 import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
@@ -122,14 +122,26 @@ export function RemixView() {
       : renderPct === 0 ? '⏳ Loading samples…'
         : `⏳ Rendering ${Math.round(renderPct * 100)}%`;
 
+  // Which element an uploaded session is filed under. The server stores it with that prefix, which
+  // is how loadSessions finds it again — it is not inferred from the file's name.
+  const [uploadAs, setUploadAs] = useState<ElementName>(ELEMENTS[0]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const onUpload = async (file: File) => {
-    const markdown = await file.text();
-    await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: file.name, markdown }),
-    });
-    await refetch();
+    setUploadError(null);
+    try {
+      const markdown = await file.text();
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, markdown, element: uploadAs }),
+      });
+      const body = (await res.json()) as { error?: string };
+      if (!res.ok) { setUploadError(body.error ?? 'upload failed'); return; }
+      await refetch();
+    } catch {
+      setUploadError('upload failed');
+    }
   };
 
   return (
@@ -272,14 +284,29 @@ export function RemixView() {
             <input
               type="file"
               accept=".md"
+              aria-label="Session file"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void onUpload(f);
+                e.target.value = ''; // let the same file be re-uploaded after a fix
               }}
             />
           </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Upload as
+            <select
+              value={uploadAs}
+              onChange={(e) => setUploadAs(e.target.value as ElementName)}
+              className="rounded-md border border-border bg-transparent px-1.5 py-1 text-xs"
+            >
+              {ELEMENTS.map((el) => <option key={el} value={el}>{el}</option>)}
+            </select>
+          </label>
         </div>
+        {uploadError && (
+          <p className="mt-2 text-xs text-red-600 dark:text-red-400">Upload failed — {uploadError}</p>
+        )}
         {exportFailed && (
           <p className="mt-2 text-xs text-red-600 dark:text-red-400">
             Export failed — check the sample files are reachable, or try a single section rather than
