@@ -1,7 +1,10 @@
 'use client';
+import { useState } from 'react';
 import { ELEMENTS } from '@/types';
 import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
+import { useLayer2Engine } from '@/arrange/useLayer2Engine';
+import { useModuleScheduler } from '@/arrange/useModuleScheduler';
 import { exportFreeMixWav } from '@/remix/renderFreeMix';
 import { useRemix, type RemixMode } from './useRemix';
 import { TrackPoolRow } from './TrackPoolRow';
@@ -30,6 +33,11 @@ const HINT: Record<RemixMode, string> = {
 };
 
 export function RemixView() {
+  // /remix owns its own playback: without these two, playFreeMix flips store state that nothing
+  // consumes — no engine to load the samples, no clock to trigger them.
+  const engine = useLayer2Engine();
+  useModuleScheduler(engine);
+
   const {
     tracks, picks, regions, totalSec, warnings, loading,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
@@ -37,15 +45,24 @@ export function RemixView() {
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
   const pickByTrack = new Map(picks.map((p) => [p.track.id, p]));
+  const [exportState, setExportState] = useState<'idle' | 'rendering' | 'error'>('idle');
 
   const onExport = async () => {
-    const blob = await exportFreeMixWav({ tracks, regions, totalSec, masterDb });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'remix.wav';
-    a.click();
-    URL.revokeObjectURL(url);
+    setExportState('rendering');
+    try {
+      const blob = await exportFreeMixWav({ tracks, regions, totalSec, masterDb });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = section ? `remix-${section.toLowerCase()}.wav` : 'remix.wav';
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportState('idle');
+    } catch {
+      // Offline rendering decodes whole samples; a missing file or an out-of-memory render both
+      // land here, and both used to look identical to nothing happening.
+      setExportState('error');
+    }
   };
 
   const onUpload = async (file: File) => {
@@ -148,7 +165,14 @@ export function RemixView() {
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>
           <button type="button" className={BTN} onClick={() => playFreeMix(regions, totalSec)}>▶ Play</button>
-          <button type="button" className={BTN} onClick={() => void onExport()}>⬇ Export WAV</button>
+          <button
+            type="button"
+            className={BTN}
+            disabled={exportState === 'rendering'}
+            onClick={() => void onExport()}
+          >
+            {exportState === 'rendering' ? '⏳ Rendering…' : '⬇ Export WAV'}
+          </button>
           <label className={`${BTN} cursor-pointer`}>
             ⬆ Upload session
             <input
@@ -162,6 +186,12 @@ export function RemixView() {
             />
           </label>
         </div>
+        {exportState === 'error' && (
+          <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+            Export failed — check the sample files are reachable, or try a single section rather than
+            the full session.
+          </p>
+        )}
       </section>
     </div>
   );

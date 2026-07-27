@@ -1,8 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { arrangementStore } from '@/arrange/arrangementStore';
 import { RemixView } from './RemixView';
+
+// RemixView mounts the real audio engine, which builds an AudioContext jsdom does not implement.
+vi.mock('@/audio/AudioEngine', () => ({
+  AudioEngine: class {
+    setTracks = vi.fn(async () => {});
+    setMasterVolume = vi.fn();
+    getLayerDuration = vi.fn(() => 60);
+    resumeContext = vi.fn();
+    suspendContext = vi.fn();
+    setTrackVolume = vi.fn();
+    setTrackEnvelope = vi.fn();
+    triggerTrack = vi.fn();
+    releaseTrack = vi.fn();
+    clear = vi.fn();
+  },
+}));
+
+// One renderer mock with a flag the tests flip — more robust than re-importing the module mid-test.
+const { exportShouldFail } = vi.hoisted(() => ({ exportShouldFail: { value: false } }));
+vi.mock('@/remix/renderFreeMix', () => ({
+  exportFreeMixWav: vi.fn(async () => {
+    if (exportShouldFail.value) throw new Error('decode failed');
+    return new Blob(['fake'], { type: 'audio/wav' });
+  }),
+}));
 
 const { MANIFEST } = vi.hoisted(() => {
   const CATS = ['ISO', 'PLANET', 'NOISE', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'DRONE', 'ARP', 'MELODY', 'FX'];
@@ -47,6 +72,11 @@ const STORE = {
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async () => ({ json: async () => ({ store: STORE, warnings: [] }) })));
+  // jsdom implements neither of these; the download path calls both.
+  vi.stubGlobal('URL', { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} });
+  // ...and clicking the download anchor makes jsdom log "navigation to another Document".
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  exportShouldFail.value = false;
   // durationMin resets too — seeding a section draw writes the module length into the shared store.
   arrangementStore.setState({ tracks: [], durationMin: 30 });
 });
@@ -90,6 +120,25 @@ describe('RemixView', () => {
     expect(screen.getByRole('button', { name: 'Return' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('region-BASS-120')).toBeInTheDocument(); // 1320 rebased by 1200
     expect(screen.queryByTestId('region-PAD-0')).toBeNull();
+  });
+
+  it('surfaces an export failure instead of failing silently', async () => {
+    exportShouldFail.value = true;
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    expect(await screen.findByText(/Export failed/i)).toBeInTheDocument();
+  });
+
+  it('leaves no error showing after a successful export', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(screen.queryByText(/Export failed/i)).toBeNull());
   });
 
   it('drops the categories the scoped element never authored', async () => {
