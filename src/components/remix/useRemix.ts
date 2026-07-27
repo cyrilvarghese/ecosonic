@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import manifestJson from '@/manifest.json';
 import { ELEMENTS, type Category, type ElementName, type Manifest } from '@/types';
-import type { ArrTrack, TemplateRegion } from '@/arrange/types';
+import type { ArrTrack, Mode, TemplateRegion } from '@/arrange/types';
 import { config } from '@/config';
 import { arrangementStore, useArrangement } from '@/arrange/arrangementStore';
 import type { AuthoredRule, RuleStore } from '@/remix/sessionRules';
@@ -23,10 +23,13 @@ export interface RemixState {
   loading: boolean;
   mode: RemixMode;
   element: ElementName;
+  /** null = the whole session on its absolute timeline; a Mode = one fixed-length section module. */
+  section: Mode | null;
   /** The candidates the current mode can draw from for a category — what a pool row renders. */
   candidatesFor: (c: Category) => AuthoredRule[];
   setMode: (m: RemixMode) => void;
   setElement: (e: ElementName) => void;
+  setSection: (s: Mode | null) => void;
   regenerate: () => void;
   refetch: () => Promise<void>;
 }
@@ -34,13 +37,17 @@ export interface RemixState {
 /** Fetches the authored-rule store from /api/sessions and derives a whole free mix from it — tracks
  *  included. Self-sufficient: nothing here reads an Arrange setup, so a direct visit to /remix works. */
 export function useRemix(): RemixState {
-  const durationMin = useArrangement((s) => s.durationMin);
+  // The session length is held here, NOT read back from the store: seeding a section draw writes the
+  // module length (10 min) into arrangementStore.durationMin, so reading it back would shrink the
+  // full-session draw to 10 minutes the moment you returned to it.
+  const [sessionMin] = useState(() => arrangementStore.getState().durationMin);
   const [store, setStore] = useState<RuleStore>(EMPTY_STORE);
   const [parserWarnings, setParserWarnings] = useState<string[]>([]);
   const [seed, setSeed] = useState(1);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<RemixMode>('cross');
   const [element, setElement] = useState<ElementName>(ELEMENTS[0]);
+  const [section, setSection] = useState<Mode | null>(null);
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -64,8 +71,13 @@ export function useRemix(): RemixState {
   const scopedTo = mode === 'scoped' ? element : undefined;
 
   const draw = useMemo(
-    () => generateRemix(pool, manifest, { seed, element: scopedTo }),
-    [pool, seed, scopedTo],
+    () => generateRemix(pool, manifest, {
+      seed,
+      element: scopedTo,
+      section: section ?? undefined,
+      sessionSec: sessionMin * 60,
+    }),
+    [pool, seed, scopedTo, section, sessionMin],
   );
 
   // The scheduler and the WAV renderer both read arrangementStore.tracks — keep them in step with
@@ -78,9 +90,9 @@ export function useRemix(): RemixState {
         tuningHz: config.audio.tuning.defaultHz,
         masterDb: config.audio.volume.defaultMasterDb,
       },
-      durationMin,
+      draw.totalSec / 60,
     );
-  }, [draw, scopedTo, durationMin]);
+  }, [draw, scopedTo]);
 
   const candidatesFor = useCallback(
     (c: Category) => pool.filter((r) => r.category === c && (!scopedTo || r.source.element === scopedTo)),
@@ -91,14 +103,16 @@ export function useRemix(): RemixState {
     tracks: draw.tracks,
     picks: draw.picks,
     regions: draw.regions,
-    totalSec: durationMin * 60,
+    totalSec: draw.totalSec,
     warnings: [...parserWarnings, ...draw.warnings],
     loading,
     mode,
     element,
+    section,
     candidatesFor,
     setMode,
     setElement,
+    setSection,
     regenerate: () => setSeed((n) => n + 1),
     refetch,
   };

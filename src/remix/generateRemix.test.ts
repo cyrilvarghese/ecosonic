@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ELEMENTS, type Category, type ElementManifest, type ElementName, type Manifest, type SampleEntry } from '@/types';
+import type { Mode } from '@/arrange/types';
 import { config } from '@/config';
 import { generateRemix } from './generateRemix';
 import type { AuthoredRule, Phrase } from './sessionRules';
@@ -30,20 +31,25 @@ const rule = (
   element: ElementName,
   phrases: Phrase[] = [ph(0, 60)],
   variant?: string,
+  section: Mode = 'INTRODUCTION',
+  sectionStartSec = 0,
 ): AuthoredRule => ({
   category,
   variant,
-  section: 'INTRODUCTION',
-  sectionStartSec: 0,
+  section,
+  sectionStartSec,
   phrases,
   source: { element, sessionId: `${element}-1`, track: category },
 });
+
+/** Every draw needs a session length; the section tests override it where it matters. */
+const SESSION = { sessionSec: 1800 };
 
 describe('generateRemix', () => {
   it("picks only the chosen element's rules in scoped mode", () => {
     const pool = [rule('MELODY', 'WATER'), rule('MELODY', 'FIRE'), rule('PAD', 'FIRE')];
     for (let seed = 1; seed <= 10; seed++) {
-      const { picks } = generateRemix(pool, fakeManifest(), { seed, element: 'FIRE' });
+      const { picks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed, element: 'FIRE' });
       expect(picks).toHaveLength(2);
       expect(picks.every((p) => p.rule.source.element === 'FIRE')).toBe(true);
       expect(picks.every((p) => p.track.sample.name.startsWith('FIRE-'))).toBe(true);
@@ -52,15 +58,15 @@ describe('generateRemix', () => {
 
   it('counts only the filtered candidates in poolSize', () => {
     const pool = [rule('MELODY', 'WATER'), rule('MELODY', 'FIRE')];
-    const cross = generateRemix(pool, fakeManifest(), { seed: 1 });
-    const scoped = generateRemix(pool, fakeManifest(), { seed: 1, element: 'FIRE' });
+    const cross = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
+    const scoped = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1, element: 'FIRE' });
     expect(cross.picks[0].poolSize).toBe(2);
     expect(scoped.picks[0].poolSize).toBe(1);
   });
 
   it("takes each track's sample from the element of the rule it picked", () => {
     const pool = [rule('MELODY', 'WATER'), rule('PAD', 'FIRE')];
-    const { picks } = generateRemix(pool, fakeManifest(), { seed: 1 });
+    const { picks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
     const byCategory = new Map(picks.map((p) => [p.track.category, p.track.sample.name]));
     expect(byCategory.get('MELODY')).toBe('WATER-MELODY');
     expect(byCategory.get('PAD')).toBe('FIRE-PAD');
@@ -71,7 +77,7 @@ describe('generateRemix', () => {
       rule('MELODY', 'WATER', [ph(0, 60)], 'MELODY 2'),
       rule('MELODY', 'FIRE', [ph(0, 60)], 'SUB MELODY'),
     ];
-    const { tracks, picks } = generateRemix(pool, fakeManifest(), { seed: 2 });
+    const { tracks, picks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 2 });
     expect(tracks).toHaveLength(1);
     expect(tracks[0].id).toBe('MELODY');
     expect(tracks[0].label).toBe(picks[0].rule.variant);
@@ -79,7 +85,7 @@ describe('generateRemix', () => {
   });
 
   it('skips a category no rule in the pool covers', () => {
-    const { tracks } = generateRemix([rule('MELODY', 'WATER')], fakeManifest(), { seed: 1 });
+    const { tracks } = generateRemix([rule('MELODY', 'WATER')], fakeManifest(), { ...SESSION, seed: 1 });
     expect(tracks.map((t) => t.category)).toEqual(['MELODY']);
   });
 
@@ -87,7 +93,7 @@ describe('generateRemix', () => {
     const { tracks, regions, warnings } = generateRemix(
       [rule('MELODY', 'WATER')],
       fakeManifest({ WATER: ['MELODY'] }),
-      { seed: 1 },
+      { ...SESSION, seed: 1 },
     );
     expect(tracks).toEqual([]);
     expect(regions).toEqual([]);
@@ -98,13 +104,13 @@ describe('generateRemix', () => {
 
   it('orders derived tracks by the vertical stack grammar', () => {
     const pool = [rule('MELODY', 'WATER'), rule('NOISE', 'WATER'), rule('PAD', 'WATER')];
-    const { tracks } = generateRemix(pool, fakeManifest(), { seed: 1 });
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
     expect(tracks.map((t) => t.category)).toEqual(['NOISE', 'PAD', 'MELODY']);
   });
 
   it('emits one region per phrase, keyed to its track', () => {
     const pool = [rule('PAD', 'FIRE', [ph(0, 120, 0, 120), ph(540, 600, 60, 0)])];
-    const { regions } = generateRemix(pool, fakeManifest(), { seed: 1 });
+    const { regions } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
     expect(regions).toHaveLength(2);
     expect(regions.every((r) => r.trackId === 'PAD')).toBe(true);
     expect(regions[0]).toEqual({ trackId: 'PAD', enterSec: 0, exitSec: 120, fadeInSec: 0, fadeOutSec: 120 });
@@ -113,10 +119,78 @@ describe('generateRemix', () => {
   it('repeats its draw for a seed and redraws for a different one', () => {
     const pool = ELEMENTS.map((el) => rule('MELODY', el));
     const manifest = fakeManifest();
-    expect(generateRemix(pool, manifest, { seed: 7 })).toEqual(generateRemix(pool, manifest, { seed: 7 }));
+    expect(generateRemix(pool, manifest, { ...SESSION, seed: 7 }))
+      .toEqual(generateRemix(pool, manifest, { ...SESSION, seed: 7 }));
 
-    const first = generateRemix(pool, manifest, { seed: 1 }).picks[0].rule;
-    const redraws = Array.from({ length: 20 }, (_, i) => generateRemix(pool, manifest, { seed: i + 1 }).picks[0].rule);
+    const first = generateRemix(pool, manifest, { ...SESSION, seed: 1 }).picks[0].rule;
+    const redraws = Array.from({ length: 20 }, (_, i) =>
+      generateRemix(pool, manifest, { ...SESSION, seed: i + 1 }).picks[0].rule);
     expect(redraws.some((r) => r !== first)).toBe(true);
+  });
+});
+
+describe('generateRemix — section axis', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  it('keeps absolute times and the session length when no section is chosen', () => {
+    const pool = [rule('MELODY', 'EARTH', [ph(1320, 1590)], undefined, 'RETURN', 1200)];
+    const { regions, totalSec } = generateRemix(pool, fakeManifest(), BASE);
+    expect(totalSec).toBe(1800);
+    expect(regions[0]).toMatchObject({ enterSec: 1320, exitSec: 1590 });
+  });
+
+  it('draws only rules of the chosen section', () => {
+    const pool = [
+      rule('MELODY', 'EARTH', [ph(0, 300)], undefined, 'INTRODUCTION', 0),
+      rule('PAD', 'EARTH', [ph(1320, 1590)], undefined, 'RETURN', 1200),
+    ];
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'RETURN' });
+    expect(tracks.map((t) => t.category)).toEqual(['PAD']);
+  });
+
+  it('rebases each rule by its own section start, not a constant', () => {
+    // AIR opens Deep Relaxation at 9:30 (570s); EARTH opens it at 10:00 (600s).
+    const pool = [
+      rule('MELODY', 'AIR', [ph(600, 900)], undefined, 'DEEP_RELAXATION', 570),
+      rule('PAD', 'EARTH', [ph(660, 960)], undefined, 'DEEP_RELAXATION', 600),
+    ];
+    const { regions, totalSec } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'DEEP_RELAXATION' });
+    expect(totalSec).toBe(config.layerTwo.moduleSeconds);
+    const byTrack = new Map(regions.map((r) => [r.trackId, r]));
+    expect(byTrack.get('MELODY')).toMatchObject({ enterSec: 30, exitSec: 330 });
+    expect(byTrack.get('PAD')).toMatchObject({ enterSec: 60, exitSec: 360 });
+  });
+
+  it('clips a phrase that overruns the module', () => {
+    const pool = [rule('PAD', 'EARTH', [ph(0, 900)], undefined, 'INTRODUCTION', 0)];
+    const { regions } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'INTRODUCTION' });
+    expect(regions[0].exitSec).toBe(config.layerTwo.moduleSeconds);
+  });
+
+  it('caps a fade at the width the clip has left after clipping', () => {
+    const pool = [rule('PAD', 'EARTH', [ph(560, 900, 0, 120)], undefined, 'INTRODUCTION', 0)];
+    const { regions } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'INTRODUCTION' });
+    expect(regions[0]).toMatchObject({ enterSec: 560, exitSec: 600, fadeOutSec: 40 });
+  });
+
+  it('skips a rule whose phrases all fall outside the module, and warns', () => {
+    const pool = [rule('PAD', 'EARTH', [ph(1300, 1400)], undefined, 'INTRODUCTION', 0)];
+    const { tracks, warnings } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'INTRODUCTION' });
+    expect(tracks).toEqual([]);
+    expect(warnings.some((w) => w.includes('PAD'))).toBe(true);
+  });
+
+  it('combines the section filter with the element filter', () => {
+    const pool = [
+      rule('MELODY', 'AIR', [ph(600, 900)], undefined, 'DEEP_RELAXATION', 570),
+      rule('MELODY', 'EARTH', [ph(660, 960)], undefined, 'DEEP_RELAXATION', 600),
+      rule('MELODY', 'EARTH', [ph(0, 300)], undefined, 'INTRODUCTION', 0),
+    ];
+    const { picks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, section: 'DEEP_RELAXATION', element: 'EARTH',
+    });
+    expect(picks).toHaveLength(1);
+    expect(picks[0].poolSize).toBe(1);
+    expect(picks[0].rule.source.element).toBe('EARTH');
   });
 });
