@@ -4,7 +4,7 @@ import manifestJson from '@/manifest.json';
 import { ELEMENTS, type Category, type ElementName, type Manifest } from '@/types';
 import type { ArrTrack, Mode, TemplateRegion } from '@/arrange/types';
 import { config } from '@/config';
-import { arrangementStore, useArrangement } from '@/arrange/arrangementStore';
+import { arrangementStore } from '@/arrange/arrangementStore';
 import type { AuthoredRule, RuleStore } from '@/remix/sessionRules';
 import { generateRemix, type RemixPick } from '@/remix/generateRemix';
 
