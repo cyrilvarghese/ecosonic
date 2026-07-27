@@ -14,12 +14,14 @@ const clock = (s: number): string =>
 /** The assembled free-mix on one continuous 0–totalSec timeline: a time scale, then one lane per
  *  track with each region positioned by its absolute time. Section boundaries are not hard cuts —
  *  the scale is the only reference, and it rescales with the draw. */
-export function ResultTimeline({ regions, totalSec, tracks }: {
+export function ResultTimeline({ regions, totalSec, tracks, positionSec }: {
   regions: TemplateRegion[];
   totalSec: number;
   tracks: ArrTrack[];
+  /** Playhead position; omitted when nothing is playing. */
+  positionSec?: number;
 }) {
-  const pct = (sec: number) => `${(sec / totalSec) * 100}%`;
+  const pct = (sec: number) => `${(Math.min(Math.max(sec, 0), totalSec) / totalSec) * 100}%`;
   const step = tickStep(totalSec);
   const ticks = Array.from({ length: Math.floor(totalSec / step) + 1 }, (_, i) => i * step);
 
@@ -56,6 +58,14 @@ export function ResultTimeline({ regions, totalSec, tracks }: {
                 style={{ left: pct(r.enterSec), width: pct(r.exitSec - r.enterSec) }}
               />
             ))}
+            {positionSec !== undefined && (
+              <div
+                data-testid="playhead"
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-foreground"
+                style={{ left: pct(positionSec) }}
+              />
+            )}
           </div>
         </div>
       ))}

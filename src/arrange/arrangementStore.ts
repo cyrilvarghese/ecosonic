@@ -38,6 +38,8 @@ export interface ArrangementState {
   /** Play a free-mix arrangement: a flat absolute region set over one module of `totalSec`. */
   playFreeMix: (regions: TemplateRegion[], totalSec: number) => void;
   pause: () => void;
+  /** Resume after a pause without moving the playhead or resizing the timeline. */
+  resume: () => void;
   seek: (sec: number) => void;
   setPosition: (sec: number) => void;
   setScrubbing: (b: boolean) => void;
@@ -116,6 +118,7 @@ export function createArrangementStore() {
       playFreeMix: (regions, totalSec) =>
         set({ moduleRegions: regions, durationSec: totalSec, session: null, activeMode: 'INTRODUCTION', positionSec: 0, playing: true }),
       pause: () => set({ playing: false }),
+      resume: () => set({ playing: true }),
       seek: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setPosition: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setScrubbing: (b) => set({ scrubbing: b }),

@@ -36,6 +36,25 @@ describe('tickStep', () => {
   });
 });
 
+describe('ResultTimeline playhead', () => {
+  it('shows no playhead when there is no position', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} />);
+    expect(screen.queryAllByTestId('playhead')).toHaveLength(0);
+  });
+
+  it('places a playhead in each lane at its fraction of the timeline', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} positionSec={450} />);
+    const heads = screen.getAllByTestId('playhead');
+    expect(heads).toHaveLength(lane.length);
+    expect(heads[0].style.left).toBe('25%');
+  });
+
+  it('keeps the playhead on the timeline when the position overruns', () => {
+    render(<ResultTimeline totalSec={600} tracks={lane} regions={[]} positionSec={9999} />);
+    expect(screen.getAllByTestId('playhead')[0].style.left).toBe('100%');
+  });
+});
+
 describe('ResultTimeline scale', () => {
   it('labels a 30-minute session every 5 minutes', () => {
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} />);

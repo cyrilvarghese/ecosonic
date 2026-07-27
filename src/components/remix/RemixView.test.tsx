@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { arrangementStore } from '@/arrange/arrangementStore';
 import { RemixView } from './RemixView';
@@ -120,6 +120,43 @@ describe('RemixView', () => {
     expect(screen.getByRole('button', { name: 'Return' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('region-BASS-120')).toBeInTheDocument(); // 1320 rebased by 1200
     expect(screen.queryByTestId('region-PAD-0')).toBeNull();
+  });
+
+  it('toggles the transport button between play and pause', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    expect(screen.getByRole('button', { name: /Play/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+    expect(screen.getByRole('button', { name: /Pause/ })).toBeInTheDocument();
+    expect(arrangementStore.getState().playing).toBe(true);
+
+    await userEvent.click(screen.getByRole('button', { name: /Pause/ }));
+    expect(screen.getByRole('button', { name: /Play/ })).toBeInTheDocument();
+    expect(arrangementStore.getState().playing).toBe(false);
+  });
+
+  it('resumes from the paused position instead of restarting', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+
+    act(() => { arrangementStore.setState({ positionSec: 420 }); });
+    await userEvent.click(screen.getByRole('button', { name: /Pause/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+
+    expect(arrangementStore.getState().playing).toBe(true);
+    // Not exactly 420 — the scheduler's clock is already advancing, which is the point.
+    expect(arrangementStore.getState().positionSec).toBeGreaterThanOrEqual(420);
+  });
+
+  it('reads out the playhead against the total length', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    expect(screen.getByTestId('transport-clock')).toHaveTextContent('0:00 / 30:00');
+
+    act(() => { arrangementStore.setState({ positionSec: 930 }); });
+    expect(screen.getByTestId('transport-clock')).toHaveTextContent('15:30 / 30:00');
   });
 
   it('surfaces an export failure instead of failing silently', async () => {

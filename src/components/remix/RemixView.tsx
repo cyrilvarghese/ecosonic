@@ -16,6 +16,9 @@ const PILL = 'rounded px-3 py-1 text-sm transition-calm';
 const CHIP = 'rounded-full border px-2.5 py-0.5 text-xs transition-calm';
 const LIT = 'border-[var(--accent-ink)] bg-[var(--accent-ink)] text-white';
 
+const clock = (s: number): string =>
+  `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
 const MODES: { value: RemixMode; label: string }[] = [
   { value: 'cross', label: 'Cross-element' },
   { value: 'scoped', label: 'Scoped' },
@@ -44,6 +47,18 @@ export function RemixView() {
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
+  const playing = useArrangement((s) => s.playing);
+  const positionSec = useArrangement((s) => s.positionSec);
+  const pause = useArrangement((s) => s.pause);
+  const resume = useArrangement((s) => s.resume);
+
+  // Mid-mix, resume where we paused; from a standstill (or after a redraw, which resets the
+  // playhead) start the mix fresh so the scheduler picks up the current regions.
+  const onTransport = () => {
+    if (playing) pause();
+    else if (positionSec > 0) resume();
+    else playFreeMix(regions, totalSec);
+  };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
   const [exportState, setExportState] = useState<'idle' | 'rendering' | 'error'>('idle');
@@ -162,10 +177,20 @@ export function RemixView() {
         <h3 className="mb-2 text-sm font-medium">
           Final result — {SECTIONS.find((s) => s.value === section)?.label ?? 'full session'}
         </h3>
-        <ResultTimeline regions={regions} totalSec={totalSec} tracks={tracks} />
-        <div className="mt-4 flex flex-wrap gap-2">
+        <ResultTimeline
+          regions={regions}
+          totalSec={totalSec}
+          tracks={tracks}
+          positionSec={playing || positionSec > 0 ? positionSec : undefined}
+        />
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>
-          <button type="button" className={BTN} onClick={() => playFreeMix(regions, totalSec)}>▶ Play</button>
+          <button type="button" className={BTN} onClick={onTransport}>
+            {playing ? '⏸ Pause' : '▶ Play'}
+          </button>
+          <span data-testid="transport-clock" className="text-xs tabular-nums text-muted-foreground">
+            {clock(positionSec)} / {clock(totalSec)}
+          </span>
           <button
             type="button"
             className={BTN}
