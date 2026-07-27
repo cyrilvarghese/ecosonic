@@ -168,8 +168,15 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
   so a chip on screen is always one the draw could have picked. Lit chips are the picks; a full
   session lights up to three per row.
 - **Colour** is the element's brand colour, on both chips and bars, via `data-element`.
-- **A bar reads** `MELODY 3:30 ×3` on the left — the **material**, sample length × repeats — and the
+- **A bar reads** `MELODY 1:56 ×5` on the left — the **material**, sample length × repeats — and the
   **interval** length on the right. The tooltip carries the whole reading.
+- **`×N` is a product**: sample × N *is* the interval, and the numbers on screen multiply out. Where
+  the sample does not divide the interval evenly there is no such integer, and the count is written
+  **`×N+`** — N whole passes and part of another. It is never rounded into a lie.
+- **Sample lengths show a tenth** when they have one (`1:56.2`). They are floats; printing 116.2s as
+  `1:56` makes `1:56 ×5` read as 9:40 when the interval is really 9:41.
+- With §6 on, every interval divides evenly, so every bar reads `×N`. A bar still showing `×N+` is
+  one of §6's two exceptions — worth looking at.
 - **Warnings** expand to their text rather than showing only a count.
 
 ## 8. Deliberately not done

@@ -66,24 +66,24 @@ describe('ResultTimeline interval labels', () => {
   const bar600 = [{ trackId: 't', enterSec: 300, exitSec: 900, fadeInSec: 0, fadeOutSec: 0 }];
 
   it('names the source material on the left and the interval length on the right', () => {
-    // 3:30 sample under a 10:00 interval → it plays 3 times over.
-    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 210 }} />);
+    // 2:00 sample under a 10:00 interval → exactly 5 passes.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 120 }} />);
     const bar = screen.getByTestId('region-t-300');
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY 3:30 ×3');
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY 2:00 ×5');
     expect(within(bar).getByTestId('interval-length')).toHaveTextContent('10:00');
   });
 
   it('never multiplies the interval length by the loop count', () => {
-    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 210 }} />);
-    // "10:00 ×3" would read as thirty minutes of audio; the ×N belongs to the sample.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 120 }} />);
+    // "10:00 ×5" would read as fifty minutes of audio; the ×N belongs to the sample.
     expect(within(screen.getByTestId('region-t-300')).getByTestId('interval-source'))
       .not.toHaveTextContent('10:00');
   });
 
   it('spells the whole thing out on hover, for bars too narrow to read', () => {
-    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 210 }} />);
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 120 }} />);
     expect(screen.getByTestId('region-t-300'))
-      .toHaveAttribute('title', 'MELODY · 5:00–15:00 · sample 3:30 ×3 · interval 10:00');
+      .toHaveAttribute('title', 'MELODY · 5:00–15:00 · sample 2:00 ×5 · interval 10:00');
   });
 
   it('shows only the interval until the sample length is known', () => {
@@ -97,18 +97,52 @@ describe('ResultTimeline interval labels', () => {
 
 describe('ResultTimeline loop length', () => {
   const tenMinBar = [{ trackId: 't', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 }];
+  const bar = (enterSec: number, exitSec: number) =>
+    [{ trackId: 't', enterSec, exitSec, fadeInSec: 0, fadeOutSec: 0 }];
 
-  it('reports how many times a short sample repeats to fill the interval', () => {
-    // 1:56 sample under a 10:00 interval → ceil(600/116) = 6 repeats, the last one partial.
-    render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 116 }} />);
-    const bar = screen.getByTestId('region-t-0');
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56 ×6');
-    expect(bar).toHaveAttribute('title', 'MELODY · 0:00–10:00 · sample 1:56 ×6 · interval 10:00');
+  it('multiplies out exactly when the sample divides the interval', () => {
+    // 5 × 1:56 = 9:40. The count is a product, so the numbers on screen must agree.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar(0, 580)} trackDurations={{ t: 116 }} />);
+    const b = screen.getByTestId('region-t-0');
+    expect(within(b).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56 ×5');
+    expect(within(b).getByTestId('interval-length')).toHaveTextContent('9:40');
   });
 
-  it('draws one segment per repeat so the loop points are visible', () => {
+  it('shows the tenths a whole-second sample length would hide', () => {
+    // 5 × 116.2 = 581 = 9:41. Printing "1:56" would read as 9:40.
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar(0, 581)} trackDurations={{ t: 116.2 }} />);
+    const b = screen.getByTestId('region-t-0');
+    expect(within(b).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56.2 ×5');
+    expect(within(b).getByTestId('interval-length')).toHaveTextContent('9:41');
+  });
+
+  it('survives the float drift of an interval built as N × sample', () => {
+    const sample = 116.2;
+    render(
+      <ResultTimeline totalSec={1800} tracks={lane}
+        regions={bar(0, 5 * sample)} trackDurations={{ t: sample }} />,
+    );
+    // ceil() on 5.000000000000001 would have said ×6.
+    expect(within(screen.getByTestId('region-t-0')).getByTestId('interval-source'))
+      .toHaveTextContent('×5');
+  });
+
+  it('marks a count that does not multiply out rather than inventing one', () => {
+    // 600 / 116 = 5.17 — no integer works, so say "5 whole passes and part of another".
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 116 }} />);
+    const b = screen.getByTestId('region-t-0');
+    expect(within(b).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56 ×5+');
+    expect(b).toHaveAttribute('title', 'MELODY · 0:00–10:00 · sample 1:56 ×5+ · interval 10:00');
+  });
+
+  it('draws a panel per whole pass plus one for the partial', () => {
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 116 }} />);
     expect(within(screen.getByTestId('region-t-0')).getAllByTestId('loop-seg')).toHaveLength(6);
+  });
+
+  it('draws exactly one panel per pass when it divides evenly', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar(0, 580)} trackDurations={{ t: 116 }} />);
+    expect(within(screen.getByTestId('region-t-0')).getAllByTestId('loop-seg')).toHaveLength(5);
   });
 
   it('says how much of the sample is heard when the interval is shorter than it', () => {
@@ -126,11 +160,11 @@ describe('ResultTimeline loop length', () => {
   });
 
   it('stops drawing segments when a sample is so short it would be a picket fence', () => {
-    // 5s under 10:00 = 120 repeats; the ×N readout still carries the count.
+    // 5s under 10:00 = 120 repeats; the count still carries the number.
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 5 }} />);
-    const bar = screen.getByTestId('region-t-0');
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('0:05 ×120');
-    expect(within(bar).queryAllByTestId('loop-seg')).toHaveLength(0);
+    const b = screen.getByTestId('region-t-0');
+    expect(within(b).getByTestId('interval-source')).toHaveTextContent('0:05 ×120');
+    expect(within(b).queryAllByTestId('loop-seg')).toHaveLength(0);
   });
 });
 

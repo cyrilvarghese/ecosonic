@@ -11,29 +11,47 @@ export function tickStep(totalSec: number): number {
 const clock = (s: number): string =>
   `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-/** How a sample of `total` seconds fills a clip of `clipDur` — the same reading Layer Two's
- *  ModuleDesigner gives. Samples here run 1–5 minutes under intervals up to 10, so most bars are
- *  the sample cycling several times.
+/** `M:SS`, with a tenth when the value isn't within a twentieth of a whole second. Sample lengths
+ *  are floats: showing a 116.2s sample as "1:56" makes "1:56 ×5" read as 9:40 when the interval is
+ *  really 9:41. The tenth is what makes the arithmetic on screen check out. */
+const clockPrecise = (s: number): string => {
+  if (Math.abs(s - Math.round(s)) < 0.05) return clock(Math.round(s));
+  const whole = Math.floor(s);
+  return `${clock(whole)}.${Math.round((s - whole) * 10)}`;
+};
+
+/** How a sample of `total` seconds fills a clip of `clipDur`.
  *
  *  `source` describes the MATERIAL (sample length × repeats), never the interval — "10:00 ×3" would
- *  read as thirty minutes of audio. The interval length is shown separately. */
+ *  read as thirty minutes of audio. The interval length is shown separately.
+ *
+ *  `×N` is a *product*: sample × N is the interval. When the sample does not divide the interval
+ *  evenly the count is written `×N+`, meaning N whole passes and part of another — because there is
+ *  no integer that multiplies out, and printing one would be a lie. (Layer Two's ModuleDesigner
+ *  counts passes-touched with `ceil` instead, which reads as N+1 for a sliver of a final pass.) */
 function loopFit(clipDur: number, total: number | undefined) {
   if (total == null || total <= 0) {
-    return { loops: 1, segmented: false, unit: clipDur, source: '', note: '' };
+    return { panels: 1, segmented: false, unit: clipDur, source: '', note: '' };
   }
   if (clipDur < total) {
     return {
-      loops: 1, segmented: false, unit: clipDur,
-      source: clock(total),
-      note: ` · sample ${clock(total)}, ${clock(clipDur)} heard`,
+      panels: 1, segmented: false, unit: clipDur,
+      source: clockPrecise(total),
+      note: ` · sample ${clockPrecise(total)}, ${clockPrecise(clipDur)} heard`,
     };
   }
-  const loops = clipDur > total + 0.5 ? Math.ceil(clipDur / total) : 1;
-  // Cap the dividers: a 5-second sample in a 10-minute bar would be a picket fence, and the ×N
-  // readout already carries the count.
-  const segmented = loops > 1 && loops <= 40;
-  const source = loops > 1 ? `${clock(total)} ×${loops}` : clock(total);
-  return { loops, segmented, unit: segmented ? total : clipDur, source, note: ` · sample ${source}` };
+  const exact = clipDur / total;
+  // Tolerant of float drift: an interval built as 5 × 116.2 can land on 4.999999 or 5.000001.
+  const divides = Math.abs(exact - Math.round(exact)) < 0.02;
+  const full = divides ? Math.round(exact) : Math.floor(exact);
+  const panels = divides ? full : full + 1; // the extra panel is the partial pass
+  // Cap the dividers: a 5-second sample in a 10-minute bar would be a picket fence, and the count
+  // still carries the number.
+  const segmented = panels > 1 && panels <= 40;
+  const source = full > 1 || !divides
+    ? `${clockPrecise(total)} ×${full}${divides ? '' : '+'}`
+    : clockPrecise(total);
+  return { panels, segmented, unit: segmented ? total : clipDur, source, note: ` · sample ${source}` };
 }
 
 /** The assembled free-mix on one continuous 0–totalSec timeline: a time scale, one lane per track
@@ -114,7 +132,7 @@ export function ResultTimeline({
               ))}
               {regions.filter((r) => r.trackId === t.id).map((r, i) => {
                 const clipDur = r.exitSec - r.enterSec;
-                const { loops, segmented, unit, source, note } = loopFit(clipDur, trackDurations?.[t.id]);
+                const { panels, segmented, unit, source, note } = loopFit(clipDur, trackDurations?.[t.id]);
                 return (
                   <div
                     key={i}
@@ -129,7 +147,7 @@ export function ResultTimeline({
                     {/* One panel per repeat — identical widths make the loop points legible. */}
                     {segmented && (
                       <div className="pointer-events-none absolute inset-0 flex overflow-hidden rounded">
-                        {Array.from({ length: loops }).map((_, s) => (
+                        {Array.from({ length: panels }).map((_, s) => (
                           <div
                             key={s}
                             data-testid="loop-seg"
