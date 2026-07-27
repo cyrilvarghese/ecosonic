@@ -36,6 +36,31 @@ describe('tickStep', () => {
   });
 });
 
+describe('ResultTimeline element colour', () => {
+  it('tags each region with its track element so it takes that element colour', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800}
+        tracks={lane}
+        regions={[{ trackId: 't', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 }]}
+        trackElements={{ t: 'FIRE' }}
+      />,
+    );
+    expect(screen.getByTestId('region-t-0')).toHaveAttribute('data-element', 'fire');
+  });
+
+  it('leaves a region untagged when its track element is unknown', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800}
+        tracks={lane}
+        regions={[{ trackId: 't', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 }]}
+      />,
+    );
+    expect(screen.getByTestId('region-t-0')).not.toHaveAttribute('data-element');
+  });
+});
+
 describe('ResultTimeline playhead', () => {
   it('shows no playhead when there is no position', () => {
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} />);

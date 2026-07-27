@@ -8,10 +8,11 @@ const SECTION_LABEL: Record<AuthoredRule['section'], string> = {
   INTRODUCTION: 'Introduction', DEEP_RELAXATION: 'Deep Relaxation', RETURN: 'Return',
 };
 
-const chip = (r: AuthoredRule): string => {
-  const el = r.source.element[0] + r.source.element.slice(1, 3).toLowerCase();
-  return `${el}·${SECTION_ABBR[r.section]}${r.variant ? '*' : ''}`;
-};
+/** "WATER" → "Water" — the full element name, so a chip reads Water·Rx rather than Wat·Rx. */
+const titleCase = (el: string): string => el[0] + el.slice(1).toLowerCase();
+
+const chip = (r: AuthoredRule): string =>
+  `${titleCase(r.source.element)}·${SECTION_ABBR[r.section]}${r.variant ? '*' : ''}`;
 
 const clock = (s: number): string =>
   `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -44,6 +45,9 @@ export function TrackPoolRow({ track, candidates, picked }: {
             <span
               key={i}
               title={chipTitle(c)}
+              // data-element rebinds --accent-ink to that element's brand colour (globals.css),
+              // so a picked chip and its bars on the timeline read as the same element.
+              data-element={c.source.element.toLowerCase()}
               className={`cursor-help rounded-full border px-2 py-0.5 text-xs ${
                 picked.has(c)
                   ? 'border-[var(--accent-ink)] bg-[var(--accent-ink)] text-white'

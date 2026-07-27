@@ -14,12 +14,14 @@ const clock = (s: number): string =>
 /** The assembled free-mix on one continuous 0–totalSec timeline: a time scale, then one lane per
  *  track with each region positioned by its absolute time. Section boundaries are not hard cuts —
  *  the scale is the only reference, and it rescales with the draw. */
-export function ResultTimeline({ regions, totalSec, tracks, positionSec }: {
+export function ResultTimeline({ regions, totalSec, tracks, positionSec, trackElements }: {
   regions: TemplateRegion[];
   totalSec: number;
   tracks: ArrTrack[];
   /** Playhead position; omitted when nothing is playing. */
   positionSec?: number;
+  /** trackId → the element its rules came from, colouring its bars. */
+  trackElements?: Record<string, string>;
 }) {
   const pct = (sec: number) => `${(Math.min(Math.max(sec, 0), totalSec) / totalSec) * 100}%`;
   const step = tickStep(totalSec);
@@ -54,6 +56,9 @@ export function ResultTimeline({ regions, totalSec, tracks, positionSec }: {
               <div
                 key={i}
                 data-testid={`region-${r.trackId}-${r.enterSec}`}
+                // data-element rebinds --accent-ink to that element's brand colour (globals.css),
+                // so each fragment is coloured by the element it was authored in.
+                data-element={trackElements?.[r.trackId]?.toLowerCase()}
                 className="absolute inset-y-0.5 rounded bg-[var(--accent-ink)]"
                 style={{ left: pct(r.enterSec), width: pct(r.exitSec - r.enterSec) }}
               />
@@ -62,7 +67,9 @@ export function ResultTimeline({ regions, totalSec, tracks, positionSec }: {
               <div
                 data-testid="playhead"
                 aria-hidden
-                className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-foreground"
+                // White core with a dark outline: element bars run from bright fire orange to
+                // near-black air, and a single-colour playhead disappears against one end or the other.
+                className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_0_1px_var(--foreground)]"
                 style={{ left: pct(positionSec) }}
               />
             )}

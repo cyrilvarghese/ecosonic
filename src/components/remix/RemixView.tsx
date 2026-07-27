@@ -61,6 +61,8 @@ export function RemixView() {
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
+  // Every rule of a track comes from one element, so a track has exactly one colour.
+  const trackElements = Object.fromEntries(picks.map((p) => [p.track.id, p.rule.source.element]));
   // null = not exporting. 0 = samples still downloading/decoding, which is the slow part and
   // reports nothing — the render only starts emitting progress once every sample is decoded.
   const [renderPct, setRenderPct] = useState<number | null>(null);
@@ -201,6 +203,7 @@ export function RemixView() {
           totalSec={totalSec}
           tracks={tracks}
           positionSec={playing || positionSec > 0 ? positionSec : undefined}
+          trackElements={trackElements}
         />
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>

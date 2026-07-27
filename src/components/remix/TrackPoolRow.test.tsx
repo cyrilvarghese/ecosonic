@@ -21,7 +21,7 @@ describe('TrackPoolRow', () => {
   it('names the element, section and interval on hover', () => {
     const r = rule([{ enterSec: 60, exitSec: 540, fadeInSec: 0, fadeOutSec: 0 }]);
     render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
-    expect(screen.getByText('Wat·I')).toHaveAttribute('title', 'WATER · Introduction · 1:00–9:00');
+    expect(screen.getByText('Water·I')).toHaveAttribute('title', 'WATER · Introduction · 1:00–9:00');
   });
 
   it('lists every phrase of a multi-phrase rule', () => {
@@ -30,7 +30,7 @@ describe('TrackPoolRow', () => {
       { enterSec: 327, exitSec: 435, fadeInSec: 0, fadeOutSec: 0 },
     ]);
     render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
-    expect(screen.getByText('Wat·I'))
+    expect(screen.getByText('Water·I'))
       .toHaveAttribute('title', 'WATER · Introduction · 2:45–4:33, 5:27–7:15');
   });
 
@@ -42,15 +42,21 @@ describe('TrackPoolRow', () => {
       <TrackPoolRow track={track} candidates={[intro, unpicked, ret]} picked={new Set([intro, ret])} />,
     );
     const lit = (text: string) => screen.getByText(text).className.includes('bg-[var(--accent-ink)]');
-    expect(lit('Wat·I')).toBe(true);
-    expect(lit('Wat·Rt')).toBe(true);
-    expect(lit('Wat·Rx')).toBe(false);
+    expect(lit('Water·I')).toBe(true);
+    expect(lit('Water·Rt')).toBe(true);
+    expect(lit('Water·Rx')).toBe(false);
   });
 
   it('spells out the section a chip abbreviates', () => {
     const r = rule([{ enterSec: 1200, exitSec: 1500, fadeInSec: 0, fadeOutSec: 0 }], 'DEEP_RELAXATION');
     render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
-    expect(screen.getByText('Wat·Rx'))
+    expect(screen.getByText('Water·Rx'))
       .toHaveAttribute('title', 'WATER · Deep Relaxation · 20:00–25:00');
+  });
+
+  it('tags each chip with its element so it takes that element colour', () => {
+    const r = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }]);
+    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    expect(screen.getByText('Water·I')).toHaveAttribute('data-element', 'water');
   });
 });
