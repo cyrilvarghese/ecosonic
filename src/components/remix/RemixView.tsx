@@ -1,5 +1,6 @@
 'use client';
 import { ELEMENTS } from '@/types';
+import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { exportFreeMixWav } from '@/remix/renderFreeMix';
 import { useRemix, type RemixMode } from './useRemix';
@@ -16,6 +17,13 @@ const MODES: { value: RemixMode; label: string }[] = [
   { value: 'cross', label: 'Cross-element' },
   { value: 'scoped', label: 'Scoped' },
 ];
+/** null draws the whole authored session on its absolute timeline; a Mode draws one module. */
+const SECTIONS: { value: Mode | null; label: string }[] = [
+  { value: null, label: 'Full session' },
+  { value: 'INTRODUCTION', label: 'Intro' },
+  { value: 'DEEP_RELAXATION', label: 'Deep Relaxation' },
+  { value: 'RETURN', label: 'Return' },
+];
 const HINT: Record<RemixMode, string> = {
   cross: 'every track draws from the whole pool — its sample follows the element it picked',
   scoped: "every track draws from one element's rules, and that element's samples",
@@ -24,7 +32,7 @@ const HINT: Record<RemixMode, string> = {
 export function RemixView() {
   const {
     tracks, picks, regions, totalSec, warnings, loading,
-    mode, element, candidatesFor, setMode, setElement, regenerate, refetch,
+    mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
@@ -89,6 +97,25 @@ export function RemixView() {
         )}
 
         <p className="text-xs text-muted-foreground">{HINT[mode]}</p>
+
+        <div className="flex w-full flex-wrap items-center gap-1">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              aria-pressed={section === s.value}
+              onClick={() => setSection(s.value)}
+              className={`${CHIP} ${section === s.value ? LIT : 'border-border text-muted-foreground opacity-70 hover:opacity-100'}`}
+            >
+              {s.label}
+            </button>
+          ))}
+          <span className="ml-1 text-xs text-muted-foreground">
+            {section
+              ? 'one module, rules rebased to the section start'
+              : 'the whole authored session on one timeline'}
+          </span>
+        </div>
       </section>
 
       <section>
@@ -114,7 +141,9 @@ export function RemixView() {
       </section>
 
       <section className="rounded-[var(--radius-md)] border border-[var(--accent-ink)] bg-card p-4">
-        <h3 className="mb-2 text-sm font-medium">Final result — full session</h3>
+        <h3 className="mb-2 text-sm font-medium">
+          Final result — {SECTIONS.find((s) => s.value === section)?.label ?? 'full session'}
+        </h3>
         <ResultTimeline regions={regions} totalSec={totalSec} tracks={tracks} />
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>
