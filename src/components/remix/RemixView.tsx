@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ELEMENTS } from '@/types';
 import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -69,13 +69,31 @@ export function RemixView() {
   // reports nothing — the render only starts emitting progress once every sample is decoded.
   const [renderPct, setRenderPct] = useState<number | null>(null);
   const [exportFailed, setExportFailed] = useState(false);
+  const [mutedIds, setMutedIds] = useState<ReadonlySet<string>>(new Set());
+
+  const toggleMute = (trackId: string) =>
+    setMutedIds((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(trackId)) next.add(trackId);
+      return next;
+    });
+
+  // Re-applied on every redraw: the engine reloads its layers when the draw changes, and a fresh
+  // layer starts unmuted.
+  useEffect(() => {
+    for (const t of tracks) engine.setMute(t.id, mutedIds.has(t.id));
+  }, [engine, tracks, mutedIds]);
+
+  // Mute is part of the mix, not just monitoring — a muted track is absent from the export too.
+  const audible = tracks.filter((t) => !mutedIds.has(t.id));
+  const audibleRegions = regions.filter((r) => !mutedIds.has(r.trackId));
 
   const onExport = async () => {
     setExportFailed(false);
     setRenderPct(0);
     try {
       const blob = await exportFreeMixWav({
-        tracks, regions, totalSec, masterDb, onProgress: setRenderPct,
+        tracks: audible, regions: audibleRegions, totalSec, masterDb, onProgress: setRenderPct,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -209,6 +227,8 @@ export function RemixView() {
           onScrub={seek}
           onScrubStart={() => setScrubbing(true)}
           onScrubEnd={() => setScrubbing(false)}
+          mutedIds={mutedIds}
+          onToggleMute={toggleMute}
         />
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>

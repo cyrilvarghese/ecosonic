@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ResultTimeline, tickStep } from './ResultTimeline';
 
 const lane = [{
@@ -58,6 +59,51 @@ describe('ResultTimeline element colour', () => {
       />,
     );
     expect(screen.getByTestId('region-t-0')).not.toHaveAttribute('data-element');
+  });
+});
+
+describe('ResultTimeline interval labels', () => {
+  it('names each interval and how long it runs', () => {
+    render(
+      <ResultTimeline totalSec={1800} tracks={lane}
+        regions={[{ trackId: 't', enterSec: 300, exitSec: 900, fadeInSec: 0, fadeOutSec: 0 }]} />,
+    );
+    const bar = screen.getByTestId('region-t-300');
+    expect(bar).toHaveTextContent('MELODY');
+    expect(bar).toHaveTextContent('10:00'); // 900 − 300
+  });
+
+  it('spells the interval out in full on hover, for bars too narrow to read', () => {
+    render(
+      <ResultTimeline totalSec={1800} tracks={lane}
+        regions={[{ trackId: 't', enterSec: 300, exitSec: 900, fadeInSec: 0, fadeOutSec: 0 }]} />,
+    );
+    expect(screen.getByTestId('region-t-300'))
+      .toHaveAttribute('title', 'MELODY · 5:00–15:00 · 10:00');
+  });
+});
+
+describe('ResultTimeline mute', () => {
+  it('offers a mute toggle per lane', async () => {
+    const onToggleMute = vi.fn();
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} onToggleMute={onToggleMute} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mute MELODY' }));
+
+    expect(onToggleMute).toHaveBeenCalledWith('t');
+  });
+
+  it('marks a muted lane as pressed and offers to unmute it', () => {
+    render(
+      <ResultTimeline totalSec={1800} tracks={lane} regions={[]}
+        onToggleMute={vi.fn()} mutedIds={new Set(['t'])} />,
+    );
+    expect(screen.getByRole('button', { name: 'Unmute MELODY' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows no mute control when the timeline is not interactive', () => {
+    render(<ResultTimeline totalSec={1800} tracks={lane} regions={[]} />);
+    expect(screen.queryByRole('button', { name: /Mute/ })).toBeNull();
   });
 });
 

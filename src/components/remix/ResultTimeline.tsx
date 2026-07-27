@@ -15,7 +15,8 @@ const clock = (s: number): string =>
  *  with each region positioned by its absolute time and coloured by its element, and a single
  *  playhead sweeping every lane — draggable, like Layer Two's module designer. */
 export function ResultTimeline({
-  regions, totalSec, tracks, positionSec = 0, trackElements, onScrub, onScrubStart, onScrubEnd,
+  regions, totalSec, tracks, positionSec = 0, trackElements,
+  onScrub, onScrubStart, onScrubEnd, mutedIds, onToggleMute,
 }: {
   regions: TemplateRegion[];
   totalSec: number;
@@ -24,10 +25,13 @@ export function ResultTimeline({
   positionSec?: number;
   /** trackId → the element its rules came from, colouring its bars. */
   trackElements?: Record<string, string>;
-  /** Omit all three to render a non-interactive timeline. */
+  /** Omit all three to render a non-scrubbable timeline. */
   onScrub?: (sec: number) => void;
   onScrubStart?: () => void;
   onScrubEnd?: () => void;
+  /** Omit onToggleMute to render without mute controls. */
+  mutedIds?: ReadonlySet<string>;
+  onToggleMute?: (trackId: string) => void;
 }) {
   const pct = (sec: number) => `${(Math.min(Math.max(sec, 0), totalSec) / totalSec) * 100}%`;
   const step = tickStep(totalSec);
@@ -42,7 +46,7 @@ export function ResultTimeline({
   return (
     <div className="relative flex flex-col gap-1">
       <div className="flex items-end gap-2">
-        <span className="w-28 shrink-0" aria-hidden />
+        <span className="w-36 shrink-0" aria-hidden />
         <div className="relative h-4 flex-1">
           {ticks.map((t) => (
             <span
@@ -57,31 +61,55 @@ export function ResultTimeline({
         </div>
       </div>
 
-      {tracks.map((t) => (
-        <div key={t.id} className="flex items-center gap-2">
-          <span className="w-28 shrink-0 truncate text-xs text-muted-foreground">{t.label}</span>
-          <div className="relative h-4 flex-1 rounded bg-muted/30">
-            {ticks.slice(1, -1).map((tick) => (
-              <span key={tick} className="absolute inset-y-0 w-px bg-border/60" style={{ left: pct(tick) }} aria-hidden />
-            ))}
-            {regions.filter((r) => r.trackId === t.id).map((r, i) => (
-              <div
-                key={i}
-                data-testid={`region-${r.trackId}-${r.enterSec}`}
-                // data-element rebinds --accent-ink to that element's brand colour (globals.css),
-                // so each fragment is coloured by the element it was authored in.
-                data-element={trackElements?.[r.trackId]?.toLowerCase()}
-                className="absolute inset-y-0.5 rounded bg-[var(--accent-ink)]"
-                style={{ left: pct(r.enterSec), width: pct(r.exitSec - r.enterSec) }}
-              />
-            ))}
+      {tracks.map((t) => {
+        const muted = mutedIds?.has(t.id) ?? false;
+        return (
+          <div key={t.id} className="flex items-center gap-2">
+            <span className="flex w-36 shrink-0 items-center gap-1">
+              {onToggleMute && (
+                <button
+                  type="button"
+                  aria-pressed={muted}
+                  aria-label={`${muted ? 'Unmute' : 'Mute'} ${t.label}`}
+                  onClick={() => onToggleMute(t.id)}
+                  className="rounded px-1 text-xs leading-none transition-calm hover:bg-muted/60"
+                >
+                  {muted ? '🔇' : '🔊'}
+                </button>
+              )}
+              <span className={`truncate text-xs ${muted ? 'text-muted-foreground/50 line-through' : 'text-muted-foreground'}`}>
+                {t.label}
+              </span>
+            </span>
+            <div className={`relative h-5 flex-1 rounded bg-muted/30 ${muted ? 'opacity-35' : ''}`}>
+              {ticks.slice(1, -1).map((tick) => (
+                <span key={tick} className="absolute inset-y-0 w-px bg-border/60" style={{ left: pct(tick) }} aria-hidden />
+              ))}
+              {regions.filter((r) => r.trackId === t.id).map((r, i) => (
+                <div
+                  key={i}
+                  data-testid={`region-${r.trackId}-${r.enterSec}`}
+                  // data-element rebinds --accent-ink to that element's brand colour (globals.css),
+                  // so each fragment is coloured by the element it was authored in.
+                  data-element={trackElements?.[r.trackId]?.toLowerCase()}
+                  title={`${t.label} · ${clock(r.enterSec)}–${clock(r.exitSec)} · ${clock(r.exitSec - r.enterSec)}`}
+                  className="absolute inset-y-0.5 flex items-center overflow-hidden rounded bg-[var(--accent-ink)] px-1"
+                  style={{ left: pct(r.enterSec), width: pct(r.exitSec - r.enterSec) }}
+                >
+                  {/* Clipped away on narrow bars; the title carries the same detail. */}
+                  <span className="truncate text-[10px] leading-none text-white/90">
+                    {t.label} {clock(r.exitSec - r.enterSec)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* One playhead over every lane, aligned to the same label gutter as the rows above. */}
       <div className="pointer-events-none absolute inset-0 z-20 flex gap-2">
-        <span className="w-28 shrink-0" aria-hidden />
+        <span className="w-36 shrink-0" aria-hidden />
         <div
           data-testid="scrub-strip"
           className={`relative flex-1 ${onScrub ? 'pointer-events-auto cursor-ew-resize' : ''}`}

@@ -14,6 +14,7 @@ vi.mock('@/audio/AudioEngine', () => ({
     suspendContext = vi.fn();
     setTrackVolume = vi.fn();
     setTrackEnvelope = vi.fn();
+    setMute = vi.fn();
     triggerTrack = vi.fn();
     releaseTrack = vi.fn();
     clear = vi.fn();
@@ -27,12 +28,18 @@ const { exportCtl } = vi.hoisted(() => ({
     hold: false,
     release: null as null | (() => void),
     progress: null as null | ((frac: number) => void),
+    lastArgs: null as null | { tracks: { id: string }[]; regions: { trackId: string }[] },
   },
 }));
 vi.mock('@/remix/renderFreeMix', () => ({
   estimatedWavBytes: (totalSec: number) => totalSec * 44100 * 4 + 44,
-  exportFreeMixWav: vi.fn(async (args: { onProgress?: (frac: number) => void }) => {
+  exportFreeMixWav: vi.fn(async (args: {
+    onProgress?: (frac: number) => void;
+    tracks: { id: string }[];
+    regions: { trackId: string }[];
+  }) => {
     if (exportCtl.fail) throw new Error('decode failed');
+    exportCtl.lastArgs = { tracks: args.tracks, regions: args.regions };
     exportCtl.progress = args.onProgress ?? null;
     if (exportCtl.hold) await new Promise<void>((r) => { exportCtl.release = r; });
     return new Blob(['fake'], { type: 'audio/wav' });
@@ -90,6 +97,7 @@ beforeEach(() => {
   exportCtl.hold = false;
   exportCtl.release = null;
   exportCtl.progress = null;
+  exportCtl.lastArgs = null;
   // durationMin resets too — seeding a section draw writes the module length into the shared store.
   arrangementStore.setState({ tracks: [], durationMin: 30 });
 });
@@ -170,6 +178,19 @@ describe('RemixView', () => {
 
     act(() => { arrangementStore.setState({ positionSec: 930 }); });
     expect(screen.getByTestId('transport-clock')).toHaveTextContent('15:30 / 30:00');
+  });
+
+  it('leaves a muted track out of the exported mix', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mute PAD' }));
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).not.toContain('PAD');
+    expect(exportCtl.lastArgs!.regions.map((r) => r.trackId)).not.toContain('PAD');
+    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).toContain('MELODY');
   });
 
   it('reports loading then render progress while exporting', async () => {
