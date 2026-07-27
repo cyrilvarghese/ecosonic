@@ -1,5 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Menu } from '@base-ui/react/menu';
+import { Check, ChevronDown } from 'lucide-react';
 import { ELEMENTS, type ElementName } from '@/types';
 import type { Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
@@ -126,6 +128,7 @@ export function RemixView() {
   // is how loadSessions finds it again — it is not inferred from the file's name.
   const [uploadAs, setUploadAs] = useState<ElementName>(ELEMENTS[0]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const onUpload = async (file: File) => {
     setUploadError(null);
@@ -214,31 +217,55 @@ export function RemixView() {
 
         {/* Adding source material, kept away from the controls that shape the current mix. */}
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="flex items-center gap-2">
-            <label className={`${BTN} cursor-pointer whitespace-nowrap`}>
+          {/* Split button: upload, with the element it files under attached to the same control. */}
+          <div className="inline-flex overflow-hidden rounded-md border border-border shadow-sm">
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="whitespace-nowrap px-3 py-1.5 text-sm transition-calm hover:bg-muted/40"
+            >
               ⬆ Upload session
-              <input
-                type="file"
-                accept=".md"
-                aria-label="Session file"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void onUpload(f);
-                  e.target.value = ''; // let the same file be re-uploaded after a fix
-                }}
-              />
-            </label>
-            <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-              Upload as
-              <select
-                value={uploadAs}
-                onChange={(e) => setUploadAs(e.target.value as ElementName)}
-                className="rounded-md border border-border bg-transparent px-1.5 py-1 text-xs"
+            </button>
+            <Menu.Root>
+              <Menu.Trigger
+                aria-label={`Upload as ${uploadAs}`}
+                className="flex items-center gap-1 border-l border-border px-2 text-xs text-muted-foreground transition-calm hover:bg-muted/40"
               >
-                {ELEMENTS.map((el) => <option key={el} value={el}>{el}</option>)}
-              </select>
-            </label>
+                {uploadAs}
+                <ChevronDown size={14} />
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
+                  <Menu.Popup className="min-w-40 rounded-[var(--radius-md)] border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+                    <div className="px-2 pb-1 pt-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Upload as
+                    </div>
+                    {ELEMENTS.map((el) => (
+                      <Menu.Item
+                        key={el}
+                        onClick={() => setUploadAs(el)}
+                        className="flex cursor-pointer items-center justify-between gap-6 rounded px-2 py-1.5 text-sm outline-none select-none data-[highlighted]:bg-muted"
+                      >
+                        {el}
+                        {uploadAs === el && <Check size={14} className="text-[var(--accent-ink)]" />}
+                      </Menu.Item>
+                    ))}
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".md"
+              aria-label="Session file"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onUpload(f);
+                e.target.value = ''; // let the same file be re-uploaded after a fix
+              }}
+            />
           </div>
           {uploadError && (
             <p className="text-xs text-red-600 dark:text-red-400">Upload failed — {uploadError}</p>

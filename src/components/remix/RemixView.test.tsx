@@ -284,7 +284,9 @@ describe('RemixView', () => {
     render(<RemixView />);
     await screen.findByTestId('region-PAD-0');
 
-    await userEvent.selectOptions(screen.getByLabelText(/upload as/i), 'FIRE');
+    await userEvent.click(screen.getByRole('button', { name: /upload as/i }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'FIRE' }));
+
     await userEvent.upload(
       screen.getByLabelText(/session file/i),
       new File(['# timeline'], 'My Session.md', { type: 'text/markdown' }),
@@ -293,6 +295,17 @@ describe('RemixView', () => {
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0].element).toBe('FIRE');
     expect(posts[0].filename).toBe('My Session.md');
+  });
+
+  it('carries the element it will file under on the control itself', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    expect(screen.getByRole('button', { name: /upload as EARTH/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /upload as/i }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'ETHER' }));
+
+    expect(screen.getByRole('button', { name: /upload as ETHER/i })).toBeInTheDocument();
   });
 
   it('reports an upload the server rejected', async () => {
