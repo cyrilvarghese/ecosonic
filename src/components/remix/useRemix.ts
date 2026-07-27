@@ -13,6 +13,7 @@ export interface RemixState {
   picks: Pick[];
   regions: TemplateRegion[];
   totalSec: number;
+  store: RuleStore;
   warnings: string[];
   loading: boolean;
   regenerate: () => void;
@@ -50,6 +51,7 @@ export function useRemix(): RemixState {
     picks,
     regions,
     totalSec: durationMin * 60,
+    store,
     warnings,
     loading,
     regenerate: () => setSeed((n) => n + 1),
