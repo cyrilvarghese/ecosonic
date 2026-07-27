@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { arrangementStore } from '@/arrange/arrangementStore';
 import { RemixView } from './RemixView';
@@ -9,7 +9,8 @@ vi.mock('@/audio/AudioEngine', () => ({
   AudioEngine: class {
     setTracks = vi.fn(async () => {});
     setMasterVolume = vi.fn();
-    getLayerDuration = vi.fn(() => 60);
+    // 40s samples: the PAD/MELODY 1:00 intervals are 1.5 loops, so "adjust" rounds them up to 2.
+    getLayerDuration = vi.fn(() => 40);
     resumeContext = vi.fn();
     suspendContext = vi.fn();
     setTrackVolume = vi.fn();
@@ -28,7 +29,10 @@ const { exportCtl } = vi.hoisted(() => ({
     hold: false,
     release: null as null | (() => void),
     progress: null as null | ((frac: number) => void),
-    lastArgs: null as null | { tracks: { id: string }[]; regions: { trackId: string }[] },
+    lastArgs: null as null | {
+      tracks: { id: string }[];
+      regions: { trackId: string; exitSec: number }[];
+    },
   },
 }));
 vi.mock('@/remix/renderFreeMix', () => ({
@@ -36,7 +40,7 @@ vi.mock('@/remix/renderFreeMix', () => ({
   exportFreeMixWav: vi.fn(async (args: {
     onProgress?: (frac: number) => void;
     tracks: { id: string }[];
-    regions: { trackId: string }[];
+    regions: { trackId: string; exitSec: number }[];
   }) => {
     if (exportCtl.fail) throw new Error('decode failed');
     exportCtl.lastArgs = { tracks: args.tracks, regions: args.regions };
@@ -193,6 +197,52 @@ describe('RemixView', () => {
 
     act(() => { arrangementStore.setState({ positionSec: 930 }); });
     expect(screen.getByTestId('transport-clock')).toHaveTextContent('15:30 / 30:00');
+  });
+
+  it('leaves intervals as authored until asked to adjust them', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    expect(screen.getByRole('checkbox', { name: /whole loops/i })).not.toBeChecked();
+    await waitFor(() =>
+      expect(within(screen.getByTestId('region-PAD-0')).getByTestId('interval-length'))
+        .toHaveTextContent('1:00'));
+  });
+
+  it('rounds an interval to whole loops when adjust is ticked', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    // Wait for the engine to report sample lengths — nothing can be adjusted before that.
+    await waitFor(() => expect(arrangementStore.getState().trackDurations.PAD).toBe(40));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+
+    // 1:00 over a 0:40 sample = 1.5 loops → rounds up to 2 → 1:20.
+    expect(within(screen.getByTestId('region-PAD-0')).getByTestId('interval-length'))
+      .toHaveTextContent('1:20');
+  });
+
+  it('exports the adjusted intervals, not the authored ones', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    await waitFor(() => expect(arrangementStore.getState().trackDurations.PAD).toBe(40));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD')?.exitSec).toBe(80);
+  });
+
+  it('plays the adjusted intervals, not the authored ones', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+    await waitFor(() => expect(arrangementStore.getState().trackDurations.PAD).toBe(40));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+
+    const pad = arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD');
+    expect(pad?.exitSec).toBe(80);
   });
 
   it('leaves a muted track out of the exported mix', async () => {

@@ -6,6 +6,7 @@ import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
 import { estimatedWavBytes, exportFreeMixWav } from '@/remix/renderFreeMix';
+import { adjustToWholeLoops } from '@/remix/wholeLoops';
 import { useRemix, type RemixMode } from './useRemix';
 import { TrackPoolRow } from './TrackPoolRow';
 import { ResultTimeline } from './ResultTimeline';
@@ -60,7 +61,7 @@ export function RemixView() {
   // of the wrong arrangement.
   const onTransport = () => {
     if (playing) pause();
-    else playFreeMix(regions, totalSec, positionSec);
+    else playFreeMix(mixRegions, totalSec, positionSec);
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
@@ -85,9 +86,14 @@ export function RemixView() {
     for (const t of tracks) engine.setMute(t.id, mutedIds.has(t.id));
   }, [engine, tracks, mutedIds]);
 
+  // Trim every interval to a whole number of loops so nothing is cut mid-sample. Needs the engine's
+  // reported sample lengths, so it does nothing until those arrive.
+  const [wholeLoops, setWholeLoops] = useState(false);
+  const mixRegions = wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions;
+
   // Mute is part of the mix, not just monitoring — a muted track is absent from the export too.
   const audible = tracks.filter((t) => !mutedIds.has(t.id));
-  const audibleRegions = regions.filter((r) => !mutedIds.has(r.trackId));
+  const audibleRegions = mixRegions.filter((r) => !mutedIds.has(r.trackId));
 
   const onExport = async () => {
     setExportFailed(false);
@@ -220,7 +226,7 @@ export function RemixView() {
           Final result — {SECTIONS.find((s) => s.value === section)?.label ?? 'full session'}
         </h3>
         <ResultTimeline
-          regions={regions}
+          regions={mixRegions}
           totalSec={totalSec}
           tracks={tracks}
           positionSec={positionSec}
@@ -240,6 +246,18 @@ export function RemixView() {
           <span data-testid="transport-clock" className="text-xs tabular-nums text-muted-foreground">
             {clock(positionSec)} / {clock(totalSec)}
           </span>
+          <label
+            className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
+            title="Resize every interval to a whole number of loops, so no sample is cut part-way through a pass. Rounds to the nearest whole loop, never below one."
+          >
+            <input
+              type="checkbox"
+              checked={wholeLoops}
+              onChange={(e) => setWholeLoops(e.target.checked)}
+              style={{ accentColor: 'var(--accent-ink)' }}
+            />
+            Adjust intervals to whole loops
+          </label>
           <button
             type="button"
             className={BTN}
