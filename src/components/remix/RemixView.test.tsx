@@ -453,4 +453,23 @@ describe('RemixView — borrowed timings', () => {
     expect(screen.getByTestId('region-PAD-0')).toBeInTheDocument();
     expect(screen.getByTestId('region-MELODY-0')).toBeInTheDocument();
   });
+
+  it('colours every bar by the sample element while chips keep their own', async () => {
+    const { container } = render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
+    await userEvent.click(screen.getByRole('button', { name: 'ETHER' }));
+
+    // What you HEAR is one element, so every bar is one colour.
+    const bars = container.querySelectorAll('[data-testid^="region-"]');
+    expect(bars.length).toBeGreaterThan(0);
+    expect([...bars].every((b) => b.getAttribute('data-element') === 'ether')).toBe(true);
+
+    // Where the TIMING came from is the interesting information here, so the chips still differ.
+    const chips = container.querySelectorAll('.cursor-help[data-element]');
+    const chipElements = new Set([...chips].map((c) => c.getAttribute('data-element')));
+    expect(chipElements.has('ether')).toBe(false);
+    expect(chipElements).toEqual(new Set(['water', 'fire']));
+  });
 });

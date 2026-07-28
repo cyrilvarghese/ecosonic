@@ -70,8 +70,14 @@ export function RemixView() {
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
-  // Every rule of a track comes from one element, so a track has exactly one colour.
-  const trackElements = Object.fromEntries(picks.map((p) => [p.track.id, p.rule.source.element]));
+  // Borrowed timings splits audio from timing, so colour has to pick a side per surface. Bars are
+  // what you HEAR — one sample element, one colour, and a visible signal the mode is on. The pool
+  // chips keep the rule's element, because which element's pattern won each section is the whole
+  // point of the mode. (This also settles a latent collapse: a full-session draw has one pick per
+  // section, so mapping picks→element would otherwise leave the last one winning arbitrarily.)
+  const trackElements = Object.fromEntries(
+    picks.map((p) => [p.track.id, mode === 'borrowed' ? element : p.rule.source.element]),
+  );
   // null = not exporting. 0 = samples still downloading/decoding, which is the slow part and
   // reports nothing — the render only starts emitting progress once every sample is decoded.
   const [renderPct, setRenderPct] = useState<number | null>(null);
