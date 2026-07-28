@@ -27,9 +27,12 @@ export interface RemixDraw {
  *  covers; tracks are *derived*, not supplied, so `/remix` owns them rather than borrowing an
  *  Arrange setup.
  *
- *  Two independent choices:
+ *  Three independent choices:
  *   - `element` set ⇒ Scoped to that element's rules; omitted ⇒ Cross-element, the whole pool.
  *     Either way a track's audio follows the element its lead draw landed on.
+ *   - `sampleElement` set ⇒ Borrowed timings: every track plays THAT element's audio while its
+ *     rules are drawn from every element. A rule then carries pure timing, which is all it ever
+ *     held — it is "the sample follows the pick" that made a rule's element mean anything.
  *   - `section` set ⇒ one fixed-length module, one rule, rebased to the section start.
  *     Omitted ⇒ the whole session: **one rule per section**, so a bed sounds across all thirty
  *     minutes rather than only the third its lead happened to come from.
@@ -39,7 +42,14 @@ export interface RemixDraw {
 export function generateRemix(
   pool: AuthoredRule[],
   manifest: Manifest,
-  opts: { seed: number; element?: ElementName; section?: Mode; sessionSec: number },
+  opts: {
+    seed: number;
+    element?: ElementName;
+    /** Borrowed timings: take ALL audio from this element, whatever rule wins. */
+    sampleElement?: ElementName;
+    section?: Mode;
+    sessionSec: number;
+  },
 ): RemixDraw {
   const totalSec = opts.section ? config.layerTwo.moduleSeconds : opts.sessionSec;
   const rng = makeRng(opts.seed);
@@ -60,26 +70,29 @@ export function generateRemix(
   for (const category of categories) {
     const cands = candidates.filter((r) => r.category === category);
 
-    // One element per track: a track is a single sample, so its windows come from one element's
-    // authored timeline. The lead draw fixes that element (and therefore the audio).
+    // One SAMPLE per track: a track is a single file. Which element that file comes from is either
+    // fixed by the caller (borrowed timings) or follows the lead rule — and only in the latter case
+    // does a rule's element decide anything, so only then are the per-section rules filtered to it.
     const lead = cands[Math.floor(rng.float() * cands.length)];
-    const element = lead.source.element;
+    const audioElement = opts.sampleElement ?? lead.source.element;
 
-    const samples = manifest[element]?.[category] ?? [];
+    const samples = manifest[audioElement]?.[category] ?? [];
     if (samples.length === 0) {
-      warnings.push(`${category}: no ${element} sample for the picked rule — track skipped`);
+      warnings.push(`${category}: no ${audioElement} sample for the picked rule — track skipped`);
       continue;
     }
 
-    // A section draw is exactly one rule. A full session takes one rule per section that element
-    // authored, so the track sounds across the whole timeline instead of only its lead's third.
-    const ofElement = cands.filter((r) => r.source.element === element);
+    // A section draw is exactly one rule. A full session takes one rule per section, so the track
+    // sounds across the whole timeline instead of only its lead's third.
+    const forSections = opts.sampleElement
+      ? cands
+      : cands.filter((r) => r.source.element === audioElement);
     const chosen: { rule: AuthoredRule; poolSize: number }[] = [];
     if (opts.section) {
       chosen.push({ rule: lead, poolSize: cands.length });
     } else {
       for (const mode of SECTION_ORDER) {
-        const inSection = ofElement.filter((r) => r.section === mode);
+        const inSection = forSections.filter((r) => r.section === mode);
         if (inSection.length === 0) continue; // absence is allowed — no repair
         chosen.push({
           rule: inSection[Math.floor(rng.float() * inSection.length)],
@@ -94,7 +107,9 @@ export function generateRemix(
       .map((c) => ({ ...c, regions: rebase(c.rule, opts.section ? c.rule.sectionStartSec : 0, totalSec) }))
       .filter((c) => c.regions.length > 0);
     if (drawn.length === 0) {
-      warnings.push(`${category}: the ${element} rule falls outside the module — track skipped`);
+      // The rules' OWN elements, which borrowing lets differ from the element being heard.
+      const from = [...new Set(chosen.map((c) => c.rule.source.element))].join('/');
+      warnings.push(`${category}: the ${from} rule falls outside the module — track skipped`);
       continue;
     }
 

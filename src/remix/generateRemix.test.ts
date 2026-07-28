@@ -255,3 +255,83 @@ describe('generateRemix — section axis', () => {
     expect(picks[0].rule.source.element).toBe('EARTH');
   });
 });
+
+describe('generateRemix — borrowed timings', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  // One bed authored by three different elements across the three sections — the shape that lets a
+  // borrowed draw visibly span elements within a single track.
+  const bedFromManyElements = [
+    rule('NOISE', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+    rule('NOISE', 'WATER', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600),
+    rule('NOISE', 'AIR', [ph(1200, 1800)], undefined, 'RETURN', 1200),
+  ];
+
+  it('takes every sample from the chosen element whatever rule won', () => {
+    const pool = [...bedFromManyElements, rule('PAD', 'FIRE'), rule('MELODY', 'ETHER')];
+    for (let seed = 1; seed <= 10; seed++) {
+      const { tracks } = generateRemix(pool, fakeManifest(), {
+        ...BASE, seed, sampleElement: 'EARTH',
+      });
+      expect(tracks.length).toBeGreaterThan(0);
+      expect(tracks.every((t) => t.sample.name === `EARTH-${t.category}`)).toBe(true);
+    }
+  });
+
+  it('draws one track’s rules from several elements at once', () => {
+    const { picks } = generateRemix(bedFromManyElements, fakeManifest(), {
+      ...BASE, sampleElement: 'EARTH',
+    });
+    expect(picks.map((p) => p.rule.source.element)).toEqual(['EARTH', 'WATER', 'AIR']);
+    expect(new Set(picks.map((p) => p.track)).size).toBe(1);
+  });
+
+  it('rebases a borrowed rule by its own section start, not the sample element’s', () => {
+    // AIR opens Deep Relaxation at 9:30 (570s). Borrowing it under EARTH audio must still shift by
+    // 570 — the rule's own origin — or the window lands 30s late.
+    const pool = [rule('MELODY', 'AIR', [ph(600, 900)], undefined, 'DEEP_RELAXATION', 570)];
+    const { regions, tracks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, section: 'DEEP_RELAXATION', sampleElement: 'EARTH',
+    });
+    expect(regions[0]).toMatchObject({ trackId: 'MELODY', enterSec: 30, exitSec: 330 });
+    expect(tracks[0].sample.name).toBe('EARTH-MELODY');
+  });
+
+  it('makes a rule usable whose own element ships no sample for the category', () => {
+    // WATER authors ELEMENT_SUB but ships no ELEMENT_SUB sample, so scoped/cross skip the track.
+    const pool = [rule('ELEMENT_SUB', 'WATER')];
+    const manifest = fakeManifest({ WATER: ['ELEMENT_SUB'] });
+
+    const cross = generateRemix(pool, manifest, BASE);
+    expect(cross.tracks).toEqual([]);
+
+    const borrowed = generateRemix(pool, manifest, { ...BASE, sampleElement: 'EARTH' });
+    expect(borrowed.tracks.map((t) => t.sample.name)).toEqual(['EARTH-ELEMENT_SUB']);
+    expect(borrowed.warnings).toEqual([]);
+  });
+
+  it('warns with the sample element when that element lacks the sample', () => {
+    const { tracks, warnings } = generateRemix([rule('DRONE', 'WATER')], fakeManifest({ EARTH: ['DRONE'] }), {
+      ...BASE, sampleElement: 'EARTH',
+    });
+    expect(tracks).toEqual([]);
+    expect(warnings[0]).toContain('EARTH');
+    expect(warnings[0]).not.toContain('WATER');
+  });
+
+  it('repeats its draw for a seed', () => {
+    const pool = [...bedFromManyElements, rule('MELODY', 'FIRE'), rule('MELODY', 'ETHER')];
+    const manifest = fakeManifest();
+    expect(generateRemix(pool, manifest, { ...BASE, seed: 7, sampleElement: 'EARTH' }))
+      .toEqual(generateRemix(pool, manifest, { ...BASE, seed: 7, sampleElement: 'EARTH' }));
+  });
+
+  it('is exactly Scoped when the borrowed element is the element it is scoped to', () => {
+    const pool = [...bedFromManyElements, rule('MELODY', 'EARTH'), rule('MELODY', 'WATER')];
+    const manifest = fakeManifest();
+    for (let seed = 1; seed <= 5; seed++) {
+      expect(generateRemix(pool, manifest, { ...BASE, seed, element: 'EARTH', sampleElement: 'EARTH' }))
+        .toEqual(generateRemix(pool, manifest, { ...BASE, seed, element: 'EARTH' }));
+    }
+  });
+});
