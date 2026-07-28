@@ -50,6 +50,33 @@ one rule.
 **2.5** The pool is every rule from every element. Unknown layer names are skipped with a warning;
 all-dash rows mean the layer is absent for that section.
 
+**2.6 — Layer names are normalised, so they need not match across elements.** `mapLayer`
+(`src/remix/vocab.ts`) maps an authored layer name onto a `Category`, tolerant of case and of
+runs of whitespace:
+
+| authored as | category |
+|---|---|
+| `ISO`, `NOISE`, `BASS`, `PAD`, `ARP` | itself |
+| `PLANET`, `PLANETS` | `PLANET` |
+| `ELEMENT`, `ELEMENTS` | `ELEMENT` |
+| `SUB ELEMENTS` | `ELEMENT_SUB` |
+| `MELODY`, `MELODY 2`, `SUB MELODY`, `SUB MELODY 2` | `MELODY` — the last three keep a **variant** tag |
+
+Two elements spelling a layer differently still meet on one category, so **a timing is never
+stranded by naming**, and cross-element or borrowed draws never need the sessions to agree on
+wording. A name outside this table maps to `null` and its row is dropped (§2.5). The five shipped
+sessions currently parse with **zero** warnings.
+
+The category is also what a rule can *reach*: a track is derived from the rules that cover a
+category (§3.1), never looked up from a track list. So a rule always has a lane — what it can fail
+to find is a **sample** (§3.6), which is a different thing entirely.
+
+**2.7 — `FX` and `DRONE` can never appear in a remix.** Both are real categories in `STACK_ORDER`
+and both ship a sample in all five elements, but neither has a `mapLayer` entry, so no authored
+layer name can produce a rule for them. They are the mirror of the §3.6 gap: samples with no rules,
+rather than rules with no samples. Adding them would mean a vocab entry plus a layer row in the
+session tables.
+
 ## 3. Choosing what plays
 
 Two independent scopes narrow the pool before anything is drawn, and a third mode fixes the audio
@@ -100,10 +127,24 @@ track's three sections can come from three different elements.
 in Cross-element and Scoped; in **Borrowed timings** it is the element you picked, for every track.
 
 **3.6 — No sample, no track.** If the element has no sample for that category, the track is skipped
-with a warning. *Known gap: WATER and ETHER author `ELEMENT_SUB` rules but ship no `ELEMENT_SUB`
-samples, so that track disappears whenever the draw lands on either.* **Borrowed timings** narrows
-this: those rules become usable as timing whenever the chosen sample element has the sample, so the
-warning is rare in that mode.
+with a warning. `ELEMENT_SUB` is the **only** such gap in the shipped material — every other
+category×element cell has both a rule and a sample:
+
+| | EARTH | WATER | AIR | FIRE | ETHER |
+|---|---|---|---|---|---|
+| authors `ELEMENT_SUB` rules | yes | yes | yes | — | yes |
+| ships `ELEMENT_SUB` samples | 4 | **0** | 4 | 4 | **0** |
+
+**Borrowed timings turns that gap from a coin-flip into a certainty, in both directions**, because
+one chosen element supplies every track's audio rather than whichever element the lead landed on:
+
+- **Sound: EARTH / AIR / FIRE** — `ELEMENT_SUB` *always* plays, and WATER's and ETHER's
+  `ELEMENT_SUB` timings become usable for the first time in any mode. FIRE is the sharpest case: it
+  authors no `ELEMENT_SUB` rules at all yet ships four samples, so borrowed-FIRE plays four other
+  elements' sub-element timings through FIRE audio — a combination no other mode can produce.
+- **Sound: WATER / ETHER** — `ELEMENT_SUB` is *always* skipped, where before it depended on where
+  the lead draw landed. The warning appears every time in those two, by construction rather than by
+  bad luck.
 
 **3.7 — Draw probability follows rule count, not elements.** The lead is drawn uniformly over
 *candidate rules*, so an element with more authored variants in a category is likelier to win it —
