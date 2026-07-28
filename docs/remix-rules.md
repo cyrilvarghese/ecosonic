@@ -6,7 +6,8 @@ than a preference, that is said explicitly — those are the ones that cannot si
 
 Related: [free-mix design](./superpowers/specs/2026-07-26-remix-view-free-mix-design.md) ·
 [scoped & cross-element](./superpowers/specs/2026-07-27-remix-scoped-and-cross-element-modes-design.md) ·
-[section picker & playback](./superpowers/specs/2026-07-27-remix-section-picker-and-playback-design.md)
+[section picker & playback](./superpowers/specs/2026-07-27-remix-section-picker-and-playback-design.md) ·
+[borrowed timings](./superpowers/specs/2026-07-28-remix-borrowed-timings-design.md)
 
 ---
 
@@ -51,14 +52,19 @@ all-dash rows mean the layer is absent for that section.
 
 ## 3. Choosing what plays
 
-Two independent scopes narrow the pool before anything is drawn:
+Two independent scopes narrow the pool before anything is drawn, and a third mode fixes the audio
+instead of narrowing anything:
 
 | | |
 |---|---|
-| **Cross-element** (default) | the whole pool |
-| **Scoped**(el) | only that element's rules |
+| **Cross-element** (default) | the whole pool; each track's sample follows the rule it picked |
+| **Scoped**(el) | only that element's rules, and that element's samples |
+| **Borrowed timings**(el) | the whole pool for **timing**, and **el**'s samples for every track |
 | **Full session** (default) | the whole 30-minute timeline |
 | **Section**(s) | only rules tagged to that section |
+
+Borrowed with the element you would have scoped to is the same draw as Scoped, so these are three
+modes rather than four.
 
 Then, for each category the narrowed pool covers:
 
@@ -73,22 +79,31 @@ lead came from. A **section draw takes exactly one rule.**
 **3.3 — Absence is allowed, and never repaired.** A category no rule covers has no track. A section
 the element never authored is simply silent there. Nothing is substituted to fill a gap.
 
-**3.4 — Every rule of a track comes from one element.** *(structural — see §1)*
-The draw is two-stage: a **lead** rule is drawn from the category's candidates, which fixes the
-element; the per-section rules are then drawn from that element only.
+**3.4 — Every rule of a track comes from one element — *unless the sample is fixed*.**
+*(structural **given §3.5**, not absolute)*
+By default the draw is two-stage: a **lead** rule is drawn from the category's candidates, which
+fixes the element; the per-section rules are then drawn from that element only.
 
-This is forced by the data model, not chosen for taste. A track plays one file. If the Intro rule
-came from Fire and the Return rule from Water, one of the two samples would have to win, and the
-losing rule would contribute nothing but its clock times — while the UI lit it up as a pick. Cross-
-element mixing therefore happens **across tracks** (Fire noise under Water planets under Air bass),
-never within one.
+The reason is §1. A track plays one file. If the Intro rule came from Fire and the Return rule from
+Water, one of the two samples would have to win, and the losing rule would contribute nothing but
+its clock times — while the UI lit it up as a pick. So cross-element mixing happens **across
+tracks** (Fire noise under Water planets under Air bass), never within one.
 
-**3.5 — The sample follows the element.** A track's audio is
-`manifest[element][category]`, drawn at random from that list.
+That argument depends entirely on the sample being chosen *by the pick*. **Borrowed timings** fixes
+the sample by hand instead (§3.5), and the constraint dissolves: a rule's element no longer decides
+anything about audio, so rules may be drawn from every element for one track. A rule becomes what it
+always was on paper — pure timing. In that mode there is no lead element and no filter, and one
+track's three sections can come from three different elements.
+
+**3.5 — The sample follows the element — the picked one, or the chosen one.** A track's audio is
+`manifest[element][category]`, drawn at random from that list. `element` is the lead rule's element
+in Cross-element and Scoped; in **Borrowed timings** it is the element you picked, for every track.
 
 **3.6 — No sample, no track.** If the element has no sample for that category, the track is skipped
 with a warning. *Known gap: WATER and ETHER author `ELEMENT_SUB` rules but ship no `ELEMENT_SUB`
-samples, so that track disappears whenever the draw lands on either.*
+samples, so that track disappears whenever the draw lands on either.* **Borrowed timings** narrows
+this: those rules become usable as timing whenever the chosen sample element has the sample, so the
+warning is rare in that mode.
 
 **3.7 — Draw probability follows rule count, not elements.** The lead is drawn uniformly over
 *candidate rules*, so an element with more authored variants in a category is likelier to win it —
@@ -167,7 +182,12 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
 - **Chips** list the candidates the current scope could draw from — element **and** section filtered,
   so a chip on screen is always one the draw could have picked. Lit chips are the picks; a full
   session lights up to three per row.
-- **Colour** is the element's brand colour, on both chips and bars, via `data-element`.
+- **Colour** is the element's brand colour, on both chips and bars, via `data-element`. In
+  **Borrowed timings** audio and timing disagree, so each surface takes the one it represents:
+  **bars take the sample element** (they are what you hear — every bar one colour, which is also the
+  visible signal the mode is on) and **chips keep the rule element** (they are where the timing came
+  from, which is the interesting information in that mode). An all-EARTH timeline fed by chips of
+  five colours is the mode made visible, not an inconsistency.
 - **A bar reads** `MELODY 1:56 ×5` on the left — the **material**, sample length × repeats — and the
   **interval** length on the right. The tooltip carries the whole reading.
 - **`×N` is a product**: sample × N *is* the interval, and the numbers on screen multiply out. Where
