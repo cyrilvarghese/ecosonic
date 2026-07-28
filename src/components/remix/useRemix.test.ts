@@ -218,3 +218,61 @@ describe('useRemix', () => {
     expect(second.result.current.totalSec).toBe(1800);
   });
 });
+
+describe('useRemix — borrowed timings', () => {
+  it('plays one element’s samples while the picks come from anywhere', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setMode('borrowed'));
+    act(() => result.current.setElement('EARTH'));
+
+    // EARTH authors nothing, yet every track the whole pool covers is still drawn.
+    expect(result.current.tracks.map((t) => t.category)).toEqual(['PAD', 'BASS', 'MELODY']);
+    expect(result.current.tracks.every((t) => t.sample.name === `EARTH-${t.category}`)).toBe(true);
+    expect(result.current.picks.every((p) => p.rule.source.element !== 'EARTH')).toBe(true);
+  });
+
+  it('offers every element’s rules as candidates, filtered by section only', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setMode('borrowed'));
+    act(() => result.current.setElement('EARTH'));
+
+    // Both authored MELODY rules are drawable, so both must be offered.
+    expect(result.current.candidatesFor('MELODY').map((r) => r.source.element).sort())
+      .toEqual(['FIRE', 'WATER']);
+
+    act(() => result.current.setSection('RETURN'));
+    expect(result.current.candidatesFor('MELODY')).toEqual([]);
+    expect(result.current.candidatesFor('BASS')).toHaveLength(1);
+  });
+
+  it('tells arrangementStore the element you actually hear', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setMode('borrowed'));
+    act(() => result.current.setElement('AIR'));
+
+    await waitFor(() => expect(arrangementStore.getState().element).toBe('AIR'));
+  });
+
+  it('carries the element across a mode switch', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    // ETHER authors nothing, so it is the element that tells the modes apart: scoped to it there is
+    // no mix at all, borrowed from it there is a full one — and no draw could reach ETHER by chance.
+    act(() => result.current.setMode('scoped'));
+    act(() => result.current.setElement('ETHER'));
+    expect(result.current.tracks).toEqual([]);
+
+    act(() => result.current.setMode('borrowed'));
+
+    expect(result.current.element).toBe('ETHER');
+    expect(result.current.tracks.map((t) => t.category)).toEqual(['PAD', 'BASS', 'MELODY']);
+    expect(result.current.tracks.every((t) => t.sample.name.startsWith('ETHER-'))).toBe(true);
+  });
+});

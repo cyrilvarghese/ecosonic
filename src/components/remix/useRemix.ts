@@ -11,8 +11,9 @@ import { generateRemix, type RemixPick } from '@/remix/generateRemix';
 const manifest = manifestJson as unknown as Manifest;
 const EMPTY_STORE: RuleStore = { EARTH: [], WATER: [], AIR: [], FIRE: [], ETHER: [] };
 
-/** `cross` draws every track from the whole authored pool; `scoped` from one element's rules only. */
-export type RemixMode = 'scoped' | 'cross';
+/** `cross` draws every track from the whole authored pool; `scoped` from one element's rules only;
+ *  `borrowed` draws timings from every element but plays them all through one element's samples. */
+export type RemixMode = 'scoped' | 'cross' | 'borrowed';
 
 export interface RemixState {
   tracks: ArrTrack[];
@@ -67,17 +68,20 @@ export function useRemix(): RemixState {
     [store],
   );
 
-  // The one difference between the modes: undefined ⇒ the generator keeps the whole pool.
+  // The modes differ only here. Scoped narrows the RULES; borrowed fixes the AUDIO and leaves the
+  // rules wide open. Both read the same `element` state, so switching modes keeps your choice.
   const scopedTo = mode === 'scoped' ? element : undefined;
+  const sampleElement = mode === 'borrowed' ? element : undefined;
 
   const draw = useMemo(
     () => generateRemix(pool, manifest, {
       seed,
       element: scopedTo,
+      sampleElement,
       section: section ?? undefined,
       sessionSec: sessionMin * 60,
     }),
-    [pool, seed, scopedTo, section, sessionMin],
+    [pool, seed, scopedTo, sampleElement, section, sessionMin],
   );
 
   // The scheduler and the WAV renderer both read arrangementStore.tracks — keep them in step with
@@ -85,7 +89,9 @@ export function useRemix(): RemixState {
   useEffect(() => {
     arrangementStore.getState().initFrom(
       {
-        element: scopedTo ?? null,
+        // Borrowed mode has one element for all its audio even though its rules do not, so the
+        // store hears about it — this field describes the sound, not the rule scope.
+        element: scopedTo ?? sampleElement ?? null,
         tracks: draw.tracks,
         tuningHz: config.audio.tuning.defaultHz,
         masterDb: config.audio.volume.defaultMasterDb,
@@ -98,7 +104,7 @@ export function useRemix(): RemixState {
     // initFrom leaves durationSec at the Layer Two module default; seek() clamps against it, so
     // without this the playhead could not be dragged past 10 minutes of a 30-minute mix.
     arrangementStore.setState({ durationSec: draw.totalSec });
-  }, [draw, scopedTo, sessionMin]);
+  }, [draw, scopedTo, sampleElement, sessionMin]);
 
   // Mirrors the generator's filters exactly — a chip the draw could never pick would be a lie.
   const candidatesFor = useCallback(
