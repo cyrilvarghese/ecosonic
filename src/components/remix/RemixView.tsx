@@ -25,6 +25,7 @@ const clock = (s: number): string =>
 const MODES: { value: RemixMode; label: string }[] = [
   { value: 'cross', label: 'Cross-element' },
   { value: 'scoped', label: 'Scoped' },
+  { value: 'borrowed', label: 'Borrowed timings' },
 ];
 /** null draws the whole authored session on its absolute timeline; a Mode draws one module. */
 const SECTIONS: { value: Mode | null; label: string }[] = [
@@ -33,9 +34,11 @@ const SECTIONS: { value: Mode | null; label: string }[] = [
   { value: 'DEEP_RELAXATION', label: 'Deep Relaxation' },
   { value: 'RETURN', label: 'Return' },
 ];
-const HINT: Record<RemixMode, string> = {
-  cross: 'every track draws from the whole pool — its sample follows the element it picked',
-  scoped: "every track draws from one element's rules, and that element's samples",
+/** Borrowed has to name the element it plays, so every hint takes it and most ignore it. */
+const HINT: Record<RemixMode, (el: ElementName) => string> = {
+  cross: () => 'every track draws from the whole pool — its sample follows the element it picked',
+  scoped: () => "every track draws from one element's rules, and that element's samples",
+  borrowed: (el) => `every track plays ${el}'s samples, on timings drawn from every element`,
 };
 
 export function RemixView() {
@@ -186,8 +189,13 @@ export function RemixView() {
           ))}
         </div>
 
-        {mode === 'scoped' && (
-          <div className="flex flex-wrap gap-1">
+        {/* The same chips serve two meanings: in scoped they narrow the rules, in borrowed they
+            choose the sound. Only the latter needs saying, hence the caption on that mode alone. */}
+        {(mode === 'scoped' || mode === 'borrowed') && (
+          <div className="flex flex-wrap items-center gap-1">
+            {mode === 'borrowed' && (
+              <span className="mr-0.5 text-xs text-muted-foreground">Sound:</span>
+            )}
             {ELEMENTS.map((el) => (
               <button
                 key={el}
@@ -202,7 +210,7 @@ export function RemixView() {
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">{HINT[mode]}</p>
+        <p className="text-xs text-muted-foreground">{HINT[mode](element)}</p>
 
         <div className="flex w-full flex-wrap items-center gap-1">
           {SECTIONS.map((s) => (

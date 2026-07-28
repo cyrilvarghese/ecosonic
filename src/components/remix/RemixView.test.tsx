@@ -405,3 +405,52 @@ describe('RemixView', () => {
     expect(screen.queryByTestId('region-PAD-0')).toBeNull();
   });
 });
+
+describe('RemixView — borrowed timings', () => {
+  it('offers a third mode that keeps the element chips, captioned as sound', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
+
+    expect(screen.getByRole('button', { name: 'Borrowed timings' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Cross-element' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText('Sound:')).toBeInTheDocument();
+    for (const el of ['EARTH', 'WATER', 'AIR', 'FIRE', 'ETHER']) {
+      expect(screen.getByRole('button', { name: el })).toBeInTheDocument();
+    }
+  });
+
+  it('names the element whose samples every track will play', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
+    await userEvent.click(screen.getByRole('button', { name: 'FIRE' }));
+
+    expect(screen.getByText(/every track plays FIRE's samples, on timings drawn from every element/))
+      .toBeInTheDocument();
+  });
+
+  it('shows no Sound caption when Scoped is the mode', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
+
+    expect(screen.getByRole('button', { name: 'EARTH' })).toBeInTheDocument();
+    expect(screen.queryByText('Sound:')).not.toBeInTheDocument();
+  });
+
+  it('keeps every category the pool covers, whatever the chosen element authored', async () => {
+    render(<RemixView />);
+    await screen.findByTestId('region-PAD-0');
+
+    // Scoped to ETHER there is nothing at all; borrowed from ETHER the whole pool plays.
+    await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
+    await userEvent.click(screen.getByRole('button', { name: 'ETHER' }));
+
+    expect(screen.getByTestId('region-PAD-0')).toBeInTheDocument();
+    expect(screen.getByTestId('region-MELODY-0')).toBeInTheDocument();
+  });
+});
