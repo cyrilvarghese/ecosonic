@@ -10,6 +10,8 @@ function toSpec(t: Track): TrackAudioSpec {
   return {
     id: t.id, path: t.sample.path, bytes: t.sample.bytes,
     volumeDb: t.volumeDb, muted: t.muted, playing: t.playing,
+    // Layer One has no send UI: the buses exist in the engine, but every track is dry here.
+    reverbSend: 0, delaySend: 0,
   };
 }
 
@@ -49,6 +51,7 @@ export function useAudioEngine(): AudioEngine {
       minDb: config.audio.volume.minDb,
       muteRampMs: config.audio.volume.muteRampMs,
       changeRampMs: config.audio.volume.changeRampMs,
+      effects: config.audio.effects,
     });
   }
   const engine = ref.current;

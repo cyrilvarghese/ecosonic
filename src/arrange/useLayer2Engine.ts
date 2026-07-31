@@ -14,6 +14,7 @@ export function useLayer2Engine(): AudioEngine {
       minDb: config.audio.volume.minDb,
       muteRampMs: config.audio.volume.muteRampMs,
       changeRampMs: config.audio.volume.changeRampMs,
+      effects: config.audio.effects,
     });
   }
   const engine = ref.current;
@@ -29,6 +30,7 @@ export function useLayer2Engine(): AudioEngine {
     const specs: TrackAudioSpec[] = st.tracks.map((t) => ({
       id: t.id, path: t.sample.path, bytes: t.sample.bytes,
       volumeDb: t.ceilingDb, muted: false, playing: false, // loaded, not started; scheduler triggers from 0
+      reverbSend: 0, delaySend: 0, // wired to the store's trackSends in a later step
     }));
     engine.setMasterVolume(st.masterDb);
 

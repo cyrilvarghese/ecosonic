@@ -1,6 +1,7 @@
 import { resolveSampleUrl } from '@/samples';
 import { dbToGain } from '@/audio/dsp';
 import { chooseSourceKind, type SourceKind } from '@/audio/sourceKind';
+import type { EffectBuses } from '@/audio/effects';
 
 export interface LayerInit {
   id: string;
@@ -9,6 +10,8 @@ export interface LayerInit {
   thresholdBytes: number;
   volumeDb: number;
   minDb: number;
+  reverbSend: number; // 0..1
+  delaySend: number;  // 0..1
 }
 
 type PitchedAudio = HTMLAudioElement & { preservesPitch?: boolean };
@@ -20,6 +23,8 @@ export class Layer {
 
   private ctx: AudioContext;
   private gain: GainNode;
+  private revSend: GainNode;
+  private delSend: GainNode;
   private analyser: AnalyserNode;
   private url: string;
   private minDb: number;
@@ -38,7 +43,7 @@ export class Layer {
   private muted = false;
   private envelope = 1; // Layer Two 0..1 modulation on top of the ceiling (targetGain)
 
-  constructor(ctx: AudioContext, master: GainNode, init: LayerInit) {
+  constructor(ctx: AudioContext, master: GainNode, init: LayerInit, buses: EffectBuses) {
     this.ctx = ctx;
     this.id = init.id;
     this.path = init.path;
@@ -53,6 +58,19 @@ export class Layer {
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 1024;
     this.gain.connect(this.analyser);
+
+    // Aux sends, tapped POST-fade: when release() ramps the dry signal to zero no new signal
+    // enters the effects, but the convolver and delay line keep decaying. That tail is the point.
+    // The effect nodes live on AudioEngine, not here — dispose() must not cut a tail short.
+    this.revSend = ctx.createGain();
+    this.revSend.gain.value = Math.min(1, Math.max(0, init.reverbSend));
+    this.gain.connect(this.revSend);
+    this.revSend.connect(buses.reverbBus);
+
+    this.delSend = ctx.createGain();
+    this.delSend.gain.value = Math.min(1, Math.max(0, init.delaySend));
+    this.gain.connect(this.delSend);
+    this.delSend.connect(buses.delayBus);
   }
 
   /** Passive analyser tapping this layer's output, for per-lane visualization. */
@@ -128,6 +146,17 @@ export class Layer {
     if (this.started && !this.muted) this.rampTo(this.effectiveGain(), rampMs);
   }
 
+  /** Ramp one aux send to a new level (0..1). */
+  setSend(kind: 'reverb' | 'delay', value: number, rampMs: number) {
+    const node = kind === 'reverb' ? this.revSend : this.delSend;
+    const target = Math.min(1, Math.max(0, value));
+    const now = this.ctx.currentTime;
+    const g = node.gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(target, now + Math.max(0.001, rampMs / 1000));
+  }
+
   /** Layer Two: modulate the ceiling gain by a 0..1 envelope scalar. */
   setEnvelope(scalar: number, rampMs: number) {
     this.envelope = Math.min(1, Math.max(0, scalar));
@@ -178,6 +207,8 @@ export class Layer {
     this.bufferSource?.disconnect();
     this.mediaNode?.disconnect();
     this.analyser.disconnect();
+    this.revSend.disconnect();
+    this.delSend.disconnect();
     this.gain.disconnect();
     if (this.audioEl) { this.audioEl.pause(); this.audioEl.src = ''; }
     if (this.objectUrl) { URL.revokeObjectURL(this.objectUrl); this.objectUrl = null; }
