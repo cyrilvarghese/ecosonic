@@ -167,4 +167,32 @@ describe('arrangementStore', () => {
     expect(store.getState().session).toBeNull();
     expect(store.getState().playing).toBe(true);
   });
+
+  it('seeds MELODY sends from config and leaves other categories dry', () => {
+    store.getState().initFrom(selLive, 10);
+    const sends = store.getState().trackSends;
+    expect(sends.mel.reverb).toBeGreaterThan(0);
+    expect(sends.n).toEqual({ reverb: 0, delay: 0 });
+  });
+  it('setTrackSend updates only the target track and only the target kind', () => {
+    store.getState().initFrom(selLive, 10);
+    const before = store.getState().trackSends.mel.delay;
+    store.getState().setTrackSend('mel', 'reverb', 0.5);
+    const after = store.getState().trackSends;
+    expect(after.mel.reverb).toBe(0.5);
+    expect(after.mel.delay).toBe(before);
+    expect(after.n).toEqual({ reverb: 0, delay: 0 });
+  });
+  it('setTrackSend clamps out-of-range values', () => {
+    store.getState().initFrom(selLive, 10);
+    store.getState().setTrackSend('mel', 'reverb', 5);
+    expect(store.getState().trackSends.mel.reverb).toBe(1);
+    store.getState().setTrackSend('mel', 'delay', -2);
+    expect(store.getState().trackSends.mel.delay).toBe(0);
+  });
+  it('setTrackSend on an unknown track starts from dry', () => {
+    store.getState().initFrom(selLive, 10);
+    store.getState().setTrackSend('ghost', 'delay', 0.4);
+    expect(store.getState().trackSends.ghost).toEqual({ reverb: 0, delay: 0.4 });
+  });
 });
