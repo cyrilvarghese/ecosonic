@@ -114,7 +114,8 @@ export function RemixView() {
     setRenderPct(0);
     try {
       const blob = await exportFreeMixWav({
-        tracks: audible, regions: audibleRegions, totalSec, masterDb, onProgress: setRenderPct,
+        tracks: audible, regions: audibleRegions, totalSec, masterDb, sends: trackSends,
+        onProgress: setRenderPct,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
