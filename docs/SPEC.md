@@ -62,6 +62,27 @@ interface Project { element: ElementName|null; tracks: Track[]; masterVolumeDb; 
   - `getDuration()` — real sample length once loaded.
   - `dbToGain(db, minDb)` (`src/audio/dsp.ts`): `db<=minDb ? 0 : 10^(db/20)`.
 
+### 4a. Effect sends (`src/audio/effects.ts`)
+
+Each track has two aux sends, reverb and delay, feeding chains shared across the whole engine —
+one `ConvolverNode` and one `DelayNode` per `AudioContext`, not per track. `buildEffectBuses(ctx,
+master, cfg)` builds them, typed on `BaseAudioContext` so live playback and the offline export
+share one definition and cannot drift.
+
+Sends tap the layer's gain **post-fade**, so when `release()` ramps a track to zero the effects
+stop receiving signal but keep decaying — that ringing tail is what smooths a phrase boundary. The
+effect nodes are owned by `AudioEngine`, never by `Layer`, so disposing a track cannot cut its own
+tail short.
+
+The reverb impulse response is synthesized, not a shipped file: decaying white noise from a seeded
+PRNG (`impulseChannel`), so every context builds the identical room and an export matches what was
+heard. `tailSecFor(cfg)` derives how long the chains keep sounding, and the offline renderers
+extend their window by it so a tail is never truncated mid-decay.
+
+Levels are seeded per category from `audio.effects.defaultSends` — MELODY is wet by default,
+everything else dry — held in `arrangementStore.trackSends` keyed by track id, and adjustable per
+track in the remix track pool. Layer One has the buses but no send UI, so its tracks are dry.
+
 ## 5. Layer One (`src/session/`, `src/components/`, `src/audio/useAudioEngine.ts`)
 
 - **`buildSelection(element, manifest, cfg, rng)`** (pure) — picks tracks per
@@ -203,7 +224,6 @@ config/ecosonic.config.json + src/config.ts
 ## 10. Known gaps (see PRD §8)
 
 - `tuningHz` carried but never applied (no `playbackRate`).
-- No per-track effects model.
-- No persistence.
+- No persistence — including per-track send levels, which are runtime mix state (§4a).
 - Multi-module composition & mode selection are implemented at the engine level but not surfaced in
   the UI.

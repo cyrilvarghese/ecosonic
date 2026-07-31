@@ -192,6 +192,34 @@ master gain, sized to the mix rather than to a Layer Two module.
 
 **5.6 — Mute is part of the mix.** A muted track is silenced live *and* omitted from the export.
 
+**5.7 — Export mirrors playback musically, not byte for byte.** Live triggers land on
+animation-frame boundaries (~16 ms) while the offline renderer schedules sample-exactly, and live
+playback loops where an export is a single linear pass. Both predate effects; a seeded impulse
+response makes the *room* identical, not the render.
+
+## 5a. Effect sends
+
+**5a.1 — Two sends per track**, reverb and delay, 0–100%. MELODY starts wet (reverb 20%, delay
+12%); every other category starts dry. Values come from `audio.effects.defaultSends`.
+
+**5a.2 — Sends are post-fade.** A phrase that ends still rings out. This is what smooths the gap
+rule 5.3 opens when it releases and re-triggers between non-contiguous phrases — the tail covers
+the seam without moving any authored entry point (rule 6.5).
+
+**5a.3 — Sends are runtime mix state.** They are not saved with an arrangement, the same as
+per-track volume.
+
+**5a.4 — An export runs past the end of the timeline** by the effect tail length, so the final
+decay completes rather than being cut. An exported file is therefore slightly longer than its
+timeline, and `estimatedWavBytes` counts the difference.
+
+**5a.5 — A chained session export overlap-adds.** Each module is rendered longer than its slot, and
+the next module starts on the grid regardless — so one module's tail rings over the next module's
+opening instead of becoming a gap.
+
+**5a.6 — Effects do not smooth loop seams (rule 5.2).** A tail cannot bridge a seam in a signal
+that never stopped.
+
 ## 6. Adjust intervals to whole loops (opt-in)
 
 Off by default. When on, every interval is resized so it contains a whole number of loops and no
