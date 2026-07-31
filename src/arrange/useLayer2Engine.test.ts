@@ -13,6 +13,7 @@ vi.mock('@/audio/AudioEngine', () => ({
     resumeContext = vi.fn();
     suspendContext = vi.fn();
     setTrackVolume = vi.fn();
+    setTrackSend = vi.fn();
     setTrackEnvelope = vi.fn();
     setMute = vi.fn();
     triggerTrack = vi.fn();
