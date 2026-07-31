@@ -8,6 +8,7 @@ import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
 import { estimatedWavBytes, exportFreeMixWav } from '@/remix/renderFreeMix';
+import { DRY } from '@/audio/effects';
 import { adjustToWholeLoops } from '@/remix/wholeLoops';
 import { useRemix, type RemixMode } from './useRemix';
 import { TrackPoolRow } from './TrackPoolRow';
@@ -60,6 +61,8 @@ export function RemixView() {
   const setScrubbing = useArrangement((s) => s.setScrubbing);
   // Real sample lengths, filled in by useLayer2Engine once each file has loaded.
   const trackDurations = useArrangement((s) => s.trackDurations);
+  const trackSends = useArrangement((s) => s.trackSends);
+  const setTrackSend = useArrangement((s) => s.setTrackSend);
 
   // Always install the mix, even when resuming: initFrom seeds moduleRegions with a Layer Two
   // module template that stops at moduleSeconds, so merely flipping `playing` played ten minutes
@@ -313,6 +316,8 @@ export function RemixView() {
               track={t}
               candidates={candidatesFor(t.category)}
               picked={pickedRules}
+              sends={trackSends[t.id] ?? DRY}
+              onSend={(kind, value) => setTrackSend(t.id, kind, value)}
             />
           ))
         )}
