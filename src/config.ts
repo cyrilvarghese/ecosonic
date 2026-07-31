@@ -78,6 +78,28 @@ const LayerTwo = z.object({
   generation: GenerationSchema,
 });
 
+const SendsSchema = z.object({
+  reverb: z.number().min(0).max(1),
+  delay: z.number().min(0).max(1),
+});
+// Per-track aux sends. `defaultSends` is keyed by Category; an unlisted category is fully dry.
+const EffectsSchema = z.object({
+  reverb: z.object({
+    seconds: z.number().positive(),
+    decay: z.number().positive(),
+    preDelayMs: z.number().nonnegative(),
+    seed: z.number().int(),
+  }),
+  delay: z.object({
+    timeSec: z.number().positive(),
+    // Below 1 always: at >= 1 the repeats never decay and the tail is a runaway.
+    feedback: z.number().min(0).max(0.95),
+    dampHz: z.number().positive(),
+    maxTimeSec: z.number().positive(),
+  }),
+  defaultSends: z.record(z.string(), SendsSchema),
+});
+
 export const ConfigSchema = z.object({
   audio: z.object({
     hybridThresholdBytes: z.number().int().positive(),
@@ -98,6 +120,7 @@ export const ConfigSchema = z.object({
       defaultHz: z.number().positive(),
       presetsHz: z.array(z.number().positive()),
     }),
+    effects: EffectsSchema,
   }),
   selection: z.object({
     ISO: Count, PLANET: Count, NOISE: Count, ELEMENT: Count, ELEMENT_SUB: Count,
