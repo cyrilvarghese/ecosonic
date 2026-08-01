@@ -23,7 +23,7 @@
     },
     "effects": {
       "reverb": {
-        "seconds": 2.5,
+        "seconds": 30,
         "decay": 2,
         "preDelayMs": 30,
         "seed": 1
