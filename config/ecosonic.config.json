@@ -25,7 +25,7 @@
       "reverb": {
         "seconds": 30,
         "decay": 2,
-        "preDelayMs": 30,
+        "preDelayMs": 60,
         "seed": 1
       },
       "delay": {
@@ -36,8 +36,8 @@
       },
       "defaultSends": {
         "MELODY": {
-          "reverb": 0.5,
-          "delay": 0.2
+          "reverb": 0.75,
+          "delay": 0.3
         }
       }
     }
