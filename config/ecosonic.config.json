@@ -36,8 +36,8 @@
       },
       "defaultSends": {
         "MELODY": {
-          "reverb": 0.2,
-          "delay": 0.12
+          "reverb": 0.5,
+          "delay": 0.2
         }
       }
     }
