@@ -360,3 +360,120 @@ describe('generateRemix — borrowed timings', () => {
     }
   });
 });
+
+describe('generateRemix — layered lanes', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  // One category authored by three elements, so a layered draw has room to take more than one.
+  const melodyFromThree = [
+    rule('MELODY', 'EARTH'),
+    rule('MELODY', 'WATER'),
+    rule('MELODY', 'FIRE'),
+  ];
+
+  it('is byte-identical to today when it may take only one lane', () => {
+    const manifest = fakeManifest();
+    for (let seed = 1; seed <= 10; seed++) {
+      expect(generateRemix(melodyFromThree, manifest, { ...BASE, seed, lanesPerTrack: 1 }))
+        .toEqual(generateRemix(melodyFromThree, manifest, { ...BASE, seed }));
+    }
+  });
+
+  it('gives a category one lane per element, each with its own sample', () => {
+    const { tracks } = generateRemix(melodyFromThree, fakeManifest(), { ...BASE, lanesPerTrack: 2 });
+    expect(tracks).toHaveLength(2);
+    expect(new Set(tracks.map((t) => t.id)).size).toBe(2);
+    for (const t of tracks) {
+      const element = t.id.split('·')[1];
+      expect(t.sample.name).toBe(`${element}-MELODY`);
+    }
+  });
+
+  it('never draws the same element twice for one category', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const { tracks } = generateRemix(melodyFromThree, fakeManifest(), {
+        ...BASE, seed, lanesPerTrack: 3,
+      });
+      const elements = tracks.map((t) => t.id.split('·')[1]);
+      expect(new Set(elements).size).toBe(elements.length);
+    }
+  });
+
+  it('stops at the elements that exist, not at lanesPerTrack', () => {
+    const pool = [rule('MELODY', 'EARTH'), rule('MELODY', 'WATER')];
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...BASE, lanesPerTrack: 3 });
+    expect(tracks).toHaveLength(2);
+  });
+
+  it('keeps every rule of a lane inside that lane’s element (§3.4, scoped to a lane)', () => {
+    const pool = [
+      rule('NOISE', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+      rule('NOISE', 'EARTH', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600),
+      rule('NOISE', 'WATER', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+      rule('NOISE', 'WATER', [ph(1200, 1800)], undefined, 'RETURN', 1200),
+    ];
+    const { tracks, picks } = generateRemix(pool, fakeManifest(), { ...BASE, lanesPerTrack: 2 });
+    expect(tracks).toHaveLength(2);
+    for (const t of tracks) {
+      const element = t.id.split('·')[1];
+      const mine = picks.filter((p) => p.track.id === t.id);
+      expect(mine.length).toBeGreaterThan(0);
+      expect(mine.every((p) => p.rule.source.element === element)).toBe(true);
+    }
+  });
+
+  it('orders lanes of one category by the element order', () => {
+    const { tracks } = generateRemix(melodyFromThree, fakeManifest(), { ...BASE, lanesPerTrack: 3 });
+    // ELEMENTS is EARTH, WATER, AIR, FIRE, ETHER — so EARTH's lane sits above WATER's, above FIRE's.
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·EARTH', 'MELODY·WATER', 'MELODY·FIRE']);
+  });
+
+  it('keeps the vertical stack grammar across categories', () => {
+    const pool = [
+      rule('MELODY', 'EARTH'), rule('MELODY', 'WATER'),
+      rule('NOISE', 'EARTH'), rule('NOISE', 'WATER'),
+    ];
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...BASE, lanesPerTrack: 2 });
+    expect(tracks.map((t) => t.category)).toEqual(['NOISE', 'NOISE', 'MELODY', 'MELODY']);
+  });
+
+  it('layers overlapping timings instead of dropping one, because a lane is a voice', () => {
+    // Both elements author the same window. On one track regionAt would resolve to the first and the
+    // second would never sound; on two lanes both play. This is the point of the feature (§4).
+    const pool = [
+      rule('PAD', 'EARTH', [ph(0, 600)]),
+      rule('PAD', 'WATER', [ph(0, 600)]),
+    ];
+    const { regions } = generateRemix(pool, fakeManifest(), { ...BASE, lanesPerTrack: 2 });
+    expect(regions).toHaveLength(2);
+    expect(new Set(regions.map((r) => r.trackId)).size).toBe(2);
+    expect(regions.every((r) => r.enterSec === 0 && r.exitSec === 600)).toBe(true);
+  });
+
+  it('caps Borrowed at one lane — the extra would be the same file staggered (§6.1)', () => {
+    const { tracks } = generateRemix(melodyFromThree, fakeManifest(), {
+      ...BASE, lanesPerTrack: 3, sampleElement: 'ETHER',
+    });
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·ETHER']);
+  });
+
+  it('draws lane elements in proportion to their rule count (§3.7)', () => {
+    // Three WATER melodies against one FIRE: WATER should win the first lane far more often.
+    const pool = [
+      rule('MELODY', 'WATER'), rule('MELODY', 'WATER'), rule('MELODY', 'WATER'),
+      rule('MELODY', 'FIRE'),
+    ];
+    let waterFirst = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const { tracks } = generateRemix(pool, fakeManifest(), { ...BASE, seed, lanesPerTrack: 1 });
+      if (tracks[0].id === 'MELODY·WATER') waterFirst++;
+    }
+    expect(waterFirst).toBeGreaterThan(120); // ~150 expected at 3:1; well clear of 1:1's ~100
+  });
+
+  it('repeats a layered draw for a seed', () => {
+    const manifest = fakeManifest();
+    expect(generateRemix(melodyFromThree, manifest, { ...BASE, seed: 7, lanesPerTrack: 2 }))
+      .toEqual(generateRemix(melodyFromThree, manifest, { ...BASE, seed: 7, lanesPerTrack: 2 }));
+  });
+});
