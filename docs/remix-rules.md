@@ -87,6 +87,7 @@ instead of narrowing anything:
 | **Cross-element** (default) | the whole pool; each track's sample follows the rule it picked |
 | **Scoped**(el) | only that element's rules, and that element's samples |
 | **Borrowed timings**(el) | the whole pool for **timing**, and **el**'s samples for every track |
+| **Layered**(n) | the whole pool, and up to **n elements per category** — each its own lane |
 | **Full session** (default) | the whole 30-minute timeline |
 | **Section**(s) | only rules tagged to that section |
 
@@ -95,9 +96,16 @@ modes rather than four.
 
 Then, for each category the narrowed pool covers:
 
-**3.1 — One track per category.** `id = category`, so `MELODY 2` and `SUB MELODY` collapse into the
-single `MELODY` track. The picked variant becomes the track's **label**. There is never more than
-one lane per category.
+**3.1 — One lane per category, per element.** `id = category·ELEMENT` — `MELODY·FIRE` — so a
+category may hold several lanes, one per element the draw or your pins gave it. The id carries the
+element even when there is only one lane: an id that changed shape when a sibling appeared would
+lose that lane's mute state and make the engine reload it mid-session. `MELODY 2` and `SUB MELODY`
+still collapse onto the `MELODY` category; the picked variant and the element become the lane's
+**label** (`MELODY 2 · Fire`).
+
+Two lanes are two `trackId`s, so overlapping timings **layer** — each lane is its own voice, and
+there is nothing to resolve. Within one lane §3.2 still yields at most one rule per section and a
+rule's phrases do not overlap themselves, so `regionAt`'s first-match resolution is never reached.
 
 **3.2 — One rule per section, for a full session.** A track takes a rule from *each* section its
 element authored, so a bed sounds across the whole thirty minutes rather than only the third its
@@ -106,7 +114,7 @@ lead came from. A **section draw takes exactly one rule.**
 **3.3 — Absence is allowed, and never repaired.** A category no rule covers has no track. A section
 the element never authored is simply silent there. Nothing is substituted to fill a gap.
 
-**3.4 — Every rule of a track comes from one element — *unless the sample is fixed*.**
+**3.4 — Every rule of a *lane* comes from one element — *unless the sample is fixed*.**
 *(structural **given §3.5**, not absolute)*
 By default the draw is two-stage: a **lead** rule is drawn from the category's candidates, which
 fixes the element; the per-section rules are then drawn from that element only.
@@ -121,6 +129,16 @@ the sample by hand instead (§3.5), and the constraint dissolves: a rule's eleme
 anything about audio, so rules may be drawn from every element for one track. A rule becomes what it
 always was on paper — pure timing. In that mode there is no lead element and no filter, and one
 track's three sections can come from three different elements.
+
+Layering does not repeal this rule — it scopes it down from a category to a lane. Cross-element
+mixing still never happens inside a lane; it now happens across the lanes of one category as well as
+across categories.
+
+**Borrowed is capped at one lane**, for the same reason. It fixes every lane's audio to one element,
+so two lanes of a category would draw from the same `manifest[el][category]` list — and six of the
+eleven categories (NOISE, FX, DRONE, PAD, BASS and MELODY) ship exactly one sample per element. Those
+lanes would be byte-identical audio staggered in time: a real phasing effect, but a different feature
+from "several elements sounding", and not worth the extra states.
 
 **3.5 — The sample follows the element — the picked one, or the chosen one.** A track's audio is
 `manifest[element][category]`, drawn at random from that list. `element` is the lead rule's element
@@ -146,6 +164,11 @@ one chosen element supplies every track's audio rather than whichever element th
   the lead draw landed. The warning appears every time in those two, by construction rather than by
   bad luck.
 
+**Under layering the warning is collapsed per category**, naming every element skipped —
+`ELEMENT_SUB: no WATER, ETHER sample — those lanes skipped` — rather than repeating itself once per
+lane. It is kept even when other lanes of the category survived, because it is the only thing
+explaining why a chip you can see never produces a lane.
+
 **3.7 — Draw probability follows rule count, not elements.** The lead is drawn uniformly over
 *candidate rules*, so an element with more authored variants in a category is likelier to win it —
 5 Air melodies against 2 Water melodies is roughly 2.5:1, not 1:1.
@@ -153,8 +176,11 @@ one chosen element supplies every track's audio rather than whichever element th
 **3.8 — Tracks are ordered by the vertical grammar** (`STACK_ORDER`): NOISE, ELEMENT, ELEMENT_SUB,
 FX, ISO, PLANET, DRONE, PAD, BASS, ARP, MELODY.
 
-**3.9 — Deterministic.** Same pool + manifest + seed + element + section ⇒ the same draw.
-Regenerate advances the seed.
+**3.9 — Deterministic.** Same pool + manifest + seed + element + section + lanes + **pins** ⇒ the
+same draw. Regenerate advances the seed, which rerolls every slot **except** the pinned ones — a
+pinned slot consumes no randomness at all, which is what lets the rest reroll around it. Seeds are
+meaningful only within one mode: the modes consume the stream differently, so no seed reproduces
+another mode's draw.
 
 ## 4. Laying it on the timeline
 
@@ -220,9 +246,11 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
 
 ## 7. What the UI shows
 
-- **Chips** list the candidates the current scope could draw from — element **and** section filtered,
-  so a chip on screen is always one the draw could have picked. Lit chips are the picks; a full
-  session lights up to three per row.
+- **Chips** list the candidates the current scope could draw from — element **and** section
+  filtered, so a chip on screen is always one the draw could have picked. One row per **category**,
+  not per lane: a category's pool is one thing, and a chip already names the lane it addresses.
+  Three states: **outline** = not picked, **filled** = drawn by the generator, **filled + ring** =
+  pinned by you. A full session lights up to three per lane.
 - **Colour** is the element's brand colour, on both chips and bars, via `data-element`. In
   **Borrowed timings** audio and timing disagree, so each surface takes the one it represents:
   **bars take the sample element** (they are what you hear — every bar one colour, which is also the
@@ -240,8 +268,35 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
   one of §6's two exceptions — worth looking at.
 - **Warnings** expand to their text rather than showing only a count.
 
-## 8. Deliberately not done
+## 8. Clicking a chip
 
-Stitching three section modules into one session · per-section separate tracks (would allow
-within-track element mixing, at the cost of §3.1) · crossfading loop wraps or distinct picks ·
-invariant repair of any kind · in-app rule editing · saving a generated result.
+A chip carries both things a lane needs — its element and its section — so clicking one has an
+unambiguous destination, and no modifier keys or add/replace controls are needed.
+
+| you click | result |
+|---|---|
+| a chip whose element has **no lane** in that category | the lane is created, pinned with that rule |
+| a chip whose element **has a lane** | that lane's section slot is set to this rule, and pinned |
+| a chip **you already pinned** | unpinned — the slot reverts to the draw |
+
+A click only ever addresses its own element's lane, so it can never delete another element's pick.
+
+Pins are stored as `slotKey → ruleKey`, both derived from rule **content** (`category|element|section`
+and `sessionId|track|section`) rather than object identity — `refetch()` rebuilds every rule object,
+and a pin held by reference would not survive one upload. A pin whose rule no longer resolves is
+dropped silently and that slot is drawn as usual.
+
+A pin may create a lane the draw would not have made, and may take a category past its lanes
+setting — up to the five real elements. Pins are **retained** across a change of mode or section, so
+one for a section you are not looking at is simply inert until you return.
+
+**Chips are clickable in Cross-element and Layered only.** Scoped is one element by definition, and
+a Borrowed lane has no rule-element for a `slotKey` to name — so in both, chips stay inert hints and
+any pins you set elsewhere are ignored while you are there.
+
+## 9. Deliberately not done
+
+Stitching three section modules into one session · crossfading loop wraps or overlapping lanes ·
+per-section separate lanes · mixing sample elements *within* one lane · invariant repair of any
+kind · in-app rule editing · saving a generated result · persisting pins across a reload · layering
+in Borrowed mode (§3.4) · a "solo" control to audition one lane against another.
