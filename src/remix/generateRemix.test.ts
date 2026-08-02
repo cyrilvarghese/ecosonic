@@ -76,6 +76,23 @@ describe('generateRemix', () => {
     expect(byCategory.get('PAD')).toBe('FIRE-PAD');
   });
 
+  it('ids a lane by its category and the element it sounds', () => {
+    const pool = [rule('MELODY', 'WATER'), rule('PAD', 'FIRE')];
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
+    expect(tracks.map((t) => t.id).sort()).toEqual(['MELODY·WATER', 'PAD·FIRE']);
+  });
+
+  it('ids a borrowed lane by the element it plays, not the rule it drew', () => {
+    // Borrowed splits the two: the rule is WATER's, the audio is EARTH's. The id follows the audio,
+    // because that is what mute, the engine and regionAt all address.
+    const pool = [rule('MELODY', 'WATER')];
+    const { tracks, regions } = generateRemix(pool, fakeManifest(), {
+      ...SESSION, seed: 1, sampleElement: 'EARTH',
+    });
+    expect(tracks[0].id).toBe('MELODY·EARTH');
+    expect(regions.every((r) => r.trackId === 'MELODY·EARTH')).toBe(true);
+  });
+
   it('derives one track per category, collapsing melody variants into its label', () => {
     const pool = [
       rule('MELODY', 'WATER', [ph(0, 60)], 'MELODY 2'),
@@ -83,7 +100,7 @@ describe('generateRemix', () => {
     ];
     const { tracks, picks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 2 });
     expect(tracks).toHaveLength(1);
-    expect(tracks[0].id).toBe('MELODY');
+    expect(tracks[0].id).toBe(`MELODY·${picks[0].rule.source.element}`);
     expect(tracks[0].label).toBe(picks[0].rule.variant);
     expect(tracks[0].ceilingDb).toBe(config.audio.volume.defaultTrackDb);
   });
@@ -116,8 +133,8 @@ describe('generateRemix', () => {
     const pool = [rule('PAD', 'FIRE', [ph(0, 120, 0, 120), ph(540, 600, 60, 0)])];
     const { regions } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
     expect(regions).toHaveLength(2);
-    expect(regions.every((r) => r.trackId === 'PAD')).toBe(true);
-    expect(regions[0]).toEqual({ trackId: 'PAD', enterSec: 0, exitSec: 120, fadeInSec: 0, fadeOutSec: 120 });
+    expect(regions.every((r) => r.trackId === 'PAD·FIRE')).toBe(true);
+    expect(regions[0]).toEqual({ trackId: 'PAD·FIRE', enterSec: 0, exitSec: 120, fadeInSec: 0, fadeOutSec: 120 });
   });
 
   it('repeats its draw for a seed and redraws for a different one', () => {
@@ -218,8 +235,8 @@ describe('generateRemix — section axis', () => {
     const { regions, totalSec } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'DEEP_RELAXATION' });
     expect(totalSec).toBe(config.layerTwo.moduleSeconds);
     const byTrack = new Map(regions.map((r) => [r.trackId, r]));
-    expect(byTrack.get('MELODY')).toMatchObject({ enterSec: 30, exitSec: 330 });
-    expect(byTrack.get('PAD')).toMatchObject({ enterSec: 60, exitSec: 360 });
+    expect(byTrack.get('MELODY·AIR')).toMatchObject({ enterSec: 30, exitSec: 330 });
+    expect(byTrack.get('PAD·EARTH')).toMatchObject({ enterSec: 60, exitSec: 360 });
   });
 
   it('clips a phrase that overruns the module', () => {
@@ -293,7 +310,7 @@ describe('generateRemix — borrowed timings', () => {
     const { regions, tracks } = generateRemix(pool, fakeManifest(), {
       ...BASE, section: 'DEEP_RELAXATION', sampleElement: 'EARTH',
     });
-    expect(regions[0]).toMatchObject({ trackId: 'MELODY', enterSec: 30, exitSec: 330 });
+    expect(regions[0]).toMatchObject({ trackId: 'MELODY·EARTH', enterSec: 30, exitSec: 330 });
     expect(tracks[0].sample.name).toBe('EARTH-MELODY');
   });
 

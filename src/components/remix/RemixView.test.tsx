@@ -83,6 +83,12 @@ const rule = (
   source: { element, sessionId: `${element}-1`, track: category },
 });
 
+/** A region testid is `region-${laneId}-${enterSec}` and a lane id is `CATEGORY·ELEMENT`. Which
+ *  element a cross draw lands on is the seed's business, so match the category and let the element
+ *  be whatever was drawn. */
+const laneRegion = (category: string, enterSec = 0) =>
+  new RegExp(`^region-${category}·[A-Z]+-${enterSec}$`);
+
 // WATER authored a MELODY but no PAD — so scoping to WATER visibly drops the PAD lane. BASS exists
 // only in RETURN, so picking that section visibly narrows the draw to it.
 const STORE = {
@@ -120,20 +126,20 @@ beforeEach(() => {
 describe('RemixView', () => {
   it('draws a mix with no Arrangement set up', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-MELODY-0');
+    await screen.findByTestId(laneRegion('MELODY'));
     expect(screen.queryByText(/Set up an Arrangement first/i)).toBeNull();
   });
 
   it('mounts the scheduler, without which nothing it plays can sound', async () => {
     mountedScheduler.count = 0;
     render(<RemixView />);
-    await screen.findByTestId('region-MELODY-0');
+    await screen.findByTestId(laneRegion('MELODY'));
     expect(mountedScheduler.count).toBeGreaterThan(0);
   });
 
   it('hides the element chips until scoped mode is on', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(screen.getByRole('button', { name: 'Cross-element' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'WATER' })).toBeNull();
 
@@ -147,7 +153,7 @@ describe('RemixView', () => {
 
   it('offers the four section scopes with full session selected', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(screen.getByRole('button', { name: 'Full session' })).toHaveAttribute('aria-pressed', 'true');
     for (const label of ['Intro', 'Deep Relaxation', 'Return']) {
       expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'false');
@@ -156,18 +162,18 @@ describe('RemixView', () => {
 
   it('narrows the draw to one section module', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Return' }));
 
     expect(screen.getByRole('button', { name: 'Return' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('region-BASS-120')).toBeInTheDocument(); // 1320 rebased by 1200
-    expect(screen.queryByTestId('region-PAD-0')).toBeNull();
+    expect(screen.getByTestId(laneRegion('BASS', 120))).toBeInTheDocument(); // 1320 rebased by 1200
+    expect(screen.queryByTestId(laneRegion('PAD'))).toBeNull();
   });
 
   it('toggles the transport button between play and pause', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(screen.getByRole('button', { name: /Play/ })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
@@ -181,7 +187,7 @@ describe('RemixView', () => {
 
   it('installs the mix even when starting from a scrubbed position', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     // Drag the playhead before ever pressing Play — the store still holds the Layer Two module
     // template that initFrom seeded, which only spans config.layerTwo.moduleSeconds. Scrub through
@@ -208,7 +214,7 @@ describe('RemixView', () => {
 
   it('resumes from the paused position instead of restarting', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
 
     act(() => { arrangementStore.setState({ positionSec: 420 }); });
@@ -221,7 +227,7 @@ describe('RemixView', () => {
 
   it('reads out the playhead against the total length', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(screen.getByTestId('transport-clock')).toHaveTextContent('0:00 / 30:00');
 
     act(() => { arrangementStore.setState({ positionSec: 930 }); });
@@ -230,47 +236,47 @@ describe('RemixView', () => {
 
   it('leaves intervals as authored until asked to adjust them', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(screen.getByRole('checkbox', { name: /whole loops/i })).not.toBeChecked();
     await waitFor(() =>
-      expect(within(screen.getByTestId('region-PAD-0')).getByTestId('interval-length'))
+      expect(within(screen.getByTestId(laneRegion('PAD'))).getByTestId('interval-length'))
         .toHaveTextContent('1:00'));
   });
 
   it('rounds an interval to whole loops when adjust is ticked', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     // Wait for the engine to report sample lengths — nothing can be adjusted before that.
-    await waitFor(() => expect(arrangementStore.getState().trackDurations.PAD).toBe(40));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
 
     await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
 
     // 1:00 over a 0:40 sample = 1.5 loops → rounds up to 2 → 1:20.
-    expect(within(screen.getByTestId('region-PAD-0')).getByTestId('interval-length'))
+    expect(within(screen.getByTestId(laneRegion('PAD'))).getByTestId('interval-length'))
       .toHaveTextContent('1:20');
   });
 
   it('exports the adjusted intervals, not the authored ones', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
-    await waitFor(() => expect(arrangementStore.getState().trackDurations.PAD).toBe(40));
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
 
     await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
 
     await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
-    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD')?.exitSec).toBe(80);
+    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec).toBe(80);
   });
 
   it('plays the adjusted intervals, not the authored ones', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
-    await waitFor(() => expect(arrangementStore.getState().trackDurations.PAD).toBe(40));
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
 
     await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
 
-    const pad = arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD');
+    const pad = arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE');
     expect(pad?.exitSec).toBe(80);
   });
 
@@ -282,7 +288,7 @@ describe('RemixView', () => {
     }));
 
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: /upload as/i }));
     await userEvent.click(await screen.findByRole('menuitem', { name: 'FIRE' }));
@@ -299,7 +305,7 @@ describe('RemixView', () => {
 
   it('opens the file picker as soon as an element is chosen', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     const picker = vi.spyOn(screen.getByLabelText(/session file/i), 'click').mockImplementation(() => {});
 
     await userEvent.click(screen.getByRole('button', { name: /upload as/i }));
@@ -310,7 +316,7 @@ describe('RemixView', () => {
 
   it('carries the element it will file under on the control itself', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(screen.getByRole('button', { name: /upload as EARTH/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /upload as/i }));
@@ -326,7 +332,7 @@ describe('RemixView', () => {
     }));
 
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.upload(
       screen.getByLabelText(/session file/i),
@@ -338,21 +344,21 @@ describe('RemixView', () => {
 
   it('leaves a muted track out of the exported mix', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Mute PAD' }));
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
 
     await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
-    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).not.toContain('PAD');
-    expect(exportCtl.lastArgs!.regions.map((r) => r.trackId)).not.toContain('PAD');
-    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).toContain('MELODY');
+    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).not.toContain('PAD·FIRE');
+    expect(exportCtl.lastArgs!.regions.map((r) => r.trackId)).not.toContain('PAD·FIRE');
+    expect(exportCtl.lastArgs!.tracks.some((t) => t.id.startsWith('MELODY·'))).toBe(true);
   });
 
   it('reports loading then render progress while exporting', async () => {
     exportCtl.hold = true;
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
     // Nothing reports until every sample is decoded, so say so rather than showing a bare 0%.
@@ -370,14 +376,14 @@ describe('RemixView', () => {
       json: async () => ({ store: STORE, warnings: ['ELEMENT_SUB: no ETHER sample for the picked rule'] }),
     })));
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
     expect(await screen.findByText(/no ETHER sample/)).toBeInTheDocument();
   });
 
   it('surfaces an export failure instead of failing silently', async () => {
     exportCtl.fail = true;
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
 
@@ -386,7 +392,7 @@ describe('RemixView', () => {
 
   it('leaves no error showing after a successful export', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
 
@@ -395,21 +401,21 @@ describe('RemixView', () => {
 
   it('drops the categories the scoped element never authored', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
     await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
 
     expect(screen.getByRole('button', { name: 'WATER' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('region-MELODY-0')).toBeInTheDocument();
-    expect(screen.queryByTestId('region-PAD-0')).toBeNull();
+    expect(screen.getByTestId(laneRegion('MELODY'))).toBeInTheDocument();
+    expect(screen.queryByTestId(laneRegion('PAD'))).toBeNull();
   });
 });
 
 describe('RemixView — borrowed timings', () => {
   it('offers a third mode that keeps the element chips, captioned as sound', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
 
@@ -423,7 +429,7 @@ describe('RemixView — borrowed timings', () => {
 
   it('names the element whose samples every track will play', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
     await userEvent.click(screen.getByRole('button', { name: 'FIRE' }));
@@ -434,7 +440,7 @@ describe('RemixView — borrowed timings', () => {
 
   it('shows no Sound caption when Scoped is the mode', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
 
@@ -444,19 +450,19 @@ describe('RemixView — borrowed timings', () => {
 
   it('keeps every category the pool covers, whatever the chosen element authored', async () => {
     render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     // Scoped to ETHER there is nothing at all; borrowed from ETHER the whole pool plays.
     await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
     await userEvent.click(screen.getByRole('button', { name: 'ETHER' }));
 
-    expect(screen.getByTestId('region-PAD-0')).toBeInTheDocument();
-    expect(screen.getByTestId('region-MELODY-0')).toBeInTheDocument();
+    expect(screen.getByTestId(laneRegion('PAD'))).toBeInTheDocument();
+    expect(screen.getByTestId(laneRegion('MELODY'))).toBeInTheDocument();
   });
 
   it('colours every bar by the sample element while chips keep their own', async () => {
     const { container } = render(<RemixView />);
-    await screen.findByTestId('region-PAD-0');
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
     await userEvent.click(screen.getByRole('button', { name: 'ETHER' }));

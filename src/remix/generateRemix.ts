@@ -115,7 +115,10 @@ export function generateRemix(
 
     const sample = samples[Math.floor(rng.float() * samples.length)];
     const track: ArrTrack = {
-      id: category, // one track per category ⇒ unique; melody variants collapse, variant shows as label
+      // A lane is category × element, so the id carries both — and carries them even when there is
+      // only one lane, because an id that changed shape when a sibling appeared would lose this
+      // lane's mute state and make the engine reload it mid-session.
+      id: `${category}·${audioElement}`,
       category,
       label: drawn[0].rule.variant ?? category,
       sample: { name: sample.name, path: sample.path, bytes: sample.bytes },
