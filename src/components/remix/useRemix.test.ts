@@ -276,3 +276,98 @@ describe('useRemix — borrowed timings', () => {
     expect(result.current.tracks.every((t) => t.sample.name.startsWith('ETHER-'))).toBe(true);
   });
 });
+
+describe('useRemix — layered lanes', () => {
+  it('draws one lane per element for a category in layered mode', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setMode('layered'));
+
+    // MELODY is authored by WATER and FIRE, so it gains a second lane; PAD and BASS only by FIRE.
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(2);
+    expect(result.current.tracks.map((t) => t.id).sort())
+      .toEqual(['BASS·FIRE', 'MELODY·FIRE', 'MELODY·WATER', 'PAD·FIRE']);
+  });
+
+  it('defaults to two lanes and honours a change', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+    expect(result.current.lanesPerTrack).toBe(2);
+
+    act(() => result.current.setMode('layered'));
+    act(() => result.current.setLanesPerTrack(1));
+
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(1);
+  });
+
+  it('leaves the other modes on one lane whatever lanesPerTrack says', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setLanesPerTrack(3));
+
+    expect(result.current.mode).toBe('cross');
+    expect(result.current.tracks).toHaveLength(3);
+  });
+});
+
+describe('useRemix — pins', () => {
+  const melodyOf = (s: RemixState, element: string) =>
+    s.candidatesFor('MELODY').find((r) => r.source.element === element)!;
+
+  it('pins a rule and holds it across Regenerate', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    const water = melodyOf(result.current, 'WATER');
+    act(() => result.current.togglePin(water));
+
+    for (let i = 0; i < 20; i++) {
+      act(() => result.current.regenerate());
+      const melody = result.current.picks.filter((p) => p.track.category === 'MELODY');
+      expect(melody.some((p) => p.rule.source.element === 'WATER')).toBe(true);
+    }
+  });
+
+  it('unpins when the same rule is clicked again', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    const water = melodyOf(result.current, 'WATER');
+    act(() => result.current.togglePin(water));
+    expect(Object.keys(result.current.pins)).toHaveLength(1);
+
+    act(() => result.current.togglePin(water));
+    expect(result.current.pins).toEqual({});
+  });
+
+  it('repoints a slot rather than stacking, when another rule of the same slot is pinned', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    const water = melodyOf(result.current, 'WATER');
+    const fire = melodyOf(result.current, 'FIRE');
+    act(() => result.current.togglePin(water));
+    act(() => result.current.togglePin(fire));
+
+    // Different elements ⇒ different slots ⇒ two lanes, not a replacement.
+    expect(Object.keys(result.current.pins)).toHaveLength(2);
+  });
+
+  it('keeps pins across a mode change, inert where they do not apply', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    const water = melodyOf(result.current, 'WATER');
+    act(() => result.current.togglePin(water));
+
+    act(() => result.current.setMode('borrowed'));
+    act(() => result.current.setElement('EARTH'));
+    expect(result.current.pins).not.toEqual({}); // retained…
+    expect(result.current.tracks.every((t) => t.sample.name.startsWith('EARTH-'))).toBe(true);
+
+    act(() => result.current.setMode('cross'));
+    expect(result.current.picks.some((p) => p.rule.source.element === 'WATER')).toBe(true); // …and back
+  });
+});

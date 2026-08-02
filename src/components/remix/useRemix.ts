@@ -7,13 +7,15 @@ import { config } from '@/config';
 import { arrangementStore } from '@/arrange/arrangementStore';
 import type { AuthoredRule, RuleStore } from '@/remix/sessionRules';
 import { generateRemix, type RemixPick } from '@/remix/generateRemix';
+import { ruleKey, slotKey, type Pins } from '@/remix/pins';
 
 const manifest = manifestJson as unknown as Manifest;
 const EMPTY_STORE: RuleStore = { EARTH: [], WATER: [], AIR: [], FIRE: [], ETHER: [] };
 
 /** `cross` draws every track from the whole authored pool; `scoped` from one element's rules only;
- *  `borrowed` draws timings from every element but plays them all through one element's samples. */
-export type RemixMode = 'scoped' | 'cross' | 'borrowed';
+ *  `borrowed` draws timings from every element but plays them all through one element's samples;
+ *  `layered` is `cross` with the draw taking SEVERAL elements per category, each its own lane. */
+export type RemixMode = 'scoped' | 'cross' | 'borrowed' | 'layered';
 
 export interface RemixState {
   tracks: ArrTrack[];
@@ -28,6 +30,13 @@ export interface RemixState {
   section: Mode | null;
   /** The candidates the current mode can draw from for a category — what a pool row renders. */
   candidatesFor: (c: Category) => AuthoredRule[];
+  /** How many elements a category's draw may take, in `layered`. Every other mode is one lane. */
+  lanesPerTrack: number;
+  setLanesPerTrack: (n: number) => void;
+  /** slotKey → ruleKey — the slots you chose by hand, which Regenerate leaves alone. */
+  pins: Pins;
+  /** Pin this rule into its slot, or unpin it if it is already the pin there. */
+  togglePin: (rule: AuthoredRule) => void;
   setMode: (m: RemixMode) => void;
   setElement: (e: ElementName) => void;
   setSection: (s: Mode | null) => void;
@@ -49,6 +58,8 @@ export function useRemix(): RemixState {
   const [mode, setMode] = useState<RemixMode>('cross');
   const [element, setElement] = useState<ElementName>(ELEMENTS[0]);
   const [section, setSection] = useState<Mode | null>(null);
+  const [lanesPerTrack, setLanesPerTrack] = useState(2);
+  const [pins, setPins] = useState<Pins>({});
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -72,6 +83,9 @@ export function useRemix(): RemixState {
   // rules wide open. Both read the same `element` state, so switching modes keeps your choice.
   const scopedTo = mode === 'scoped' ? element : undefined;
   const sampleElement = mode === 'borrowed' ? element : undefined;
+  // Layering is the only mode that takes more than one lane: Scoped is one element by definition,
+  // and Borrowed is capped at one because the extra lanes would be the same file staggered.
+  const lanes = mode === 'layered' ? lanesPerTrack : 1;
 
   const draw = useMemo(
     () => generateRemix(pool, manifest, {
@@ -80,8 +94,11 @@ export function useRemix(): RemixState {
       sampleElement,
       section: section ?? undefined,
       sessionSec: sessionMin * 60,
+      lanesPerTrack: lanes,
+      pins,
     }),
-    [pool, seed, scopedTo, sampleElement, section, sessionMin],
+    // `pins` is an input to the draw, not a decoration on it — determinism now includes it.
+    [pool, seed, scopedTo, sampleElement, section, sessionMin, lanes, pins],
   );
 
   // The scheduler and the WAV renderer both read arrangementStore.tracks — keep them in step with
@@ -115,6 +132,21 @@ export function useRemix(): RemixState {
     [pool, scopedTo, section],
   );
 
+  // One gesture, three outcomes: a fresh slot is pinned, a slot pinned to another rule is repointed,
+  // and clicking the current pin clears it. Keyed by content so it survives refetch().
+  const togglePin = useCallback((rule: AuthoredRule) => {
+    setPins((prev) => {
+      const slot = slotKey(rule);
+      const key = ruleKey(rule);
+      if (prev[slot] === key) {
+        const next = { ...prev };
+        delete next[slot];
+        return next;
+      }
+      return { ...prev, [slot]: key };
+    });
+  }, []);
+
   return {
     tracks: draw.tracks,
     picks: draw.picks,
@@ -126,6 +158,10 @@ export function useRemix(): RemixState {
     element,
     section,
     candidatesFor,
+    lanesPerTrack,
+    setLanesPerTrack,
+    pins,
+    togglePin,
     setMode,
     setElement,
     setSection,

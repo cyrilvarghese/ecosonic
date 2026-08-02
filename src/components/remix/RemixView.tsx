@@ -39,6 +39,7 @@ const HINT: Record<RemixMode, (el: ElementName) => string> = {
   cross: () => 'every track draws from the whole pool — its sample follows the element it picked',
   scoped: () => "every track draws from one element's rules, and that element's samples",
   borrowed: (el) => `every track plays ${el}'s samples, on timings drawn from every element`,
+  layered: () => 'a category may sound several elements at once — click a chip to pin one',
 };
 
 export function RemixView() {
