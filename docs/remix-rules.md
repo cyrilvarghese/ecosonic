@@ -128,7 +128,8 @@ That argument depends entirely on the sample being chosen *by the pick*. **Borro
 the sample by hand instead (§3.5), and the constraint dissolves: a rule's element no longer decides
 anything about audio, so rules may be drawn from every element for one track. A rule becomes what it
 always was on paper — pure timing. In that mode there is no lead element and no filter, and one
-track's three sections can come from three different elements.
+track's three sections can come from three different elements — drawn that way, or **chosen** that
+way by clicking a chip per section (§8).
 
 Layering does not repeal this rule — it scopes it down from a category to a lane. Cross-element
 mixing still never happens inside a lane; it now happens across the lanes of one category as well as
@@ -281,8 +282,9 @@ unambiguous destination, and no modifier keys or add/replace controls are needed
 |---|---|
 | a chip whose element **has a lane** | that lane's section slot is set to this rule, and pinned |
 | a chip **you already pinned** | unpinned — the slot reverts to the draw |
-| a chip whose element has **no lane**, outside Layered | the category's one lane **swaps** onto that element, pinned at that section |
+| a chip whose element has **no lane**, in Cross-element | the category's one lane **swaps** onto that element, pinned at that section |
 | a chip whose element has **no lane**, in Layered | a lane is **added** for that element |
+| any chip, in **Borrowed timings** | that **section's timing** is set to it; the sound does not move |
 
 **Only Layered adds lanes.** Everywhere else §3.1's one-lane-per-category holds no matter what is
 pinned, so a click moves the lane you have rather than stacking another underneath it. Swapping takes
@@ -301,9 +303,16 @@ section, so one for a section you are not looking at is simply inert until you r
 Layered a second pin in the same category **replaces** the first rather than joining it, since there
 is only one lane there for them to fight over.
 
-**Chips are clickable in Cross-element and Layered only.** Scoped is one element by definition, and
-a Borrowed lane has no rule-element for a `slotKey` to name — so in both, chips stay inert hints and
-any pins you set elsewhere are ignored while you are there.
+**Borrowed timings is where a lane's sections may differ.** Everywhere else the sample follows the
+pick, so three elements supplying three sections would leave no element for the sample to follow —
+one would win and the other two chips would be lit while contributing nothing you can hear. That is
+§3.4, and it is the reason a click swaps the whole lane in Cross-element. Borrowed fixes the sample
+by hand instead, so a rule there is pure timing and the constraint dissolves: pick Intro from Earth,
+Deep Relaxation from Air and Return from Ether, all sounding through the one element you chose.
+A second click in the same section replaces the first; other sections are untouched.
+
+**Chips are inert in Scoped only** — that mode narrows the pool to one element and takes its samples,
+so every chip in a row is already the lane's own element and a click could decide nothing.
 
 ## 9. Deliberately not done
 

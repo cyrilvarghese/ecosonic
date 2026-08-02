@@ -73,9 +73,11 @@ export function RemixView() {
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
-  // Chips address a lane by element, so they are only operable where lanes are per element. Scoped
-  // is one element by definition and Borrowed has no rule-element at all.
-  const chipsClickable = mode === 'cross' || mode === 'layered';
+  // Scoped narrows the pool to one element and takes its samples, so every chip in a row is already
+  // the lane's own element and there is nothing a click could decide. Everywhere else a click means
+  // something: which element owns the lane (cross, layered) or which element's timing fills a
+  // section (borrowed, where the sound is fixed by hand and sections may differ).
+  const chipsClickable = mode !== 'scoped';
   // Tracks arrive in STACK_ORDER, so unique-in-order keeps the pool rows in the same grammar.
   const categories = [...new Set(tracks.map((t) => t.category))];
   // Borrowed timings splits audio from timing, so colour has to pick a side per surface. Bars are

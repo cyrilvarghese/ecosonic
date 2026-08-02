@@ -82,7 +82,8 @@ export function useRemix(): RemixState {
   // The modes differ only here. Scoped narrows the RULES; borrowed fixes the AUDIO and leaves the
   // rules wide open. Both read the same `element` state, so switching modes keeps your choice.
   const scopedTo = mode === 'scoped' ? element : undefined;
-  const sampleElement = mode === 'borrowed' ? element : undefined;
+  const borrowing = mode === 'borrowed';
+  const sampleElement = borrowing ? element : undefined;
   // Layering is the only mode that takes more than one lane: Scoped is one element by definition,
   // and Borrowed is capped at one because the extra lanes would be the same file staggered. It is
   // also the only mode where clicking a chip can ADD a lane rather than swap the one that is there.
@@ -146,18 +147,23 @@ export function useRemix(): RemixState {
         return next;
       }
       const next = { ...prev, [slot]: key };
-      // Outside Layered a category has exactly one lane, so a click SWAPS which element owns it.
-      // Rival pins from other elements of this category would otherwise linger and decide the lane
-      // by element order instead of by the chip you just clicked.
+      // How much a click displaces depends on what a lane is in this mode:
+      //   layered  — nothing; a click may add a lane, so rival elements coexist.
+      //   borrowed — the same SECTION only. One lane, but its sound is already fixed by hand, so
+      //              each section may hold a different element's timing (§3.4 does not bind here).
+      //   else     — the whole CATEGORY. One lane, one element, so a click swaps which element owns
+      //              it; a lingering rival would decide the lane by element order, not by your click.
       if (!layering) {
         for (const k of Object.keys(next)) {
-          const [cat, el] = k.split('|');
-          if (cat === rule.category && el !== rule.source.element) delete next[k];
+          const [cat, el, sec] = k.split('|');
+          if (cat !== rule.category || el === rule.source.element) continue;
+          if (borrowing && sec !== rule.section) continue;
+          delete next[k];
         }
       }
       return next;
     });
-  }, [layering]);
+  }, [layering, borrowing]);
 
   return {
     tracks: draw.tracks,

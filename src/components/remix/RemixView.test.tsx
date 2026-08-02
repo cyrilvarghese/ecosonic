@@ -473,7 +473,8 @@ describe('RemixView — borrowed timings', () => {
     expect([...bars].every((b) => b.getAttribute('data-element') === 'ether')).toBe(true);
 
     // Where the TIMING came from is the interesting information here, so the chips still differ.
-    const chips = container.querySelectorAll('.cursor-help[data-element]');
+    // Scoped to the pool rows rather than to a cursor class — chips are operable in this mode now.
+    const chips = container.querySelectorAll('[data-testid^="pool-"] [data-element]');
     const chipElements = new Set([...chips].map((c) => c.getAttribute('data-element')));
     expect(chipElements.has('ether')).toBe(false);
     expect(chipElements).toEqual(new Set(['water', 'fire']));
@@ -604,17 +605,30 @@ describe('RemixView — clicking a chip', () => {
     expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('leaves chips inert in Scoped and Borrowed', async () => {
+  it('leaves chips inert in Scoped, where a click could decide nothing', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
 
     // Scope to WATER so there IS a Water·I chip to be inert — scoped to the EARTH default there are
-    // no rules at all, and the assertion would pass for the wrong reason.
+    // no rules at all, and the assertion would pass for the wrong reason. Every chip in a scoped row
+    // is already the lane's own element, so there is nothing left to choose.
     await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
     await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
     expect(screen.getByText('Water·I').tagName).toBe('SPAN');
+  });
+
+  it('is clickable in Borrowed, where the sound is fixed and timings are free', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
-    expect(screen.getByText('Water·I').tagName).toBe('SPAN');
+    await userEvent.click(screen.getByRole('button', { name: 'ETHER' }));
+
+    // Every lane plays ETHER audio, but WATER's melody timing is yours to pick.
+    await userEvent.click(melodyChip('Water·I'));
+
+    expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+    expect(screen.getByTestId('region-MELODY·ETHER-0')).toBeInTheDocument();
   });
 });

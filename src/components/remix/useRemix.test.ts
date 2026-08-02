@@ -358,6 +358,26 @@ describe('useRemix — pins', () => {
     expect(result.current.tracks.find((t) => t.category === 'MELODY')!.id).toBe('MELODY·FIRE');
   });
 
+  it('keeps one pin per SECTION in Borrowed, so sections may differ by element', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setMode('borrowed'));
+    act(() => result.current.setElement('EARTH'));
+
+    // BASS is authored only in RETURN, MELODY only in INTRODUCTION — two different sections, two
+    // different elements. Both pins must survive; the whole mix plays EARTH audio regardless.
+    const melodyWater = result.current.candidatesFor('MELODY')
+      .find((r) => r.source.element === 'WATER')!;
+    const bassFire = result.current.candidatesFor('BASS')[0];
+    act(() => result.current.togglePin(melodyWater));
+    act(() => result.current.togglePin(bassFire));
+
+    expect(Object.keys(result.current.pins)).toHaveLength(2);
+    expect(result.current.picks.some((p) => p.rule === melodyWater)).toBe(true);
+    expect(result.current.tracks.every((t) => t.sample.name.startsWith('EARTH-'))).toBe(true);
+  });
+
   it('keeps both pins in Layered, where a click may add a lane', async () => {
     const { result } = renderHook(() => useRemix());
     await waitFor(() => expect(result.current.tracks).toHaveLength(3));

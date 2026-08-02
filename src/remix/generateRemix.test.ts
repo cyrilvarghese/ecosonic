@@ -622,13 +622,39 @@ describe('generateRemix — pinned timings', () => {
     expect(tracks.map((t) => t.id)).toEqual(['MELODY·WATER']);
   });
 
-  it('ignores pins in Borrowed, where no slotKey can name a lane (§6.1)', () => {
-    const pool = [introEarth, introEarth2];
-    const withPin = generateRemix(pool, fakeManifest(), {
-      ...BASE, sampleElement: 'FIRE', pins: pinning(introEarth2),
+  it('lets a Borrowed lane take each section from a different element', () => {
+    // Borrowed fixes the sample BY HAND, so §3.4's argument dissolves: a rule is pure timing there,
+    // and one lane's three sections may come from three elements without anything being unhearable.
+    const iEarth = rule('NOISE', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0);
+    const iWater = rule('NOISE', 'WATER', [ph(60, 600)], undefined, 'INTRODUCTION', 0);
+    const rxAir = rule('NOISE', 'AIR', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600);
+    const rxFire = rule('NOISE', 'FIRE', [ph(660, 1200)], undefined, 'DEEP_RELAXATION', 600);
+    const rtEther = rule('NOISE', 'ETHER', [ph(1200, 1800)], undefined, 'RETURN', 1200);
+    const rtEarth = rule('NOISE', 'EARTH', [ph(1260, 1800)], undefined, 'RETURN', 1200);
+    for (const [r, id] of [[iEarth, 'a'], [iWater, 'b'], [rxAir, 'c'], [rxFire, 'd'], [rtEther, 'e'], [rtEarth, 'f']] as const) {
+      r.source = { element: r.source.element, sessionId: id, track: 'NOISE' };
+    }
+    const pool = [iEarth, iWater, rxAir, rxFire, rtEther, rtEarth];
+
+    const { tracks, picks } = generateRemix(pool, fakeManifest(), {
+      ...BASE,
+      sampleElement: 'FIRE',
+      pins: { ...pinning(iWater), ...pinning(rxAir), ...pinning(rtEther) },
     });
-    const without = generateRemix(pool, fakeManifest(), { ...BASE, sampleElement: 'FIRE' });
-    expect(withPin).toEqual(without);
+
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].sample.name).toBe('FIRE-NOISE'); // one file, the one you chose
+    expect(picks.map((p) => p.rule)).toEqual([iWater, rxAir, rtEther]);
+    expect(picks.map((p) => p.rule.source.element)).toEqual(['WATER', 'AIR', 'ETHER']);
+  });
+
+  it('keeps Borrowed to one lane however many elements are pinned', () => {
+    // The pins choose TIMINGS there, never lanes — the sound is the Sound chip's business.
+    const pool = [introEarth, introWater];
+    const { tracks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, sampleElement: 'FIRE', pins: { ...pinning(introEarth), ...pinning(introWater) },
+    });
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·FIRE']);
   });
 
   it('rerolls only the unpinned slots when the seed advances', () => {

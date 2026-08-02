@@ -104,9 +104,11 @@ export function generateRemix(
   // would be byte-identical audio staggered in time — a different feature (§6.1). One lane, always.
   const laneCount = opts.sampleElement ? 1 : Math.max(1, opts.lanesPerTrack ?? 1);
 
-  // A slotKey names a lane by its element. A borrowed lane has no rule-element — its rules come from
-  // everywhere — so no slotKey can address one, and pins simply do not apply there (§6.1).
-  const pins: Pins = opts.sampleElement ? {} : (opts.pins ?? {});
+  // Pins apply in every mode, but they buy different things. Where the sample follows the pick they
+  // choose a lane's ELEMENT (and so its sound); under `sampleElement` the sound is already settled by
+  // hand, so they choose pure TIMING and a lane's three sections may come from three elements — the
+  // one place §3.4's "one element per lane" does not bind.
+  const pins: Pins = opts.pins ?? {};
   /** The pinned rule among these candidates, if one is pinned. Content-keyed, so it survives a
    *  refetch; searched within `cands`, so a pin the current scope filters out simply never matches. */
   const pinnedIn = (rules: AuthoredRule[]): AuthoredRule | undefined =>
