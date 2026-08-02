@@ -108,6 +108,10 @@ export function generateRemix(
     // Every lead is drawn before any lane is filled, which is what lets the draw be without
     // replacement. At laneCount 1 this is one rng call followed by the same per-section and sample
     // calls as before, so a one-lane draw is bit-for-bit today's draw.
+    /** Lane elements this category could not sound. Collected rather than warned per lane: under
+     *  layering the same §3.6 gap would otherwise be reported once per element (§7.3). */
+    const noSample: ElementName[] = [];
+
     const leads = drawLeads(cands, rng, laneCount);
     const lanes: Lane[] = opts.sampleElement
       ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: leads[0] }]
@@ -123,7 +127,7 @@ export function generateRemix(
       // case does a rule's element decide anything, so only then are the section rules filtered.
       const samples = manifest[lane.audioElement]?.[category] ?? [];
       if (samples.length === 0) {
-        warnings.push(`${category}: no ${lane.audioElement} sample for the picked rule — track skipped`);
+        noSample.push(lane.audioElement);
         continue;
       }
 
@@ -178,6 +182,12 @@ export function generateRemix(
         picks.push({ track, rule: c.rule, poolSize: c.poolSize });
         for (const r of c.regions) regions.push({ ...r, trackId: track.id });
       }
+    }
+
+    // Kept even when other lanes of the category survived: it is the only thing explaining why a
+    // chip you can see never produces a lane.
+    if (noSample.length > 0) {
+      warnings.push(`${category}: no ${noSample.join(', ')} sample — those lanes skipped`);
     }
   }
 

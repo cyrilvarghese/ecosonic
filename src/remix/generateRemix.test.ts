@@ -471,6 +471,20 @@ describe('generateRemix — layered lanes', () => {
     expect(waterFirst).toBeGreaterThan(120); // ~150 expected at 3:1; well clear of 1:1's ~100
   });
 
+  it('collapses missing samples into one warning naming every skipped element', () => {
+    // WATER and ETHER author ELEMENT_SUB but ship no sample for it — the real §3.6 gap.
+    const pool = [
+      rule('ELEMENT_SUB', 'WATER'), rule('ELEMENT_SUB', 'ETHER'), rule('ELEMENT_SUB', 'EARTH'),
+    ];
+    const { tracks, warnings } = generateRemix(
+      pool,
+      fakeManifest({ WATER: ['ELEMENT_SUB'], ETHER: ['ELEMENT_SUB'] }),
+      { ...BASE, lanesPerTrack: 3 },
+    );
+    expect(tracks.map((t) => t.id)).toEqual(['ELEMENT_SUB·EARTH']); // EARTH's lane survived
+    expect(warnings).toEqual(['ELEMENT_SUB: no WATER, ETHER sample — those lanes skipped']);
+  });
+
   it('repeats a layered draw for a seed', () => {
     const manifest = fakeManifest();
     expect(generateRemix(melodyFromThree, manifest, { ...BASE, seed: 7, lanesPerTrack: 2 }))
