@@ -91,7 +91,7 @@ export function ResultTimeline({
   return (
     <div className="relative flex flex-col gap-1">
       <div className="flex items-end gap-2">
-        <span className="w-36 shrink-0" aria-hidden />
+        <span className="w-44 shrink-0" aria-hidden />
         <div className="relative h-4 flex-1">
           {ticks.map((t) => (
             <span
@@ -110,7 +110,7 @@ export function ResultTimeline({
         const muted = mutedIds?.has(t.id) ?? false;
         return (
           <div key={t.id} className="flex items-center gap-2">
-            <span className="flex w-36 shrink-0 items-center gap-1">
+            <span className="flex w-44 shrink-0 items-center gap-1">
               {onToggleMute && (
                 <button
                   type="button"
@@ -181,7 +181,7 @@ export function ResultTimeline({
 
       {/* One playhead over every lane, aligned to the same label gutter as the rows above. */}
       <div className="pointer-events-none absolute inset-0 z-20 flex gap-2">
-        <span className="w-36 shrink-0" aria-hidden />
+        <span className="w-44 shrink-0" aria-hidden />
         <div
           data-testid="scrub-strip"
           className={`relative flex-1 ${onScrub ? 'pointer-events-auto cursor-ew-resize' : ''}`}

@@ -93,6 +93,14 @@ describe('generateRemix', () => {
     expect(regions.every((r) => r.trackId === 'MELODY·EARTH')).toBe(true);
   });
 
+  it('labels a lane with its variant and the element it sounds', () => {
+    const pool = [rule('MELODY', 'FIRE', [ph(0, 60)], 'MELODY 2'), rule('PAD', 'EARTH')];
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
+    const byId = new Map(tracks.map((t) => [t.id, t.label]));
+    expect(byId.get('MELODY·FIRE')).toBe('MELODY 2 · Fire');
+    expect(byId.get('PAD·EARTH')).toBe('PAD · Earth');
+  });
+
   it('derives one track per category, collapsing melody variants into its label', () => {
     const pool = [
       rule('MELODY', 'WATER', [ph(0, 60)], 'MELODY 2'),
@@ -101,7 +109,7 @@ describe('generateRemix', () => {
     const { tracks, picks } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 2 });
     expect(tracks).toHaveLength(1);
     expect(tracks[0].id).toBe(`MELODY·${picks[0].rule.source.element}`);
-    expect(tracks[0].label).toBe(picks[0].rule.variant);
+    expect(tracks[0].label).toBe(`${picks[0].rule.variant} · ${picks[0].rule.source.element[0]}${picks[0].rule.source.element.slice(1).toLowerCase()}`);
     expect(tracks[0].ceilingDb).toBe(config.audio.volume.defaultTrackDb);
   });
 

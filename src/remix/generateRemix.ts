@@ -3,6 +3,9 @@ import { STACK_ORDER, type ArrTrack, type Mode, type TemplateRegion } from '@/ar
 
 /** Draw order for a full session — one rule per section, so a track spans the whole timeline. */
 const SECTION_ORDER: Mode[] = ['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN'];
+
+/** "WATER" → "Water" — a lane label reads `MELODY 2 · Water`, not `MELODY 2 · WATER`. */
+const titleCase = (el: string): string => el[0] + el.slice(1).toLowerCase();
 import { makeRng } from '@/arrange/prng';
 import { config } from '@/config';
 import type { AuthoredRule } from './sessionRules';
@@ -120,7 +123,7 @@ export function generateRemix(
       // lane's mute state and make the engine reload it mid-session.
       id: `${category}·${audioElement}`,
       category,
-      label: drawn[0].rule.variant ?? category,
+      label: `${drawn[0].rule.variant ?? category} · ${titleCase(audioElement)}`,
       sample: { name: sample.name, path: sample.path, bytes: sample.bytes },
       ceilingDb: config.audio.volume.defaultTrackDb,
       locked: false,

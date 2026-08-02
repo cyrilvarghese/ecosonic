@@ -346,7 +346,7 @@ describe('RemixView', () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mute PAD' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mute PAD · Fire' }));
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
 
     await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
