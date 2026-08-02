@@ -1,5 +1,6 @@
-import type { ArrTrack } from '@/arrange/types';
+import type { Category } from '@/types';
 import type { AuthoredRule } from '@/remix/sessionRules';
+import { ruleKey, slotKey, type Pins } from '@/remix/pins';
 
 const SECTION_ABBR: Record<AuthoredRule['section'], string> = {
   INTRODUCTION: 'I', DEEP_RELAXATION: 'Rx', RETURN: 'Rt',
@@ -28,39 +29,60 @@ const chipTitle = (r: AuthoredRule): string => {
     + r.phrases.map((p) => `${clock(p.enterSec)}–${clock(p.exitSec)}`).join(', ');
 };
 
-/** One row of layout A: the track, its pool of authored candidates, and the count. A full-session
- *  draw takes one rule per section, so several chips in a row can be lit at once. */
-export function TrackPoolRow({ track, candidates, picked }: {
-  track: ArrTrack;
+/** One row of layout A: a CATEGORY's pool of authored candidates, and the count. A full-session
+ *  draw takes one rule per section, so several chips in a row can be lit at once.
+ *
+ *  The row is per category, not per lane. A category may now hold several lanes, and one row each
+ *  would repeat the same chips; narrowing a row to its lane's element would instead hide the very
+ *  chips you click to create a second lane. So: one row, every candidate, all lanes' picks lit — a
+ *  chip already names the lane it addresses.
+ *
+ *  Three states: outline = not picked, filled = drawn by the generator, filled + ring = pinned by
+ *  you. Omit `onPick` and the chips stay inert hints, which is what Scoped and Borrowed want —
+ *  neither has a per-element lane a click could address. */
+export function TrackPoolRow({ category, candidates, picked, pins, onPick }: {
+  category: Category;
   candidates: AuthoredRule[];
   picked: ReadonlySet<AuthoredRule>;
+  pins?: Pins;
+  onPick?: (rule: AuthoredRule) => void;
 }) {
   return (
-    <div className="grid grid-cols-[140px_1fr] items-center gap-3 border-t border-border py-2">
+    <div
+      data-testid={`pool-${category}`}
+      className="grid grid-cols-[140px_1fr] items-center gap-3 border-t border-border py-2"
+    >
       <div className="text-sm font-medium">
-        {track.label}
+        {category}
         <span className="ml-1 text-xs text-muted-foreground">{candidates.length}</span>
       </div>
       <div className="flex flex-wrap gap-1">
         {candidates.length === 0 ? (
           <span className="text-xs text-muted-foreground opacity-60">absent — no rule</span>
         ) : (
-          candidates.map((c, i) => (
-            <span
-              key={i}
-              title={chipTitle(c)}
-              // data-element rebinds --accent-ink to that element's brand colour (globals.css),
-              // so a picked chip and its bars on the timeline read as the same element.
-              data-element={c.source.element.toLowerCase()}
-              className={`cursor-help rounded-full border px-2 py-0.5 text-xs ${
-                picked.has(c)
+          candidates.map((c, i) => {
+            const pinned = pins?.[slotKey(c)] === ruleKey(c);
+            // data-element rebinds --accent-ink to that element's brand colour (globals.css),
+            // so a picked chip and its bars on the timeline read as the same element.
+            const shared = {
+              title: chipTitle(c),
+              'data-element': c.source.element.toLowerCase(),
+              className: `rounded-full border px-2 py-0.5 text-xs ${
+                onPick ? 'cursor-pointer' : 'cursor-help'
+              } ${
+                pinned || picked.has(c)
                   ? 'border-[var(--accent-ink)] bg-[var(--accent-ink)] text-white'
                   : 'border-border text-muted-foreground opacity-70'
-              }`}
-            >
-              {chip(c)}
-            </span>
-          ))
+              } ${pinned ? 'ring-2 ring-[var(--accent-ink)] ring-offset-1' : ''}`,
+            };
+            return onPick ? (
+              <button key={i} type="button" aria-pressed={pinned} onClick={() => onPick(c)} {...shared}>
+                {chip(c)}
+              </button>
+            ) : (
+              <span key={i} {...shared}>{chip(c)}</span>
+            );
+          })
         )}
       </div>
     </div>

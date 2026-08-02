@@ -1,13 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import type { ArrTrack } from '@/arrange/types';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { AuthoredRule } from '@/remix/sessionRules';
+import { ruleKey, slotKey } from '@/remix/pins';
 import { TrackPoolRow } from './TrackPoolRow';
-
-const track: ArrTrack = {
-  id: 'MELODY', category: 'MELODY', label: 'MELODY',
-  sample: { name: 'm', path: 'm.wav', bytes: 1 }, ceilingDb: 0, locked: false,
-};
 
 const rule = (
   phrases: AuthoredRule['phrases'],
@@ -21,7 +17,7 @@ const rule = (
 describe('TrackPoolRow', () => {
   it('names the element, section and interval on hover', () => {
     const r = rule([{ enterSec: 60, exitSec: 540, fadeInSec: 0, fadeOutSec: 0 }]);
-    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    render(<TrackPoolRow category="MELODY" candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·I'))
       .toHaveAttribute('title', 'WATER · water-session-layer-timeline · Introduction · 1:00–9:00');
   });
@@ -31,7 +27,7 @@ describe('TrackPoolRow', () => {
       { enterSec: 165, exitSec: 273, fadeInSec: 0, fadeOutSec: 0 },
       { enterSec: 327, exitSec: 435, fadeInSec: 0, fadeOutSec: 0 },
     ]);
-    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    render(<TrackPoolRow category="MELODY" candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·I'))
       .toHaveAttribute('title',
         'WATER · water-session-layer-timeline · Introduction · 2:45–4:33, 5:27–7:15');
@@ -42,7 +38,7 @@ describe('TrackPoolRow', () => {
     const ret = rule([{ enterSec: 1200, exitSec: 1800, fadeInSec: 0, fadeOutSec: 0 }], 'RETURN');
     const unpicked = rule([{ enterSec: 600, exitSec: 1200, fadeInSec: 0, fadeOutSec: 0 }], 'DEEP_RELAXATION');
     render(
-      <TrackPoolRow track={track} candidates={[intro, unpicked, ret]} picked={new Set([intro, ret])} />,
+      <TrackPoolRow category="MELODY" candidates={[intro, unpicked, ret]} picked={new Set([intro, ret])} />,
     );
     const lit = (text: string) => screen.getByText(text).className.includes('bg-[var(--accent-ink)]');
     expect(lit('Water·I')).toBe(true);
@@ -52,7 +48,7 @@ describe('TrackPoolRow', () => {
 
   it('spells out the section a chip abbreviates', () => {
     const r = rule([{ enterSec: 1200, exitSec: 1500, fadeInSec: 0, fadeOutSec: 0 }], 'DEEP_RELAXATION');
-    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    render(<TrackPoolRow category="MELODY" candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·Rx'))
       .toHaveAttribute('title',
         'WATER · water-session-layer-timeline · Deep Relaxation · 20:00–25:00');
@@ -60,19 +56,84 @@ describe('TrackPoolRow', () => {
 
   it('names the session, so two sessions of one element can be told apart', () => {
     const ocean = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }], 'INTRODUCTION', 'water-ocean');
-    render(<TrackPoolRow track={track} candidates={[ocean]} picked={new Set()} />);
+    render(<TrackPoolRow category="MELODY" candidates={[ocean]} picked={new Set()} />);
     expect(screen.getByText('Water·I')).toHaveAttribute('title', expect.stringContaining('water-ocean'));
   });
 
   it('leaves the session off when it adds nothing beyond the element', () => {
     const r = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }], 'INTRODUCTION', 'WATER');
-    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    render(<TrackPoolRow category="MELODY" candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·I')).toHaveAttribute('title', 'WATER · Introduction · 0:00–1:00');
   });
 
   it('tags each chip with its element so it takes that element colour', () => {
     const r = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }]);
-    render(<TrackPoolRow track={track} candidates={[r]} picked={new Set()} />);
+    render(<TrackPoolRow category="MELODY" candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·I')).toHaveAttribute('data-element', 'water');
+  });
+});
+
+describe('TrackPoolRow — clicking a chip', () => {
+  const r = () => rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }]);
+
+  it('is inert with no onPick — a chip stays a hint, not a control', () => {
+    render(<TrackPoolRow category="MELODY" candidates={[r()]} picked={new Set()} />);
+    expect(screen.queryByRole('button', { name: 'Water·I' })).toBeNull();
+    expect(screen.getByText('Water·I').className).toContain('cursor-help');
+  });
+
+  it('is a button when it can be picked', async () => {
+    const onPick = vi.fn();
+    const candidate = r();
+    render(<TrackPoolRow category="MELODY" candidates={[candidate]} picked={new Set()} onPick={onPick} />);
+
+    const chip = screen.getByRole('button', { name: 'Water·I' });
+    expect(chip.className).toContain('cursor-pointer');
+    await userEvent.click(chip);
+
+    expect(onPick).toHaveBeenCalledWith(candidate);
+  });
+
+  it('rings a pinned chip, so yours is not confused with the generator’s', () => {
+    const drawn = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }], 'INTRODUCTION');
+    const mine = rule([{ enterSec: 1200, exitSec: 1800, fadeInSec: 0, fadeOutSec: 0 }], 'RETURN');
+    const plain = rule([{ enterSec: 600, exitSec: 1200, fadeInSec: 0, fadeOutSec: 0 }], 'DEEP_RELAXATION');
+    render(
+      <TrackPoolRow
+        category="MELODY"
+        candidates={[drawn, plain, mine]}
+        picked={new Set([drawn, mine])}
+        pins={{ [slotKey(mine)]: ruleKey(mine) }}
+        onPick={() => {}}
+      />,
+    );
+    const cls = (text: string) => screen.getByRole('button', { name: text }).className;
+    expect(cls('Water·I')).toContain('bg-[var(--accent-ink)]');   // drawn: filled
+    expect(cls('Water·I')).not.toContain('ring-2');
+    expect(cls('Water·Rt')).toContain('ring-2');                  // pinned: filled + ring
+    expect(cls('Water·Rx')).not.toContain('bg-[var(--accent-ink)]'); // neither: outline
+  });
+
+  it('marks the pinned chip pressed, so the state is not colour-only', () => {
+    const mine = r();
+    render(
+      <TrackPoolRow
+        category="MELODY"
+        candidates={[mine]}
+        picked={new Set()}
+        pins={{ [slotKey(mine)]: ruleKey(mine) }}
+        onPick={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Water·I' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('names the category it is the pool for, and is addressable by it', () => {
+    // The testid is how RemixView's tests scope a chip query to one row — `Fire·I` appears in every
+    // row FIRE authored, so an unscoped getByRole would match several buttons and throw.
+    render(<TrackPoolRow category="MELODY" candidates={[r()]} picked={new Set()} />);
+    const row = screen.getByTestId('pool-MELODY');
+    expect(row).toHaveTextContent('MELODY');
+    expect(within(row).getByText('Water·I')).toBeInTheDocument();
   });
 });

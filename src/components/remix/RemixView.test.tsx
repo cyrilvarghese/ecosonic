@@ -479,3 +479,122 @@ describe('RemixView — borrowed timings', () => {
     expect(chipElements).toEqual(new Set(['water', 'fire']));
   });
 });
+
+describe('RemixView — layered lanes', () => {
+  it('offers a fourth mode with a lanes control of its own', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    expect(screen.queryByLabelText(/lanes per track/i)).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+
+    expect(screen.getByRole('button', { name: 'Layered' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText(/lanes per track/i)).toHaveValue('2');
+  });
+
+  it('stacks two coloured lanes for a category two elements authored', async () => {
+    const { container } = render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+
+    // MELODY is authored by WATER and FIRE, so both lanes exist and each keeps its own colour.
+    expect(screen.getByTestId('region-MELODY·WATER-0')).toBeInTheDocument();
+    expect(screen.getByTestId('region-MELODY·FIRE-0')).toBeInTheDocument();
+    const melodyBars = container.querySelectorAll('[data-testid^="region-MELODY·"]');
+    expect(new Set([...melodyBars].map((b) => b.getAttribute('data-element'))))
+      .toEqual(new Set(['water', 'fire']));
+  });
+
+  it('mutes one lane without touching its sibling', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+
+    await userEvent.click(screen.getByRole('button', { name: /Mute MELODY · Water/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).not.toContain('MELODY·WATER');
+    expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).toContain('MELODY·FIRE');
+  });
+
+  it('honours the lanes control', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+
+    await userEvent.selectOptions(screen.getByLabelText(/lanes per track/i), '1');
+
+    // Each MELODY rule here has one phrase in one section, so lanes and regions count one for one.
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+  });
+
+  it('shows one pool row per category, not one per lane', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+
+    // Two MELODY lanes, but the pool of MELODY candidates is one thing and is listed once.
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+    expect(screen.getAllByTestId('pool-MELODY')).toHaveLength(1);
+  });
+});
+
+describe('RemixView — clicking a chip', () => {
+  // FIRE authored MELODY, PAD and BASS, so `Fire·I` appears in more than one row — every chip query
+  // is scoped to the row it belongs to, or getByRole matches several buttons and throws.
+  const melodyChip = (name: string) =>
+    within(screen.getByTestId('pool-MELODY')).getByRole('button', { name });
+
+  it('pins a timing and holds it through Regenerate', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.click(melodyChip('Water·I'));
+    expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'true');
+
+    for (let i = 0; i < 10; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /Regenerate/ }));
+      expect(screen.getByTestId('region-MELODY·WATER-0')).toBeInTheDocument();
+    }
+  });
+
+  it('creates the lane for an element that had none', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    // Cross mode draws one MELODY lane; pinning BOTH elements' chips must produce two.
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+
+    await userEvent.click(melodyChip('Water·I'));
+    await userEvent.click(melodyChip('Fire·I'));
+
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+  });
+
+  it('unpins on a second click', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.click(melodyChip('Water·I'));
+    await userEvent.click(melodyChip('Water·I'));
+
+    expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('leaves chips inert in Scoped and Borrowed', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    // Scope to WATER so there IS a Water·I chip to be inert — scoped to the EARTH default there are
+    // no rules at all, and the assertion would pass for the wrong reason.
+    await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
+    await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
+    expect(screen.getByText('Water·I').tagName).toBe('SPAN');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
+    expect(screen.getByText('Water·I').tagName).toBe('SPAN');
+  });
+});

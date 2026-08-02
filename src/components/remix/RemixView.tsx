@@ -26,6 +26,7 @@ const MODES: { value: RemixMode; label: string }[] = [
   { value: 'cross', label: 'Cross-element' },
   { value: 'scoped', label: 'Scoped' },
   { value: 'borrowed', label: 'Borrowed timings' },
+  { value: 'layered', label: 'Layered' },
 ];
 /** null draws the whole authored session on its absolute timeline; a Mode draws one module. */
 const SECTIONS: { value: Mode | null; label: string }[] = [
@@ -51,6 +52,7 @@ export function RemixView() {
   const {
     tracks, picks, regions, totalSec, warnings, loading,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
+    lanesPerTrack, setLanesPerTrack, pins, togglePin,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
@@ -71,6 +73,11 @@ export function RemixView() {
   };
   // A full-session draw takes one rule per section, so a track can have several picks lit.
   const pickedRules = new Set(picks.map((p) => p.rule));
+  // Chips address a lane by element, so they are only operable where lanes are per element. Scoped
+  // is one element by definition and Borrowed has no rule-element at all.
+  const chipsClickable = mode === 'cross' || mode === 'layered';
+  // Tracks arrive in STACK_ORDER, so unique-in-order keeps the pool rows in the same grammar.
+  const categories = [...new Set(tracks.map((t) => t.category))];
   // Borrowed timings splits audio from timing, so colour has to pick a side per surface. Bars are
   // what you HEAR — one sample element, one colour, and a visible signal the mode is on. The pool
   // chips keep the rule's element, because which element's pattern won each section is the whole
@@ -196,6 +203,19 @@ export function RemixView() {
           ))}
         </div>
 
+        {mode === 'layered' && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Lanes per track
+            <select
+              value={lanesPerTrack}
+              onChange={(e) => setLanesPerTrack(Number(e.target.value))}
+              className="rounded border border-border bg-transparent px-1 py-0.5 text-xs"
+            >
+              {[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        )}
+
         {/* The same chips serve two meanings: in scoped they narrow the rules, in borrowed they
             choose the sound. Only the latter needs saying, hence the caption on that mode alone. */}
         {(mode === 'scoped' || mode === 'borrowed') && (
@@ -308,12 +328,14 @@ export function RemixView() {
                 : 'No authored rules loaded — upload a session below to start.'}
           </p>
         ) : (
-          tracks.map((t) => (
+          categories.map((c) => (
             <TrackPoolRow
-              key={t.id}
-              track={t}
-              candidates={candidatesFor(t.category)}
+              key={c}
+              category={c}
+              candidates={candidatesFor(c)}
               picked={pickedRules}
+              pins={pins}
+              onPick={chipsClickable ? togglePin : undefined}
             />
           ))
         )}
