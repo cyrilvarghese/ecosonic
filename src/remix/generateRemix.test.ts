@@ -3,6 +3,7 @@ import { ELEMENTS, type Category, type ElementManifest, type ElementName, type M
 import type { Mode } from '@/arrange/types';
 import { config } from '@/config';
 import { generateRemix } from './generateRemix';
+import { ruleKey, slotKey } from './pins';
 import type { AuthoredRule, Phrase } from './sessionRules';
 
 const CATS: Category[] = [
@@ -489,5 +490,104 @@ describe('generateRemix — layered lanes', () => {
     const manifest = fakeManifest();
     expect(generateRemix(melodyFromThree, manifest, { ...BASE, seed: 7, lanesPerTrack: 2 }))
       .toEqual(generateRemix(melodyFromThree, manifest, { ...BASE, seed: 7, lanesPerTrack: 2 }));
+  });
+});
+
+describe('generateRemix — pinned timings', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  const introEarth = rule('MELODY', 'EARTH', [ph(0, 100)], undefined, 'INTRODUCTION', 0);
+  const introEarth2 = rule('MELODY', 'EARTH', [ph(0, 200)], undefined, 'INTRODUCTION', 0);
+  const introWater = rule('MELODY', 'WATER', [ph(0, 300)], undefined, 'INTRODUCTION', 0);
+
+  // The two EARTH intro rules must be distinguishable by ruleKey, which means distinct source.track.
+  introEarth.source = { element: 'EARTH', sessionId: 'e1', track: 'MELODY' };
+  introEarth2.source = { element: 'EARTH', sessionId: 'e1', track: 'MELODY 2' };
+  introWater.source = { element: 'WATER', sessionId: 'w1', track: 'MELODY' };
+
+  const pinning = (r: AuthoredRule) => ({ [slotKey(r)]: ruleKey(r) });
+
+  it('takes the pinned rule for that slot instead of drawing one', () => {
+    const pool = [introEarth, introEarth2];
+    for (let seed = 1; seed <= 10; seed++) {
+      const { picks } = generateRemix(pool, fakeManifest(), {
+        ...BASE, seed, pins: pinning(introEarth2),
+      });
+      expect(picks.map((p) => p.rule)).toEqual([introEarth2]);
+    }
+  });
+
+  it('creates a lane the draw would not have made', () => {
+    // lanesPerTrack 1 with a WATER-heavy pool: EARTH usually loses, but a pin gives it a lane anyway.
+    const pool = [introWater, introWater, introWater, introEarth];
+    const { tracks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, lanesPerTrack: 1, pins: pinning(introEarth),
+    });
+    expect(tracks.map((t) => t.id)).toContain('MELODY·EARTH');
+  });
+
+  it('may push a category past lanesPerTrack', () => {
+    const pool = [introEarth, introWater, rule('MELODY', 'FIRE')];
+    const { tracks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, lanesPerTrack: 1, pins: { ...pinning(introEarth), ...pinning(introWater) },
+    });
+    expect(tracks.length).toBeGreaterThanOrEqual(2);
+    expect(tracks.map((t) => t.id)).toEqual(expect.arrayContaining(['MELODY·EARTH', 'MELODY·WATER']));
+  });
+
+  it('drops a pin whose rule is no longer in the pool, and draws that slot', () => {
+    const { picks, tracks } = generateRemix([introWater], fakeManifest(), {
+      ...BASE, pins: pinning(introEarth), // introEarth is not in this pool
+    });
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·WATER']);
+    expect(picks.map((p) => p.rule)).toEqual([introWater]);
+  });
+
+  it('ignores a pin the current scope filters out', () => {
+    // Scoped to WATER, an EARTH pin must not conjure an EARTH lane — the mode says EARTH is not
+    // drawable, and a pin is a choice among drawable candidates, not an override of the scope.
+    const pool = [introEarth, introWater];
+    const { tracks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, element: 'WATER', pins: pinning(introEarth),
+    });
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·WATER']);
+  });
+
+  it('ignores pins in Borrowed, where no slotKey can name a lane (§6.1)', () => {
+    const pool = [introEarth, introEarth2];
+    const withPin = generateRemix(pool, fakeManifest(), {
+      ...BASE, sampleElement: 'FIRE', pins: pinning(introEarth2),
+    });
+    const without = generateRemix(pool, fakeManifest(), { ...BASE, sampleElement: 'FIRE' });
+    expect(withPin).toEqual(without);
+  });
+
+  it('rerolls only the unpinned slots when the seed advances', () => {
+    const pinnedIntro = rule('NOISE', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0);
+    pinnedIntro.source = { element: 'EARTH', sessionId: 'e1', track: 'NOISE' };
+    const pool = [
+      pinnedIntro,
+      rule('NOISE', 'EARTH', [ph(0, 300)], undefined, 'INTRODUCTION', 0),
+      rule('NOISE', 'EARTH', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600),
+      rule('NOISE', 'EARTH', [ph(700, 1200)], undefined, 'DEEP_RELAXATION', 600),
+    ];
+    const pins = pinning(pinnedIntro);
+    const intros = new Set<number>();
+    const deeps = new Set<number>();
+    for (let seed = 1; seed <= 20; seed++) {
+      const { picks } = generateRemix(pool, fakeManifest(), { ...BASE, seed, pins });
+      intros.add(picks.find((p) => p.rule.section === 'INTRODUCTION')!.rule.phrases[0].exitSec);
+      deeps.add(picks.find((p) => p.rule.section === 'DEEP_RELAXATION')!.rule.phrases[0].enterSec);
+    }
+    expect([...intros]).toEqual([600]); // pinned: never rerolled
+    expect(deeps.size).toBeGreaterThan(1); // unpinned: rerolled
+  });
+
+  it('stays deterministic with pins as an input', () => {
+    const pool = [introEarth, introEarth2, introWater];
+    const pins = pinning(introEarth2);
+    const manifest = fakeManifest();
+    expect(generateRemix(pool, manifest, { ...BASE, seed: 5, lanesPerTrack: 2, pins }))
+      .toEqual(generateRemix(pool, manifest, { ...BASE, seed: 5, lanesPerTrack: 2, pins }));
   });
 });

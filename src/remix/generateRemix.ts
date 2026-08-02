@@ -2,6 +2,7 @@ import { ELEMENTS, type ElementName, type Manifest } from '@/types';
 import { STACK_ORDER, type ArrTrack, type Mode, type TemplateRegion } from '@/arrange/types';
 import { makeRng, type RNG } from '@/arrange/prng';
 import { config } from '@/config';
+import { ruleKey, slotKey, type Pins } from './pins';
 import type { AuthoredRule } from './sessionRules';
 
 /** Draw order for a full session — one rule per section, so a track spans the whole timeline. */
@@ -80,6 +81,8 @@ export function generateRemix(
     sessionSec: number;
     /** Layered: how many elements the draw may take per category. 1 (and omitted) = one lane. */
     lanesPerTrack?: number;
+    /** slotKey → ruleKey. A pinned slot is taken, not drawn; a pin may also create a lane. */
+    pins?: Pins;
   },
 ): RemixDraw {
   const totalSec = opts.section ? config.layerTwo.moduleSeconds : opts.sessionSec;
@@ -102,6 +105,14 @@ export function generateRemix(
   // would be byte-identical audio staggered in time — a different feature (§6.1). One lane, always.
   const laneCount = opts.sampleElement ? 1 : Math.max(1, opts.lanesPerTrack ?? 1);
 
+  // A slotKey names a lane by its element. A borrowed lane has no rule-element — its rules come from
+  // everywhere — so no slotKey can address one, and pins simply do not apply there (§6.1).
+  const pins: Pins = opts.sampleElement ? {} : (opts.pins ?? {});
+  /** The pinned rule among these candidates, if one is pinned. Content-keyed, so it survives a
+   *  refetch; searched within `cands`, so a pin the current scope filters out simply never matches. */
+  const pinnedIn = (rules: AuthoredRule[]): AuthoredRule | undefined =>
+    rules.find((r) => pins[slotKey(r)] === ruleKey(r));
+
   for (const category of categories) {
     const cands = candidates.filter((r) => r.category === category);
 
@@ -115,11 +126,21 @@ export function generateRemix(
     const leads = drawLeads(cands, rng, laneCount);
     const lanes: Lane[] = opts.sampleElement
       ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: leads[0] }]
-      : ELEMENTS.filter((e) => leads.some((l) => l.source.element === e)).map((e) => ({
-        ruleElement: e,
-        audioElement: e,
-        lead: leads.find((l) => l.source.element === e)!,
-      }));
+      : (() => {
+        const byElement = new Map<ElementName, AuthoredRule>();
+        for (const l of leads) if (!byElement.has(l.source.element)) byElement.set(l.source.element, l);
+        // A pin names a lane the draw need not have created, and may take the category past
+        // lanesPerTrack — up to the five real elements (§7.1).
+        for (const r of cands) {
+          if (byElement.has(r.source.element)) continue;
+          if (pins[slotKey(r)] === ruleKey(r)) byElement.set(r.source.element, r);
+        }
+        return ELEMENTS.filter((e) => byElement.has(e)).map((e) => ({
+          ruleElement: e,
+          audioElement: e,
+          lead: byElement.get(e)!,
+        }));
+      })();
 
     for (const lane of lanes) {
       // One SAMPLE per lane: a lane is a single file. Which element that file comes from is either
@@ -141,13 +162,16 @@ export function generateRemix(
       // sounds across the whole timeline instead of only its lead's third.
       const chosen: { rule: AuthoredRule; poolSize: number }[] = [];
       if (opts.section) {
-        chosen.push({ rule: lane.lead, poolSize: cands.length });
+        chosen.push({ rule: pinnedIn(forSections) ?? lane.lead, poolSize: cands.length });
       } else {
         for (const mode of SECTION_ORDER) {
           const inSection = forSections.filter((r) => r.section === mode);
           if (inSection.length === 0) continue; // absence is allowed — no repair
+          const pinned = pinnedIn(inSection);
           chosen.push({
-            rule: inSection[Math.floor(rng.float() * inSection.length)],
+            // A pinned slot consumes no rng at all — that is what makes Regenerate reroll the rest
+            // around it rather than shifting the whole stream.
+            rule: pinned ?? inSection[Math.floor(rng.float() * inSection.length)],
             poolSize: inSection.length,
           });
         }
