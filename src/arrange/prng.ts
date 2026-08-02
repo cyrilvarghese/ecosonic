@@ -9,6 +9,23 @@ export interface RNG {
   chance(p: number): boolean;
 }
 
+/** A stable 32-bit seed derived from any parts, so one draw can own several INDEPENDENT streams
+ *  instead of one shared one. A shared stream couples everything drawn from it: change how many
+ *  values one part consumes and every later part shifts. Deriving a stream per part makes each
+ *  choice a pure function of its own identity. FNV-1a — not cryptographic, just well mixed. */
+export function seedFrom(...parts: (string | number)[]): number {
+  let h = 0x811c9dc5;
+  for (const part of parts) {
+    const s = String(part);
+    for (let i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+    }
+    // A separator, so ('a','bc') and ('ab','c') cannot collide.
+    h = Math.imul(h ^ 0x2f, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 export function makeRng(seed: number): RNG {
   let a = seed >>> 0;
   const float = () => {

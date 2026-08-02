@@ -372,12 +372,39 @@ describe('generateRemix — layered lanes', () => {
     rule('MELODY', 'FIRE'),
   ];
 
-  it('is byte-identical to today when it may take only one lane', () => {
+  it('treats lanesPerTrack 1 and omitted as the same draw', () => {
     const manifest = fakeManifest();
     for (let seed = 1; seed <= 10; seed++) {
       expect(generateRemix(melodyFromThree, manifest, { ...BASE, seed, lanesPerTrack: 1 }))
         .toEqual(generateRemix(melodyFromThree, manifest, { ...BASE, seed }));
     }
+  });
+
+  it('leaves the first lane alone when a second is added', () => {
+    // Each lane draws from its own stream, so widening the draw ADDS a lane rather than reshuffling
+    // the one you were already listening to.
+    const manifest = fakeManifest();
+    for (let seed = 1; seed <= 10; seed++) {
+      const one = generateRemix(melodyFromThree, manifest, { ...BASE, seed, lanesPerTrack: 1 });
+      const two = generateRemix(melodyFromThree, manifest, { ...BASE, seed, lanesPerTrack: 2 });
+      const first = one.tracks[0];
+      expect(two.tracks).toContainEqual(first);
+      expect(two.regions.filter((r) => r.trackId === first.id))
+        .toEqual(one.regions.filter((r) => r.trackId === first.id));
+    }
+  });
+
+  it('keeps every category independent of what the others drew', () => {
+    // One shared stream would couple them: change what MELODY consumes and NOISE shifts too.
+    const manifest = fakeManifest();
+    const withBoth = generateRemix(
+      [...melodyFromThree, rule('NOISE', 'EARTH'), rule('NOISE', 'WATER')],
+      manifest, { ...BASE, lanesPerTrack: 2 },
+    );
+    const noiseOnly = generateRemix(
+      [rule('NOISE', 'EARTH'), rule('NOISE', 'WATER')], manifest, { ...BASE, lanesPerTrack: 2 },
+    );
+    expect(withBoth.tracks.filter((t) => t.category === 'NOISE')).toEqual(noiseOnly.tracks);
   });
 
   it('gives a category one lane per element, each with its own sample', () => {
@@ -517,22 +544,64 @@ describe('generateRemix — pinned timings', () => {
     }
   });
 
-  it('creates a lane the draw would not have made', () => {
-    // lanesPerTrack 1 with a WATER-heavy pool: EARTH usually loses, but a pin gives it a lane anyway.
+  it('SWAPS the single lane onto the pinned element rather than adding one', () => {
+    // One lane per category outside Layered (§3.1). Clicking another element's chip must move the
+    // lane there, not stack a second one underneath — that is Layered's job alone.
     const pool = [introWater, introWater, introWater, introEarth];
     const { tracks } = generateRemix(pool, fakeManifest(), {
       ...BASE, lanesPerTrack: 1, pins: pinning(introEarth),
     });
-    expect(tracks.map((t) => t.id)).toContain('MELODY·EARTH');
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·EARTH']);
+    expect(tracks[0].sample.name).toBe('EARTH-MELODY'); // the audio moved with it
   });
 
-  it('may push a category past lanesPerTrack', () => {
+  it('never exceeds one lane per category outside Layered, whatever is pinned', () => {
     const pool = [introEarth, introWater, rule('MELODY', 'FIRE')];
     const { tracks } = generateRemix(pool, fakeManifest(), {
       ...BASE, lanesPerTrack: 1, pins: { ...pinning(introEarth), ...pinning(introWater) },
     });
-    expect(tracks.length).toBeGreaterThanOrEqual(2);
+    expect(tracks).toHaveLength(1);
+  });
+
+  it('adds a lane for a pinned element only when layering', () => {
+    const pool = [introEarth, introWater, rule('MELODY', 'FIRE')];
+    const { tracks } = generateRemix(pool, fakeManifest(), {
+      ...BASE, lanesPerTrack: 2, pins: { ...pinning(introEarth), ...pinning(introWater) },
+    });
     expect(tracks.map((t) => t.id)).toEqual(expect.arrayContaining(['MELODY·EARTH', 'MELODY·WATER']));
+  });
+
+  it('changes NOTHING but the slot it pins', () => {
+    // The complaint this whole fix exists for: one click must not reroll the rest of the mix.
+    const pinnable = rule('PAD', 'EARTH', [ph(0, 120)], undefined, 'INTRODUCTION', 0);
+    pinnable.source = { element: 'EARTH', sessionId: 'p1', track: 'PAD' };
+    const pool = [
+      pinnable,
+      rule('PAD', 'EARTH', [ph(0, 240)], undefined, 'INTRODUCTION', 0),
+      rule('PAD', 'EARTH', [ph(600, 900)], undefined, 'DEEP_RELAXATION', 600),
+      rule('PAD', 'EARTH', [ph(700, 900)], undefined, 'DEEP_RELAXATION', 600),
+      rule('MELODY', 'EARTH'), rule('MELODY', 'WATER'), rule('MELODY', 'FIRE'),
+      rule('NOISE', 'WATER'), rule('NOISE', 'FIRE'),
+      rule('BASS', 'AIR'), rule('BASS', 'ETHER'),
+    ];
+    const manifest = fakeManifest();
+    const before = generateRemix(pool, manifest, { ...BASE, lanesPerTrack: 2 });
+    const after = generateRemix(pool, manifest, {
+      ...BASE, lanesPerTrack: 2, pins: pinning(pinnable),
+    });
+
+    // Every lane that is not the pinned one is untouched, tracks and regions alike.
+    const others = (d: typeof before) => d.tracks.filter((t) => t.id !== 'PAD·EARTH');
+    expect(others(after)).toEqual(others(before));
+    expect(after.regions.filter((r) => r.trackId !== 'PAD·EARTH'))
+      .toEqual(before.regions.filter((r) => r.trackId !== 'PAD·EARTH'));
+
+    // …and within the pinned lane, only the Introduction slot moved.
+    const deepOf = (d: typeof before) =>
+      d.picks.find((p) => p.track.id === 'PAD·EARTH' && p.rule.section === 'DEEP_RELAXATION')?.rule;
+    expect(deepOf(after)).toBe(deepOf(before));
+    expect(after.picks.find((p) => p.track.id === 'PAD·EARTH' && p.rule.section === 'INTRODUCTION')!.rule)
+      .toBe(pinnable);
   });
 
   it('drops a pin whose rule is no longer in the pool, and draws that slot', () => {

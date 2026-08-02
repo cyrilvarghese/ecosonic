@@ -1,6 +1,6 @@
 import { ELEMENTS, type ElementName, type Manifest } from '@/types';
 import { STACK_ORDER, type ArrTrack, type Mode, type TemplateRegion } from '@/arrange/types';
-import { makeRng, type RNG } from '@/arrange/prng';
+import { makeRng, seedFrom, type RNG } from '@/arrange/prng';
 import { config } from '@/config';
 import { ruleKey, slotKey, type Pins } from './pins';
 import type { AuthoredRule } from './sessionRules';
@@ -86,7 +86,6 @@ export function generateRemix(
   },
 ): RemixDraw {
   const totalSec = opts.section ? config.layerTwo.moduleSeconds : opts.sessionSec;
-  const rng = makeRng(opts.seed);
 
   let candidates = pool;
   if (opts.element) candidates = candidates.filter((r) => r.source.element === opts.element);
@@ -116,33 +115,47 @@ export function generateRemix(
   for (const category of categories) {
     const cands = candidates.filter((r) => r.category === category);
 
-    // Every lead is drawn before any lane is filled, which is what lets the draw be without
-    // replacement. At laneCount 1 this is one rng call followed by the same per-section and sample
-    // calls as before, so a one-lane draw is bit-for-bit today's draw.
     /** Lane elements this category could not sound. Collected rather than warned per lane: under
      *  layering the same §3.6 gap would otherwise be reported once per element (§7.3). */
     const noSample: ElementName[] = [];
 
-    const leads = drawLeads(cands, rng, laneCount);
+    // One stream per category, so what one category draws can never shift another.
+    const catRng = makeRng(seedFrom(opts.seed, category));
+    // Leads are all drawn before any lane is filled, which is what lets the draw be without
+    // replacement. Drawn even when a pin overrides the outcome, so unpinning restores the draw.
+    const leads = drawLeads(cands, catRng, laneCount);
+
+    /** Elements this category has a resolving pin for, in ELEMENTS order. */
+    const pinnedElements = ELEMENTS.filter((e) =>
+      cands.some((r) => r.source.element === e && pins[slotKey(r)] === ruleKey(r)));
+    const leadFor = (e: ElementName): AuthoredRule =>
+      leads.find((l) => l.source.element === e)
+      ?? cands.find((r) => r.source.element === e && pins[slotKey(r)] === ruleKey(r))
+      ?? cands.find((r) => r.source.element === e)!;
+
+    let laneElements: ElementName[];
+    if (laneCount === 1) {
+      // One lane per category, whatever the pins say. A pin here CHOOSES the lane's element rather
+      // than adding a lane — clicking another element's chip swaps the lane onto it. Adding lanes is
+      // Layered's job alone, so Cross-element and Scoped keep §3.1 exactly.
+      laneElements = [pinnedElements[0] ?? leads[0].source.element];
+    } else {
+      // Layered: the elements the draw took, plus any a pin named — which may push the category past
+      // lanesPerTrack, up to the five real elements.
+      laneElements = ELEMENTS.filter((e) =>
+        leads.some((l) => l.source.element === e) || pinnedElements.includes(e));
+    }
+
     const lanes: Lane[] = opts.sampleElement
       ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: leads[0] }]
-      : (() => {
-        const byElement = new Map<ElementName, AuthoredRule>();
-        for (const l of leads) if (!byElement.has(l.source.element)) byElement.set(l.source.element, l);
-        // A pin names a lane the draw need not have created, and may take the category past
-        // lanesPerTrack — up to the five real elements (§7.1).
-        for (const r of cands) {
-          if (byElement.has(r.source.element)) continue;
-          if (pins[slotKey(r)] === ruleKey(r)) byElement.set(r.source.element, r);
-        }
-        return ELEMENTS.filter((e) => byElement.has(e)).map((e) => ({
-          ruleElement: e,
-          audioElement: e,
-          lead: byElement.get(e)!,
-        }));
-      })();
+      : laneElements.map((e) => ({ ruleElement: e, audioElement: e, lead: leadFor(e) }));
 
     for (const lane of lanes) {
+      // One stream per LANE, keyed by its identity rather than by its position in a shared stream.
+      // This is what makes a click local: pinning a slot, swapping a lane's element or adding a
+      // second lane cannot disturb what any other lane already chose.
+      const laneRng = makeRng(seedFrom(opts.seed, category, lane.audioElement));
+
       // One SAMPLE per lane: a lane is a single file. Which element that file comes from is either
       // fixed by the caller (borrowed timings) or follows the lead rule — and only in the latter
       // case does a rule's element decide anything, so only then are the section rules filtered.
@@ -167,13 +180,11 @@ export function generateRemix(
         for (const mode of SECTION_ORDER) {
           const inSection = forSections.filter((r) => r.section === mode);
           if (inSection.length === 0) continue; // absence is allowed — no repair
-          const pinned = pinnedIn(inSection);
-          chosen.push({
-            // A pinned slot consumes no rng at all — that is what makes Regenerate reroll the rest
-            // around it rather than shifting the whole stream.
-            rule: pinned ?? inSection[Math.floor(rng.float() * inSection.length)],
-            poolSize: inSection.length,
-          });
+          // The draw is ALWAYS consumed and only then overridden, so a pin costs the stream nothing.
+          // Short-circuiting on the pin instead would shift every later draw in this lane, and
+          // pinning one section would silently reroll its neighbours.
+          const drawnRule = inSection[Math.floor(laneRng.float() * inSection.length)];
+          chosen.push({ rule: pinnedIn(inSection) ?? drawnRule, poolSize: inSection.length });
         }
       }
 
@@ -189,7 +200,7 @@ export function generateRemix(
         continue;
       }
 
-      const sample = samples[Math.floor(rng.float() * samples.length)];
+      const sample = samples[Math.floor(laneRng.float() * samples.length)];
       const track: ArrTrack = {
         // A lane is category × element, so the id carries both — and carries them even when there is
         // only one lane, because an id that changed shape when a sibling appeared would lose this

@@ -84,8 +84,10 @@ export function useRemix(): RemixState {
   const scopedTo = mode === 'scoped' ? element : undefined;
   const sampleElement = mode === 'borrowed' ? element : undefined;
   // Layering is the only mode that takes more than one lane: Scoped is one element by definition,
-  // and Borrowed is capped at one because the extra lanes would be the same file staggered.
-  const lanes = mode === 'layered' ? lanesPerTrack : 1;
+  // and Borrowed is capped at one because the extra lanes would be the same file staggered. It is
+  // also the only mode where clicking a chip can ADD a lane rather than swap the one that is there.
+  const layering = mode === 'layered';
+  const lanes = layering ? lanesPerTrack : 1;
 
   const draw = useMemo(
     () => generateRemix(pool, manifest, {
@@ -143,9 +145,19 @@ export function useRemix(): RemixState {
         delete next[slot];
         return next;
       }
-      return { ...prev, [slot]: key };
+      const next = { ...prev, [slot]: key };
+      // Outside Layered a category has exactly one lane, so a click SWAPS which element owns it.
+      // Rival pins from other elements of this category would otherwise linger and decide the lane
+      // by element order instead of by the chip you just clicked.
+      if (!layering) {
+        for (const k of Object.keys(next)) {
+          const [cat, el] = k.split('|');
+          if (cat === rule.category && el !== rule.source.element) delete next[k];
+        }
+      }
+      return next;
     });
-  }, []);
+  }, [layering]);
 
   return {
     tracks: draw.tracks,

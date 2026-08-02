@@ -342,7 +342,7 @@ describe('useRemix — pins', () => {
     expect(result.current.pins).toEqual({});
   });
 
-  it('repoints a slot rather than stacking, when another rule of the same slot is pinned', async () => {
+  it('swaps the lane instead of stacking pins, outside Layered', async () => {
     const { result } = renderHook(() => useRemix());
     await waitFor(() => expect(result.current.tracks).toHaveLength(3));
 
@@ -351,8 +351,25 @@ describe('useRemix — pins', () => {
     act(() => result.current.togglePin(water));
     act(() => result.current.togglePin(fire));
 
-    // Different elements ⇒ different slots ⇒ two lanes, not a replacement.
+    // Cross-element has one MELODY lane, so the second click MOVES it rather than leaving a rival
+    // pin behind that would decide the lane by element order instead of by what you clicked.
+    expect(Object.keys(result.current.pins)).toEqual(['MELODY|FIRE|INTRODUCTION']);
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(1);
+    expect(result.current.tracks.find((t) => t.category === 'MELODY')!.id).toBe('MELODY·FIRE');
+  });
+
+  it('keeps both pins in Layered, where a click may add a lane', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.setMode('layered'));
+    const water = melodyOf(result.current, 'WATER');
+    const fire = melodyOf(result.current, 'FIRE');
+    act(() => result.current.togglePin(water));
+    act(() => result.current.togglePin(fire));
+
     expect(Object.keys(result.current.pins)).toHaveLength(2);
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(2);
   });
 
   it('keeps pins across a mode change, inert where they do not apply', async () => {

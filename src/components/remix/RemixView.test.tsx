@@ -562,16 +562,36 @@ describe('RemixView — clicking a chip', () => {
     }
   });
 
-  it('creates the lane for an element that had none', async () => {
+  it('swaps the single lane rather than adding one, outside Layered', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    // Cross mode draws one MELODY lane; pinning BOTH elements' chips must produce two.
+    // Cross-element is one lane per category (§3.1). A click MOVES that lane onto the element you
+    // clicked; only Layered may stack a second one underneath.
     expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
 
     await userEvent.click(melodyChip('Water·I'));
-    await userEvent.click(melodyChip('Fire·I'));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+    expect(screen.getByTestId('region-MELODY·WATER-0')).toBeInTheDocument();
 
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+    await userEvent.click(melodyChip('Fire·I'));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+    expect(screen.getByTestId('region-MELODY·FIRE-0')).toBeInTheDocument();
+  });
+
+  it('leaves the other categories exactly where they were', async () => {
+    // The complaint this fix exists for: clicking a MELODY chip must not reroll PAD or BASS.
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    const idsBefore = [...document.querySelectorAll('[data-testid^="region-"]')]
+      .map((n) => n.getAttribute('data-testid'))
+      .filter((id) => !id!.startsWith('region-MELODY·'));
+
+    await userEvent.click(melodyChip('Water·I'));
+
+    const idsAfter = [...document.querySelectorAll('[data-testid^="region-"]')]
+      .map((n) => n.getAttribute('data-testid'))
+      .filter((id) => !id!.startsWith('region-MELODY·'));
+    expect(idsAfter).toEqual(idsBefore);
   });
 
   it('unpins on a second click', async () => {

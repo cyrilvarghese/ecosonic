@@ -176,11 +176,15 @@ explaining why a chip you can see never produces a lane.
 **3.8 — Tracks are ordered by the vertical grammar** (`STACK_ORDER`): NOISE, ELEMENT, ELEMENT_SUB,
 FX, ISO, PLANET, DRONE, PAD, BASS, ARP, MELODY.
 
-**3.9 — Deterministic.** Same pool + manifest + seed + element + section + lanes + **pins** ⇒ the
-same draw. Regenerate advances the seed, which rerolls every slot **except** the pinned ones — a
-pinned slot consumes no randomness at all, which is what lets the rest reroll around it. Seeds are
-meaningful only within one mode: the modes consume the stream differently, so no seed reproduces
-another mode's draw.
+**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + lanes +
+**pins** ⇒ the same draw. Regenerate advances the seed and rerolls every slot except the pinned ones.
+
+Each **lane owns its own random stream**, seeded from `(seed, category, element)` rather than drawn
+from one shared sequence. This is what makes an edit local: pinning a slot, swapping a lane onto
+another element, or raising the lanes setting cannot disturb what any other lane already chose, and
+the lane you were listening to survives a change to its neighbours. A single shared stream couples
+everything — change how many values one lane consumes and every later lane shifts — which is why a
+pinned slot still *consumes* its draw and only then overrides it.
 
 ## 4. Laying it on the timeline
 
@@ -275,20 +279,27 @@ unambiguous destination, and no modifier keys or add/replace controls are needed
 
 | you click | result |
 |---|---|
-| a chip whose element has **no lane** in that category | the lane is created, pinned with that rule |
 | a chip whose element **has a lane** | that lane's section slot is set to this rule, and pinned |
 | a chip **you already pinned** | unpinned — the slot reverts to the draw |
+| a chip whose element has **no lane**, outside Layered | the category's one lane **swaps** onto that element, pinned at that section |
+| a chip whose element has **no lane**, in Layered | a lane is **added** for that element |
 
-A click only ever addresses its own element's lane, so it can never delete another element's pick.
+**Only Layered adds lanes.** Everywhere else §3.1's one-lane-per-category holds no matter what is
+pinned, so a click moves the lane you have rather than stacking another underneath it. Swapping takes
+the rest of the lane with it — its other sections come from the new element and its sample changes —
+because a lane is one file from one element (§3.4). Clicking a chip of the lane's *own* element
+changes that one slot and nothing else at all.
 
 Pins are stored as `slotKey → ruleKey`, both derived from rule **content** (`category|element|section`
 and `sessionId|track|section`) rather than object identity — `refetch()` rebuilds every rule object,
 and a pin held by reference would not survive one upload. A pin whose rule no longer resolves is
 dropped silently and that slot is drawn as usual.
 
-A pin may create a lane the draw would not have made, and may take a category past its lanes
-setting — up to the five real elements. Pins are **retained** across a change of mode or section, so
-one for a section you are not looking at is simply inert until you return.
+In Layered a pin may create a lane the draw would not have made, and may take a category past its
+lanes setting — up to the five real elements. Pins are **retained** across a change of mode or
+section, so one for a section you are not looking at is simply inert until you return. Outside
+Layered a second pin in the same category **replaces** the first rather than joining it, since there
+is only one lane there for them to fight over.
 
 **Chips are clickable in Cross-element and Layered only.** Scoped is one element by definition, and
 a Borrowed lane has no rule-element for a `slotKey` to name — so in both, chips stay inert hints and
