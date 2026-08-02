@@ -137,3 +137,40 @@ describe('TrackPoolRow — clicking a chip', () => {
     expect(within(row).getByText('Water·I')).toBeInTheDocument();
   });
 });
+
+describe('TrackPoolRow — a timing that can never sound', () => {
+  const r = () => rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }]);
+
+  it('strikes it through and refuses the click, rather than ringing and doing nothing', async () => {
+    const onPick = vi.fn();
+    render(
+      <TrackPoolRow
+        category="ELEMENT_SUB"
+        candidates={[r()]}
+        picked={new Set()}
+        onPick={onPick}
+        canSound={() => false}
+      />,
+    );
+
+    const chip = screen.getByText('Water·I');
+    expect(chip.tagName).toBe('SPAN'); // not a button — a click here could only disappoint
+    expect(chip.className).toContain('line-through');
+    await userEvent.click(chip);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
+  it('says why, and points at the mode that can rescue it', () => {
+    render(
+      <TrackPoolRow category="ELEMENT_SUB" candidates={[r()]} picked={new Set()} canSound={() => false} />,
+    );
+    const title = screen.getByText('Water·I').getAttribute('title')!;
+    expect(title).toContain('WATER ships no ELEMENT_SUB sample');
+    expect(title).toContain('Borrowed timings');
+  });
+
+  it('leaves every chip playable when no canSound is given', () => {
+    render(<TrackPoolRow category="MELODY" candidates={[r()]} picked={new Set()} onPick={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Water·I' })).toBeInTheDocument();
+  });
+});

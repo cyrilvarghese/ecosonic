@@ -52,7 +52,7 @@ export function RemixView() {
   const {
     tracks, picks, regions, totalSec, warnings, loading,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
-    lanesPerTrack, setLanesPerTrack, pins, togglePin,
+    lanesPerTrack, setLanesPerTrack, pins, togglePin, canSound,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
@@ -338,6 +338,7 @@ export function RemixView() {
               picked={pickedRules}
               pins={pins}
               onPick={chipsClickable ? togglePin : undefined}
+              canSound={canSound}
             />
           ))
         )}

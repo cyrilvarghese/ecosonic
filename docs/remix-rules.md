@@ -254,8 +254,12 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
 - **Chips** list the candidates the current scope could draw from — element **and** section
   filtered, so a chip on screen is always one the draw could have picked. One row per **category**,
   not per lane: a category's pool is one thing, and a chip already names the lane it addresses.
-  Three states: **outline** = not picked, **filled** = drawn by the generator, **filled + ring** =
-  pinned by you. A full session lights up to three per lane.
+  Four states: **outline** = not picked, **filled** = drawn by the generator, **filled + ring** =
+  pinned by you, and **struck through** = this timing can never sound, because the element it would
+  play through ships no sample for the category (§3.6). A struck chip is inert — it would otherwise
+  take a click, light up, and produce nothing. It stays listed because it is a real authored rule
+  and **Borrowed timings can still play it**, through an element that does have the sample. A full
+  session lights up to three per lane.
 - **Colour** is the element's brand colour, on both chips and bars, via `data-element`. In
   **Borrowed timings** audio and timing disagree, so each surface takes the one it represents:
   **bars take the sample element** (they are what you hear — every bar one colour, which is also the

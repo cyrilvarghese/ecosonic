@@ -40,12 +40,16 @@ const chipTitle = (r: AuthoredRule): string => {
  *  Three states: outline = not picked, filled = drawn by the generator, filled + ring = pinned by
  *  you. Omit `onPick` and the chips stay inert hints, which is what Scoped and Borrowed want —
  *  neither has a per-element lane a click could address. */
-export function TrackPoolRow({ category, candidates, picked, pins, onPick }: {
+export function TrackPoolRow({ category, candidates, picked, pins, onPick, canSound }: {
   category: Category;
   candidates: AuthoredRule[];
   picked: ReadonlySet<AuthoredRule>;
   pins?: Pins;
   onPick?: (rule: AuthoredRule) => void;
+  /** Omitted ⇒ every chip is assumed playable. A chip that answers false can never produce a lane —
+   *  the element it would sound through ships no sample for this category (§3.6) — so it is shown
+   *  struck through and inert rather than accepting a click that would visibly do nothing. */
+  canSound?: (rule: AuthoredRule) => boolean;
 }) {
   return (
     <div
@@ -62,20 +66,30 @@ export function TrackPoolRow({ category, candidates, picked, pins, onPick }: {
         ) : (
           candidates.map((c, i) => {
             const pinned = pins?.[slotKey(c)] === ruleKey(c);
+            // A timing whose element ships no sample for this category can never become a lane. It
+            // stays listed — it is a real authored rule, and Borrowed can still play it through
+            // another element — but struck through and inert, rather than taking a click that would
+            // ring the chip and then visibly do nothing.
+            const mute = canSound ? !canSound(c) : false;
             // data-element rebinds --accent-ink to that element's brand colour (globals.css),
             // so a picked chip and its bars on the timeline read as the same element.
             const shared = {
-              title: chipTitle(c),
+              title: mute
+                ? `${chipTitle(c)} — ${c.source.element} ships no ${category} sample, so this timing`
+                  + ' cannot sound. Borrowed timings can play it through another element.'
+                : chipTitle(c),
               'data-element': c.source.element.toLowerCase(),
               className: `rounded-full border px-2 py-0.5 text-xs ${
-                onPick ? 'cursor-pointer' : 'cursor-help'
-              } ${
-                pinned || picked.has(c)
-                  ? 'border-[var(--accent-ink)] bg-[var(--accent-ink)] text-white'
-                  : 'border-border text-muted-foreground opacity-70'
-              } ${pinned ? 'ring-2 ring-[var(--accent-ink)] ring-offset-1' : ''}`,
+                mute
+                  ? 'cursor-not-allowed border-dashed border-border text-muted-foreground/60 line-through'
+                  : `${onPick ? 'cursor-pointer' : 'cursor-help'} ${
+                    pinned || picked.has(c)
+                      ? 'border-[var(--accent-ink)] bg-[var(--accent-ink)] text-white'
+                      : 'border-border text-muted-foreground opacity-70'
+                  } ${pinned ? 'ring-2 ring-[var(--accent-ink)] ring-offset-1' : ''}`
+              }`,
             };
-            return onPick ? (
+            return onPick && !mute ? (
               <button key={i} type="button" aria-pressed={pinned} onClick={() => onPick(c)} {...shared}>
                 {chip(c)}
               </button>

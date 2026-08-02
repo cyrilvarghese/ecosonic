@@ -408,3 +408,29 @@ describe('useRemix — pins', () => {
     expect(result.current.picks.some((p) => p.rule.source.element === 'WATER')).toBe(true); // …and back
   });
 });
+
+describe('useRemix — canSound', () => {
+  it('marks a rule whose element ships no sample for its category', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    // The mocked manifest blanks ETHER's DRONE, which is this suite's stand-in for the §3.6 gap.
+    const melodyWater = result.current.candidatesFor('MELODY')
+      .find((r) => r.source.element === 'WATER')!;
+    expect(result.current.canSound(melodyWater)).toBe(true);
+    expect(result.current.canSound(rule('DRONE', 'ETHER') as never)).toBe(false);
+  });
+
+  it('rescues it under Borrowed, where the sound comes from elsewhere', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+    const etherDrone = rule('DRONE', 'ETHER') as never;
+    expect(result.current.canSound(etherDrone)).toBe(false);
+
+    act(() => result.current.setMode('borrowed'));
+    act(() => result.current.setElement('EARTH'));
+
+    // EARTH ships a DRONE, and borrowing plays every timing through EARTH — so it can sound now.
+    expect(result.current.canSound(etherDrone)).toBe(true);
+  });
+});

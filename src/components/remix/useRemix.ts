@@ -30,6 +30,10 @@ export interface RemixState {
   section: Mode | null;
   /** The candidates the current mode can draw from for a category — what a pool row renders. */
   candidatesFor: (c: Category) => AuthoredRule[];
+  /** Whether this rule could ever produce a lane, i.e. whether the element it would sound through
+   *  ships a sample for its category. False only for the §3.6 gap — WATER and ETHER author
+   *  `ELEMENT_SUB` rules but ship no `ELEMENT_SUB` file. */
+  canSound: (rule: AuthoredRule) => boolean;
   /** How many elements a category's draw may take, in `layered`. Every other mode is one lane. */
   lanesPerTrack: number;
   setLanesPerTrack: (n: number) => void;
@@ -135,6 +139,14 @@ export function useRemix(): RemixState {
     [pool, scopedTo, section],
   );
 
+  // Which element a rule would SOUND through: its own, or the one borrowing fixed by hand. Borrowing
+  // is what rescues WATER's and ETHER's ELEMENT_SUB timings — under EARTH audio they play fine.
+  const canSound = useCallback(
+    (rule: AuthoredRule) =>
+      (manifest[sampleElement ?? rule.source.element]?.[rule.category] ?? []).length > 0,
+    [sampleElement],
+  );
+
   // One gesture, three outcomes: a fresh slot is pinned, a slot pinned to another rule is repointed,
   // and clicking the current pin clears it. Keyed by content so it survives refetch().
   const togglePin = useCallback((rule: AuthoredRule) => {
@@ -176,6 +188,7 @@ export function useRemix(): RemixState {
     element,
     section,
     candidatesFor,
+    canSound,
     lanesPerTrack,
     setLanesPerTrack,
     pins,
