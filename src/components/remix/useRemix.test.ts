@@ -312,103 +312,6 @@ describe('useRemix — layered lanes', () => {
   });
 });
 
-describe('useRemix — pins', () => {
-  const melodyOf = (s: RemixState, element: string) =>
-    s.candidatesFor('MELODY').find((r) => r.source.element === element)!;
-
-  it('pins a rule and holds it across Regenerate', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    const water = melodyOf(result.current, 'WATER');
-    act(() => result.current.togglePin(water));
-
-    for (let i = 0; i < 20; i++) {
-      act(() => result.current.regenerate());
-      const melody = result.current.picks.filter((p) => p.track.category === 'MELODY');
-      expect(melody.some((p) => p.rule.source.element === 'WATER')).toBe(true);
-    }
-  });
-
-  it('unpins when the same rule is clicked again', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    const water = melodyOf(result.current, 'WATER');
-    act(() => result.current.togglePin(water));
-    expect(Object.keys(result.current.pins)).toHaveLength(1);
-
-    act(() => result.current.togglePin(water));
-    expect(result.current.pins).toEqual({});
-  });
-
-  it('swaps the lane instead of stacking pins, outside Layered', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    const water = melodyOf(result.current, 'WATER');
-    const fire = melodyOf(result.current, 'FIRE');
-    act(() => result.current.togglePin(water));
-    act(() => result.current.togglePin(fire));
-
-    // Cross-element has one MELODY lane, so the second click MOVES it rather than leaving a rival
-    // pin behind that would decide the lane by element order instead of by what you clicked.
-    expect(Object.keys(result.current.pins)).toEqual(['MELODY|FIRE|INTRODUCTION']);
-    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(1);
-    expect(result.current.tracks.find((t) => t.category === 'MELODY')!.id).toBe('MELODY·FIRE');
-  });
-
-  it('keeps one pin per SECTION in Borrowed, so sections may differ by element', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    act(() => result.current.setMode('borrowed'));
-    act(() => result.current.setElement('EARTH'));
-
-    // BASS is authored only in RETURN, MELODY only in INTRODUCTION — two different sections, two
-    // different elements. Both pins must survive; the whole mix plays EARTH audio regardless.
-    const melodyWater = result.current.candidatesFor('MELODY')
-      .find((r) => r.source.element === 'WATER')!;
-    const bassFire = result.current.candidatesFor('BASS')[0];
-    act(() => result.current.togglePin(melodyWater));
-    act(() => result.current.togglePin(bassFire));
-
-    expect(Object.keys(result.current.pins)).toHaveLength(2);
-    expect(result.current.picks.some((p) => p.rule === melodyWater)).toBe(true);
-    expect(result.current.tracks.every((t) => t.sample.name.startsWith('EARTH-'))).toBe(true);
-  });
-
-  it('keeps both pins in Layered, where a click may add a lane', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    act(() => result.current.setMode('layered'));
-    const water = melodyOf(result.current, 'WATER');
-    const fire = melodyOf(result.current, 'FIRE');
-    act(() => result.current.togglePin(water));
-    act(() => result.current.togglePin(fire));
-
-    expect(Object.keys(result.current.pins)).toHaveLength(2);
-    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(2);
-  });
-
-  it('keeps pins across a mode change, inert where they do not apply', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    const water = melodyOf(result.current, 'WATER');
-    act(() => result.current.togglePin(water));
-
-    act(() => result.current.setMode('borrowed'));
-    act(() => result.current.setElement('EARTH'));
-    expect(result.current.pins).not.toEqual({}); // retained…
-    expect(result.current.tracks.every((t) => t.sample.name.startsWith('EARTH-'))).toBe(true);
-
-    act(() => result.current.setMode('cross'));
-    expect(result.current.picks.some((p) => p.rule.source.element === 'WATER')).toBe(true); // …and back
-  });
-});
-
 describe('useRemix — canSound', () => {
   it('marks a rule whose element ships no sample for its category', async () => {
     const { result } = renderHook(() => useRemix());
@@ -432,5 +335,93 @@ describe('useRemix — canSound', () => {
 
     // EARTH ships a DRONE, and borrowing plays every timing through EARTH — so it can sound now.
     expect(result.current.canSound(etherDrone)).toBe(true);
+  });
+});
+
+describe('useRemix — taking a track over', () => {
+  const melodyOf = (s: RemixState, element: string) =>
+    s.candidatesFor('MELODY').find((r) => r.source.element === element)!;
+
+  it('freezes what was playing on the first click, rather than wiping the row', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+    const drawn = result.current.picks.filter((p) => p.track.category === 'MELODY').map((p) => p.rule);
+    expect(drawn.length).toBeGreaterThan(0);
+
+    // Click the element the draw did NOT take, so the freeze is visible: what was there stays.
+    const other = result.current.candidatesFor('MELODY')
+      .find((r) => !drawn.includes(r))!;
+    act(() => result.current.toggleChip(other));
+
+    const now = result.current.picks.filter((p) => p.track.category === 'MELODY').map((p) => p.rule);
+    for (const d of drawn) expect(now).toContain(d);
+    expect(now).toContain(other);
+  });
+
+  it('marks only that category manual, and leaves the others generated', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.toggleChip(melodyOf(result.current, 'WATER')));
+
+    expect(Object.keys(result.current.manual)).toEqual(['MELODY']);
+  });
+
+  it('turns a chip off again, and can empty the row', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    // Take it over, then switch every chosen timing off.
+    act(() => result.current.toggleChip(melodyOf(result.current, 'WATER')));
+    for (const r of [...result.current.candidatesFor('MELODY')]) {
+      if (result.current.manual.MELODY?.[`MELODY|${r.source.element}|${r.section}`]) {
+        act(() => result.current.toggleChip(r));
+      }
+    }
+
+    expect(result.current.manual.MELODY).toEqual({});
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toEqual([]);
+  });
+
+  it('ignores Regenerate for a track taken over, and rerolls the rest', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+
+    act(() => result.current.toggleChip(melodyOf(result.current, 'WATER')));
+    const mine = result.current.picks.filter((p) => p.track.category === 'MELODY').map((p) => p.rule);
+
+    for (let i = 0; i < 15; i++) act(() => result.current.regenerate());
+
+    expect(result.current.picks.filter((p) => p.track.category === 'MELODY').map((p) => p.rule))
+      .toEqual(mine);
+  });
+
+  it('hands a track back to the generator on reset', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+    const before = result.current.picks.filter((p) => p.track.category === 'MELODY').map((p) => p.rule);
+
+    act(() => result.current.toggleChip(melodyOf(result.current, 'WATER')));
+    act(() => result.current.resetCategory('MELODY'));
+
+    expect(result.current.manual).toEqual({});
+    expect(result.current.picks.filter((p) => p.track.category === 'MELODY').map((p) => p.rule))
+      .toEqual(before);
+  });
+
+  it('lets a taken-over track hold several elements at once, even in Cross', async () => {
+    const { result } = renderHook(() => useRemix());
+    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
+    expect(result.current.mode).toBe('cross');
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(1);
+
+    // The draw took one of WATER/FIRE; clicking the OTHER adds it, since the first click froze what
+    // was already playing. Cross draws one lane per category — taken over, this one has two, because
+    // the rules govern the draw and not you.
+    const drawn = result.current.picks.find((p) => p.track.category === 'MELODY')!.rule.source.element;
+    const other = drawn === 'WATER' ? 'FIRE' : 'WATER';
+    act(() => result.current.toggleChip(melodyOf(result.current, other)));
+
+    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(2);
   });
 });

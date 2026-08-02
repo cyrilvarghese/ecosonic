@@ -17,6 +17,14 @@ export const slotKey = (r: AuthoredRule): string =>
 export const slotKeyFor = (category: Category, element: ElementName, section: Mode): string =>
   `${category}|${element}|${section}`;
 
-/** slotKey → ruleKey. A pin whose ruleKey no longer resolves — the session was edited or removed —
- *  is dropped silently by whoever reads it. */
+/** slotKey → ruleKey, the timings chosen by hand for one category. A pin whose ruleKey no longer
+ *  resolves — the session was edited or removed — is dropped silently by whoever reads it. */
 export type Pins = Record<string, string>;
+
+/** category → its hand-chosen timings. A category present here is **manual**: the user has taken it
+ *  over, so the generator neither draws it nor applies its rules to it — no one-lane-per-category,
+ *  no lanesPerTrack, no lead element. What is listed is exactly what sounds.
+ *
+ *  Absent ⇒ the category is still generated, by whichever mode is on. Rules govern generation; they
+ *  do not govern you. */
+export type Manual = Record<string, Pins>;

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import { Check, ChevronDown } from 'lucide-react';
 import { ELEMENTS, type ElementName } from '@/types';
-import type { Mode } from '@/arrange/types';
+import { STACK_ORDER, type Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
@@ -52,7 +52,7 @@ export function RemixView() {
   const {
     tracks, picks, regions, totalSec, warnings, loading,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
-    lanesPerTrack, setLanesPerTrack, pins, togglePin, canSound,
+    lanesPerTrack, setLanesPerTrack, manual, toggleChip, resetCategory, canSound,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
@@ -78,8 +78,10 @@ export function RemixView() {
   // something: which element owns the lane (cross, layered) or which element's timing fills a
   // section (borrowed, where the sound is fixed by hand and sections may differ).
   const chipsClickable = mode !== 'scoped';
-  // Tracks arrive in STACK_ORDER, so unique-in-order keeps the pool rows in the same grammar.
-  const categories = [...new Set(tracks.map((t) => t.category))];
+  // Rows come from the POOL, not from the lanes that happen to exist. A category you took over and
+  // then silenced has no lanes, and deriving rows from tracks would make its row vanish — taking the
+  // chips you would click to bring it back with it.
+  const categories = STACK_ORDER.filter((c) => candidatesFor(c).length > 0);
   // Borrowed timings splits audio from timing, so colour has to pick a side per surface. Bars are
   // what you HEAR — one sample element, one colour, and a visible signal the mode is on. The pool
   // chips keep the rule's element, because which element's pattern won each section is the whole
@@ -336,9 +338,11 @@ export function RemixView() {
               category={c}
               candidates={candidatesFor(c)}
               picked={pickedRules}
-              pins={pins}
-              onPick={chipsClickable ? togglePin : undefined}
+              pins={manual[c]}
+              onPick={chipsClickable ? toggleChip : undefined}
               canSound={canSound}
+              manual={c in manual}
+              onReset={() => resetCategory(c)}
             />
           ))
         )}

@@ -40,12 +40,19 @@ const chipTitle = (r: AuthoredRule): string => {
  *  Three states: outline = not picked, filled = drawn by the generator, filled + ring = pinned by
  *  you. Omit `onPick` and the chips stay inert hints, which is what Scoped and Borrowed want —
  *  neither has a per-element lane a click could address. */
-export function TrackPoolRow({ category, candidates, picked, pins, onPick, canSound }: {
+export function TrackPoolRow({
+  category, candidates, picked, pins, onPick, canSound, manual, onReset,
+}: {
   category: Category;
   candidates: AuthoredRule[];
   picked: ReadonlySet<AuthoredRule>;
   pins?: Pins;
   onPick?: (rule: AuthoredRule) => void;
+  /** True once you have taken this category over: the generator no longer draws it and its rules no
+   *  longer apply to it, so what is lit is exactly what sounds. */
+  manual?: boolean;
+  /** Hand the category back to the generator. Shown only while `manual`. */
+  onReset?: () => void;
   /** Omitted ⇒ every chip is assumed playable. A chip that answers false can never produce a lane —
    *  the element it would sound through ships no sample for this category (§3.6) — so it is shown
    *  struck through and inert rather than accepting a click that would visibly do nothing. */
@@ -59,6 +66,26 @@ export function TrackPoolRow({ category, candidates, picked, pins, onPick, canSo
       <div className="text-sm font-medium">
         {category}
         <span className="ml-1 text-xs text-muted-foreground">{candidates.length}</span>
+        {manual && (
+          <span className="mt-0.5 flex items-center gap-1">
+            <span
+              className="rounded bg-[var(--accent-ink)]/15 px-1 text-[10px] font-normal uppercase tracking-wide text-[var(--accent-ink)]"
+              title="You took this track over. The generator no longer draws it and its rules no longer apply — what is lit is exactly what sounds."
+            >
+              manual
+            </span>
+            {onReset && (
+              <button
+                type="button"
+                onClick={onReset}
+                title="Hand this track back to the generator"
+                className="rounded px-1 text-[10px] font-normal text-muted-foreground transition-calm hover:bg-muted/60 hover:text-foreground"
+              >
+                ↺ auto
+              </button>
+            )}
+          </span>
+        )}
       </div>
       <div className="flex flex-wrap gap-1">
         {candidates.length === 0 ? (

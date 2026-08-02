@@ -544,77 +544,79 @@ describe('RemixView — layered lanes', () => {
   });
 });
 
-describe('RemixView — clicking a chip', () => {
+describe('RemixView — taking a track over by clicking', () => {
   // FIRE authored MELODY, PAD and BASS, so `Fire·I` appears in more than one row — every chip query
   // is scoped to the row it belongs to, or getByRole matches several buttons and throws.
-  const melodyChip = (name: string) =>
-    within(screen.getByTestId('pool-MELODY')).getByRole('button', { name });
+  const melodyRow = () => screen.getByTestId('pool-MELODY');
+  const melodyChip = (name: string) => within(melodyRow()).getByRole('button', { name });
+  /** The MELODY element the generator drew, so a test can click the one it did NOT take. */
+  const otherElement = () =>
+    (within(melodyRow()).queryByRole('button', { name: 'Water·I' })!.className.includes('bg-[var(--accent-ink)]')
+      ? 'Fire·I' : 'Water·I');
 
-  it('pins a timing and holds it through Regenerate', async () => {
+  it('says the track is manual, and offers it back', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
+    expect(within(melodyRow()).queryByText('manual')).toBeNull();
 
-    await userEvent.click(melodyChip('Water·I'));
-    expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(melodyChip(otherElement()));
 
-    for (let i = 0; i < 10; i++) {
+    expect(within(melodyRow()).getByText('manual')).toBeInTheDocument();
+    expect(within(melodyRow()).getByRole('button', { name: /auto/ })).toBeInTheDocument();
+    // Only that row — PAD is still the generator's.
+    expect(within(screen.getByTestId('pool-PAD')).queryByText('manual')).toBeNull();
+  });
+
+  it('keeps what was playing and adds what you clicked', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+
+    await userEvent.click(melodyChip(otherElement()));
+
+    // Cross-element draws one lane. Taken over, this track carries both — rules govern the draw.
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+  });
+
+  it('turns a chip off again', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    const chip = otherElement();
+
+    await userEvent.click(melodyChip(chip));
+    expect(melodyChip(chip)).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(melodyChip(chip));
+
+    expect(melodyChip(chip)).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+  });
+
+  it('holds a taken-over track through Regenerate while the rest rerolls', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await userEvent.click(melodyChip(otherElement()));
+    const mine = screen.getAllByTestId(/^region-MELODY·/).map((n) => n.getAttribute('data-testid'));
+
+    for (let i = 0; i < 8; i++) {
       await userEvent.click(screen.getByRole('button', { name: /Regenerate/ }));
-      expect(screen.getByTestId('region-MELODY·WATER-0')).toBeInTheDocument();
     }
+
+    expect(screen.getAllByTestId(/^region-MELODY·/).map((n) => n.getAttribute('data-testid')))
+      .toEqual(mine);
   });
 
-  it('swaps the single lane rather than adding one, outside Layered', async () => {
+  it('hands the track back to the generator on reset', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    // Cross-element is one lane per category (§3.1). A click MOVES that lane onto the element you
-    // clicked; only Layered may stack a second one underneath.
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+    const before = screen.getAllByTestId(/^region-MELODY·/).map((n) => n.getAttribute('data-testid'));
 
-    await userEvent.click(melodyChip('Water·I'));
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
-    expect(screen.getByTestId('region-MELODY·WATER-0')).toBeInTheDocument();
+    await userEvent.click(melodyChip(otherElement()));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+    await userEvent.click(within(melodyRow()).getByRole('button', { name: /auto/ }));
 
-    await userEvent.click(melodyChip('Fire·I'));
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
-    expect(screen.getByTestId('region-MELODY·FIRE-0')).toBeInTheDocument();
-  });
-
-  it('leaves the other categories exactly where they were', async () => {
-    // The complaint this fix exists for: clicking a MELODY chip must not reroll PAD or BASS.
-    render(<RemixView />);
-    await screen.findByTestId(laneRegion('PAD'));
-    const idsBefore = [...document.querySelectorAll('[data-testid^="region-"]')]
-      .map((n) => n.getAttribute('data-testid'))
-      .filter((id) => !id!.startsWith('region-MELODY·'));
-
-    await userEvent.click(melodyChip('Water·I'));
-
-    const idsAfter = [...document.querySelectorAll('[data-testid^="region-"]')]
-      .map((n) => n.getAttribute('data-testid'))
-      .filter((id) => !id!.startsWith('region-MELODY·'));
-    expect(idsAfter).toEqual(idsBefore);
-  });
-
-  it('unpins on a second click', async () => {
-    render(<RemixView />);
-    await screen.findByTestId(laneRegion('PAD'));
-
-    await userEvent.click(melodyChip('Water·I'));
-    await userEvent.click(melodyChip('Water·I'));
-
-    expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('leaves chips inert in Scoped, where a click could decide nothing', async () => {
-    render(<RemixView />);
-    await screen.findByTestId(laneRegion('PAD'));
-
-    // Scope to WATER so there IS a Water·I chip to be inert — scoped to the EARTH default there are
-    // no rules at all, and the assertion would pass for the wrong reason. Every chip in a scoped row
-    // is already the lane's own element, so there is nothing left to choose.
-    await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
-    await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
-    expect(screen.getByText('Water·I').tagName).toBe('SPAN');
+    expect(within(melodyRow()).queryByText('manual')).toBeNull();
+    expect(screen.getAllByTestId(/^region-MELODY·/).map((n) => n.getAttribute('data-testid')))
+      .toEqual(before);
   });
 
   it('is clickable in Borrowed, where the sound is fixed and timings are free', async () => {
@@ -624,11 +626,51 @@ describe('RemixView — clicking a chip', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Borrowed timings' }));
     await userEvent.click(screen.getByRole('button', { name: 'ETHER' }));
 
-    // Every lane plays ETHER audio, but WATER's melody timing is yours to pick.
-    await userEvent.click(melodyChip('Water·I'));
+    // Borrowing collapses MELODY to one ETHER lane. Whichever element the draw took for the
+    // Introduction, clicking the OTHER swaps that section's timing onto it — the two cannot both be
+    // on, or they would overlap on one voice and one would never sound.
+    const drawnIsWater = melodyChip('Water·I').getAttribute('aria-pressed') === 'true'
+      || melodyChip('Water·I').className.includes('bg-[var(--accent-ink)]');
+    const click = drawnIsWater ? 'Fire·I' : 'Water·I';
+    await userEvent.click(melodyChip(click));
 
-    expect(melodyChip('Water·I')).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+    expect(melodyChip(click)).toHaveAttribute('aria-pressed', 'true');
+    expect(melodyChip(drawnIsWater ? 'Water·I' : 'Fire·I')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('region-MELODY·ETHER-0')).toBeInTheDocument();
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
+  });
+
+  it('keeps a silenced row on screen, so you can click its chips back on', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    // Take MELODY over, then switch off everything it was playing. The lane goes, and the row must
+    // NOT go with it — the chips you would click to bring it back live in that row.
+    const drawn = within(melodyRow()).getAllByRole('button')
+      .filter((b) => b.className.includes('bg-[var(--accent-ink)]'));
+    await userEvent.click(melodyChip(otherElement()));      // take it over
+    for (const b of [...within(melodyRow()).getAllByRole('button')]) {
+      if (b.getAttribute('aria-pressed') === 'true') await userEvent.click(b);
+    }
+    expect(drawn.length).toBeGreaterThan(0);
+
+    expect(screen.queryAllByTestId(/^region-MELODY·/)).toHaveLength(0);
+    expect(screen.getByTestId('pool-MELODY')).toBeInTheDocument();
+    expect(within(melodyRow()).getByText('manual')).toBeInTheDocument();
+
+    // …and it really does come back.
+    await userEvent.click(within(melodyRow()).getByRole('button', { name: /auto/ }));
+    expect(screen.getAllByTestId(/^region-MELODY·/).length).toBeGreaterThan(0);
+  });
+
+  it('leaves chips inert in Scoped, where a click could decide nothing', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    // Scope to WATER so there IS a Water·I chip to be inert — scoped to the EARTH default there are
+    // no rules at all, and the assertion would pass for the wrong reason.
+    await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
+    await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
+    expect(screen.getByText('Water·I').tagName).toBe('SPAN');
   });
 });

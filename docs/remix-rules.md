@@ -97,7 +97,8 @@ modes rather than four.
 Then, for each category the narrowed pool covers:
 
 **3.1 — One lane per category, per element.** `id = category·ELEMENT` — `MELODY·FIRE` — so a
-category may hold several lanes, one per element the draw or your pins gave it. The id carries the
+category may hold several lanes, one per element the draw took — or, once you take the track
+over (§8), one per element you chose. The id carries the
 element even when there is only one lane: an id that changed shape when a sibling appeared would
 lose that lane's mute state and make the engine reload it mid-session. `MELODY 2` and `SUB MELODY`
 still collapse onto the `MELODY` category; the picked variant and the element become the lane's
@@ -177,15 +178,15 @@ explaining why a chip you can see never produces a lane.
 **3.8 — Tracks are ordered by the vertical grammar** (`STACK_ORDER`): NOISE, ELEMENT, ELEMENT_SUB,
 FX, ISO, PLANET, DRONE, PAD, BASS, ARP, MELODY.
 
-**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + lanes +
-**pins** ⇒ the same draw. Regenerate advances the seed and rerolls every slot except the pinned ones.
+**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + lanes + the
+manual choices ⇒ the same draw. Regenerate advances the seed and rerolls every **generated** track;
+a track you took over (§8) does not move.
 
 Each **lane owns its own random stream**, seeded from `(seed, category, element)` rather than drawn
-from one shared sequence. This is what makes an edit local: pinning a slot, swapping a lane onto
-another element, or raising the lanes setting cannot disturb what any other lane already chose, and
-the lane you were listening to survives a change to its neighbours. A single shared stream couples
-everything — change how many values one lane consumes and every later lane shifts — which is why a
-pinned slot still *consumes* its draw and only then overrides it.
+from one shared sequence. This is what makes an edit local: taking one track over, or raising the
+lanes setting, cannot disturb what any other lane already chose, and the lane you were listening to
+survives a change to its neighbours. A single shared stream couples everything — change how many
+values one lane consumes and every later lane shifts.
 
 ## 4. Laying it on the timeline
 
@@ -254,12 +255,15 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
 - **Chips** list the candidates the current scope could draw from — element **and** section
   filtered, so a chip on screen is always one the draw could have picked. One row per **category**,
   not per lane: a category's pool is one thing, and a chip already names the lane it addresses.
-  Four states: **outline** = not picked, **filled** = drawn by the generator, **filled + ring** =
-  pinned by you, and **struck through** = this timing can never sound, because the element it would
-  play through ships no sample for the category (§3.6). A struck chip is inert — it would otherwise
-  take a click, light up, and produce nothing. It stays listed because it is a real authored rule
-  and **Borrowed timings can still play it**, through an element that does have the sample. A full
-  session lights up to three per lane.
+  Four states: **outline** = not chosen, **filled** = drawn by the generator, **filled + ring** =
+  chosen by you on a **manual** track (§8), and **struck through** = this timing can never sound,
+  because the element it would play through ships no sample for the category (§3.6). A struck chip
+  is inert — it would otherwise take a click, light up and produce nothing. It stays listed because
+  it is a real authored timing, and **Borrowed timings can still play it** through an element that
+  does have the sample. A generated row lights up to three chips per lane.
+- **A manual row** carries a `manual` tag and an `↺ auto` control, because what a click means
+  depends on it: on a generated row a click takes the track over; on a manual one it simply switches
+  a timing on or off. A manual row stays on screen even when you have switched everything off.
 - **Colour** is the element's brand colour, on both chips and bars, via `data-element`. In
   **Borrowed timings** audio and timing disagree, so each surface takes the one it represents:
   **bars take the sample element** (they are what you hear — every bar one colour, which is also the
@@ -277,50 +281,59 @@ the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
   one of §6's two exceptions — worth looking at.
 - **Warnings** expand to their text rather than showing only a count.
 
-## 8. Clicking a chip
+## 8. Clicking a chip — the rules govern the draw, not you
 
-A chip carries both things a lane needs — its element and its section — so clicking one has an
-unambiguous destination, and no modifier keys or add/replace controls are needed.
+**Every rule in §3 is a rule about generation.** They describe how `/remix` composes a track when it
+is composing it, and they exist because an automatic draw with no constraints produces incoherence.
+None of them is a constraint on *you*.
 
-| you click | result |
+So a category has two states:
+
+| | |
 |---|---|
-| a chip whose element **has a lane** | that lane's section slot is set to this rule, and pinned |
-| a chip **you already pinned** | unpinned — the slot reverts to the draw |
-| a chip whose element has **no lane**, in Cross-element | the category's one lane **swaps** onto that element, pinned at that section |
-| a chip whose element has **no lane**, in Layered | a lane is **added** for that element |
-| any chip, in **Borrowed timings** | that **section's timing** is set to it; the sound does not move |
+| **generated** (default) | drawn by the current mode, under every rule in §3 |
+| **manual** | you took it over. It is not drawn, and §3 no longer applies to it |
 
-**Only Layered adds lanes.** Everywhere else §3.1's one-lane-per-category holds no matter what is
-pinned, so a click moves the lane you have rather than stacking another underneath it. Swapping takes
-the rest of the lane with it — its other sections come from the new element and its sample changes —
-because a lane is one file from one element (§3.4). Clicking a chip of the lane's *own* element
-changes that one slot and nothing else at all.
+**The first click on a row takes that category manual**, and *freezes what it was already playing* as
+explicit choices — so an edit builds on what you were hearing instead of wiping the row. From then on
+every chip is a plain on/off and **what is lit is exactly what sounds**. The row says `manual`, and
+`↺ auto` hands it back to the generator.
 
-Pins are stored as `slotKey → ruleKey`, both derived from rule **content** (`category|element|section`
-and `sessionId|track|section`) rather than object identity — `refetch()` rebuilds every rule object,
-and a pin held by reference would not survive one upload. A pin whose rule no longer resolves is
-dropped silently and that slot is drawn as usual.
+A manual category may break any of the composition rules, which is the point:
 
-In Layered a pin may create a lane the draw would not have made, and may take a category past its
-lanes setting — up to the five real elements. Pins are **retained** across a change of mode or
-section, so one for a section you are not looking at is simply inert until you return. Outside
-Layered a second pin in the same category **replaces** the first rather than joining it, since there
-is only one lane there for them to fight over.
+- **§3.1** — several lanes in Cross-element, or in any mode. One lane per element you chose.
+- **§3.2** — a section nobody chose is simply silent; a track may sound in the Introduction only.
+- **§3.9** — Regenerate does not touch it. The seed moves; a manual track does not.
 
-**Borrowed timings is where a lane's sections may differ.** Everywhere else the sample follows the
-pick, so three elements supplying three sections would leave no element for the sample to follow —
-one would win and the other two chips would be lit while contributing nothing you can hear. That is
-§3.4, and it is the reason a click swaps the whole lane in Cross-element. Borrowed fixes the sample
-by hand instead, so a rule there is pure timing and the constraint dissolves: pick Intro from Earth,
-Deep Relaxation from Air and Return from Ether, all sounding through the one element you chose.
-A second click in the same section replaces the first; other sections are untouched.
+The one rule that survives is that **a lane is one file** — a fact about audio, not a rule of
+composition — so each element you choose gets its own lane. Under Borrowed the sample is already
+fixed by hand, so the category collapses to a single lane and its slots are sections rather than
+element×sections: choosing an Introduction timing replaces whatever Introduction was there, because
+two on one voice would overlap and one would never be heard.
 
-**Chips are inert in Scoped only** — that mode narrows the pool to one element and takes its samples,
-so every chip in a row is already the lane's own element and a click could decide nothing.
+Turning every chip off leaves the category **silent**, not regenerated — wanting a track gone is a
+legitimate thing to want, and the row says `manual` so nothing is hidden. Its row stays on screen
+even with no lanes, or the chips you would click to bring it back would vanish with it.
+
+Choices are stored as `slotKey → ruleKey`, both derived from rule **content**
+(`category|element|section` and `sessionId|track|section`) rather than object identity — `refetch()`
+rebuilds every rule object, and a choice held by reference would not survive one upload. A choice
+whose rule no longer resolves is dropped silently.
+
+### 8.1 The one thing a click cannot do
+
+A chip whose element ships **no sample** for the category can never become a lane (§3.6). It is shown
+struck through and refuses the click, rather than lighting up and producing nothing. It stays listed
+because it is a real authored timing, and **Borrowed timings can play it** through an element that
+does have the sample — so the same chip is dead in Cross-element and alive under Borrowed.
+
+**Chips are inert in Scoped**, the one mode where a click could decide nothing: it narrows the pool
+to a single element and takes that element's samples, so every chip in the row is already the lane's
+own element.
 
 ## 9. Deliberately not done
 
 Stitching three section modules into one session · crossfading loop wraps or overlapping lanes ·
 per-section separate lanes · mixing sample elements *within* one lane · invariant repair of any
-kind · in-app rule editing · saving a generated result · persisting pins across a reload · layering
-in Borrowed mode (§3.4) · a "solo" control to audition one lane against another.
+kind · in-app rule editing · saving a generated result · persisting manual tracks across a reload ·
+layering in Borrowed mode (§3.4) · a "solo" control to audition one lane against another.

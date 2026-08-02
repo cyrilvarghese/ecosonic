@@ -2,7 +2,7 @@ import { ELEMENTS, type ElementName, type Manifest } from '@/types';
 import { STACK_ORDER, type ArrTrack, type Mode, type TemplateRegion } from '@/arrange/types';
 import { makeRng, seedFrom, type RNG } from '@/arrange/prng';
 import { config } from '@/config';
-import { ruleKey, slotKey, type Pins } from './pins';
+import { ruleKey, slotKey, type Manual } from './pins';
 import type { AuthoredRule } from './sessionRules';
 
 /** Draw order for a full session — one rule per section, so a track spans the whole timeline. */
@@ -81,8 +81,9 @@ export function generateRemix(
     sessionSec: number;
     /** Layered: how many elements the draw may take per category. 1 (and omitted) = one lane. */
     lanesPerTrack?: number;
-    /** slotKey → ruleKey. A pinned slot is taken, not drawn; a pin may also create a lane. */
-    pins?: Pins;
+    /** category → slotKey → ruleKey. A category listed here is **manual**: the user took it over, so
+     *  it is not drawn and its rules no longer apply to it. Absent ⇒ generated as usual. */
+    manual?: Manual;
   },
 ): RemixDraw {
   const totalSec = opts.section ? config.layerTwo.moduleSeconds : opts.sessionSec;
@@ -104,15 +105,6 @@ export function generateRemix(
   // would be byte-identical audio staggered in time — a different feature (§6.1). One lane, always.
   const laneCount = opts.sampleElement ? 1 : Math.max(1, opts.lanesPerTrack ?? 1);
 
-  // Pins apply in every mode, but they buy different things. Where the sample follows the pick they
-  // choose a lane's ELEMENT (and so its sound); under `sampleElement` the sound is already settled by
-  // hand, so they choose pure TIMING and a lane's three sections may come from three elements — the
-  // one place §3.4's "one element per lane" does not bind.
-  const pins: Pins = opts.pins ?? {};
-  /** The pinned rule among these candidates, if one is pinned. Content-keyed, so it survives a
-   *  refetch; searched within `cands`, so a pin the current scope filters out simply never matches. */
-  const pinnedIn = (rules: AuthoredRule[]): AuthoredRule | undefined =>
-    rules.find((r) => pins[slotKey(r)] === ruleKey(r));
 
   for (const category of categories) {
     const cands = candidates.filter((r) => r.category === category);
@@ -121,36 +113,45 @@ export function generateRemix(
      *  layering the same §3.6 gap would otherwise be reported once per element (§7.3). */
     const noSample: ElementName[] = [];
 
+    // A category the user has taken over. Its rules do not apply to it any more — not
+    // one-lane-per-category, not lanesPerTrack, not one-element-per-lane. What was chosen is what
+    // sounds, and nothing here consults the draw.
+    const manual = opts.manual?.[category];
+    const taken = manual ? cands.filter((r) => manual[slotKey(r)] === ruleKey(r)) : [];
+
     // One stream per category, so what one category draws can never shift another.
     const catRng = makeRng(seedFrom(opts.seed, category));
     // Leads are all drawn before any lane is filled, which is what lets the draw be without
-    // replacement. Drawn even when a pin overrides the outcome, so unpinning restores the draw.
+    // replacement. Still drawn for a manual category, so the streams below it do not shift when a
+    // row is taken over or handed back.
     const leads = drawLeads(cands, catRng, laneCount);
 
-    /** Elements this category has a resolving pin for, in ELEMENTS order. */
-    const pinnedElements = ELEMENTS.filter((e) =>
-      cands.some((r) => r.source.element === e && pins[slotKey(r)] === ruleKey(r)));
-    const leadFor = (e: ElementName): AuthoredRule =>
-      leads.find((l) => l.source.element === e)
-      ?? cands.find((r) => r.source.element === e && pins[slotKey(r)] === ruleKey(r))
-      ?? cands.find((r) => r.source.element === e)!;
-
-    let laneElements: ElementName[];
-    if (laneCount === 1) {
-      // One lane per category, whatever the pins say. A pin here CHOOSES the lane's element rather
-      // than adding a lane — clicking another element's chip swaps the lane onto it. Adding lanes is
-      // Layered's job alone, so Cross-element and Scoped keep §3.1 exactly.
-      laneElements = [pinnedElements[0] ?? leads[0].source.element];
+    let lanes: Lane[];
+    if (manual) {
+      // One lane per element chosen — a lane is still one file, which is the one rule that survives
+      // going manual because it is a fact about audio rather than a rule about composition.
+      // Borrowing already fixed the sample, so there every timing joins the single lane.
+      lanes = opts.sampleElement
+        ? (taken.length > 0
+          ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: taken[0] }]
+          : [])
+        : ELEMENTS.filter((e) => taken.some((r) => r.source.element === e)).map((e) => ({
+          ruleElement: e,
+          audioElement: e,
+          lead: taken.find((r) => r.source.element === e)!,
+        }));
     } else {
-      // Layered: the elements the draw took, plus any a pin named — which may push the category past
-      // lanesPerTrack, up to the five real elements.
-      laneElements = ELEMENTS.filter((e) =>
-        leads.some((l) => l.source.element === e) || pinnedElements.includes(e));
+      const laneElements = laneCount === 1
+        ? [leads[0].source.element]
+        : ELEMENTS.filter((e) => leads.some((l) => l.source.element === e));
+      lanes = opts.sampleElement
+        ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: leads[0] }]
+        : laneElements.map((e) => ({
+          ruleElement: e,
+          audioElement: e,
+          lead: leads.find((l) => l.source.element === e)!,
+        }));
     }
-
-    const lanes: Lane[] = opts.sampleElement
-      ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: leads[0] }]
-      : laneElements.map((e) => ({ ruleElement: e, audioElement: e, lead: leadFor(e) }));
 
     for (const lane of lanes) {
       // One stream per LANE, keyed by its identity rather than by its position in a shared stream.
@@ -176,17 +177,25 @@ export function generateRemix(
       // A section draw is exactly one rule. A full session takes one rule per section, so the lane
       // sounds across the whole timeline instead of only its lead's third.
       const chosen: { rule: AuthoredRule; poolSize: number }[] = [];
-      if (opts.section) {
-        chosen.push({ rule: pinnedIn(forSections) ?? lane.lead, poolSize: cands.length });
+      if (manual) {
+        // Taken over: exactly the timings chosen for this lane, in timeline order, and no others.
+        // A section nobody chose is simply silent — going manual means what you see is what sounds.
+        const mine = taken.filter((r) => !lane.ruleElement || r.source.element === lane.ruleElement);
+        for (const mode of SECTION_ORDER) {
+          for (const r of mine.filter((x) => x.section === mode)) {
+            chosen.push({ rule: r, poolSize: forSections.filter((x) => x.section === mode).length });
+          }
+        }
+      } else if (opts.section) {
+        chosen.push({ rule: lane.lead, poolSize: cands.length });
       } else {
         for (const mode of SECTION_ORDER) {
           const inSection = forSections.filter((r) => r.section === mode);
           if (inSection.length === 0) continue; // absence is allowed — no repair
-          // The draw is ALWAYS consumed and only then overridden, so a pin costs the stream nothing.
-          // Short-circuiting on the pin instead would shift every later draw in this lane, and
-          // pinning one section would silently reroll its neighbours.
-          const drawnRule = inSection[Math.floor(laneRng.float() * inSection.length)];
-          chosen.push({ rule: pinnedIn(inSection) ?? drawnRule, poolSize: inSection.length });
+          chosen.push({
+            rule: inSection[Math.floor(laneRng.float() * inSection.length)],
+            poolSize: inSection.length,
+          });
         }
       }
 

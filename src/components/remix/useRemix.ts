@@ -7,7 +7,7 @@ import { config } from '@/config';
 import { arrangementStore } from '@/arrange/arrangementStore';
 import type { AuthoredRule, RuleStore } from '@/remix/sessionRules';
 import { generateRemix, type RemixPick } from '@/remix/generateRemix';
-import { ruleKey, slotKey, type Pins } from '@/remix/pins';
+import { ruleKey, slotKey, type Manual, type Pins } from '@/remix/pins';
 
 const manifest = manifestJson as unknown as Manifest;
 const EMPTY_STORE: RuleStore = { EARTH: [], WATER: [], AIR: [], FIRE: [], ETHER: [] };
@@ -37,10 +37,14 @@ export interface RemixState {
   /** How many elements a category's draw may take, in `layered`. Every other mode is one lane. */
   lanesPerTrack: number;
   setLanesPerTrack: (n: number) => void;
-  /** slotKey → ruleKey — the slots you chose by hand, which Regenerate leaves alone. */
-  pins: Pins;
-  /** Pin this rule into its slot, or unpin it if it is already the pin there. */
-  togglePin: (rule: AuthoredRule) => void;
+  /** category → the timings chosen by hand. A category listed here is manual — the generator has
+   *  handed it over, and its rules no longer apply to it. */
+  manual: Manual;
+  /** Turn this timing on or off. The first click on a category **freezes what it was already
+   *  playing** and takes the category manual, so an edit builds on what you were hearing. */
+  toggleChip: (rule: AuthoredRule) => void;
+  /** Hand a category back to the generator. */
+  resetCategory: (c: Category) => void;
   setMode: (m: RemixMode) => void;
   setElement: (e: ElementName) => void;
   setSection: (s: Mode | null) => void;
@@ -63,7 +67,7 @@ export function useRemix(): RemixState {
   const [element, setElement] = useState<ElementName>(ELEMENTS[0]);
   const [section, setSection] = useState<Mode | null>(null);
   const [lanesPerTrack, setLanesPerTrack] = useState(2);
-  const [pins, setPins] = useState<Pins>({});
+  const [manual, setManual] = useState<Manual>({});
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -102,10 +106,10 @@ export function useRemix(): RemixState {
       section: section ?? undefined,
       sessionSec: sessionMin * 60,
       lanesPerTrack: lanes,
-      pins,
+      manual,
     }),
-    // `pins` is an input to the draw, not a decoration on it — determinism now includes it.
-    [pool, seed, scopedTo, sampleElement, section, sessionMin, lanes, pins],
+    // `manual` is an input to the draw, not a decoration on it — determinism now includes it.
+    [pool, seed, scopedTo, sampleElement, section, sessionMin, lanes, manual],
   );
 
   // The scheduler and the WAV renderer both read arrangementStore.tracks — keep them in step with
@@ -147,35 +151,52 @@ export function useRemix(): RemixState {
     [sampleElement],
   );
 
-  // One gesture, three outcomes: a fresh slot is pinned, a slot pinned to another rule is repointed,
-  // and clicking the current pin clears it. Keyed by content so it survives refetch().
-  const togglePin = useCallback((rule: AuthoredRule) => {
-    setPins((prev) => {
+  /** Everything the generator currently gives a category, as explicit choices. Freezing this on the
+   *  first click is what makes an edit ADD to what you were hearing rather than wipe the row. */
+  const frozen = useCallback(
+    (c: Category): Pins => Object.fromEntries(
+      draw.picks.filter((p) => p.track.category === c).map((p) => [slotKey(p.rule), ruleKey(p.rule)]),
+    ),
+    [draw.picks],
+  );
+
+  // A chip is a plain on/off. The first click on a category takes it MANUAL — from then on the
+  // generator neither draws it nor applies its rules to it, and what is lit is exactly what sounds.
+  // Turn every chip in a row off and the category falls silent; that is a legitimate thing to want,
+  // so it is not quietly handed back to the draw. `resetCategory` is how you hand it back.
+  const toggleChip = useCallback((rule: AuthoredRule) => {
+    setManual((prev) => {
+      const cat = rule.category;
+      const current = prev[cat] ?? frozen(cat);
       const slot = slotKey(rule);
       const key = ruleKey(rule);
-      if (prev[slot] === key) {
-        const next = { ...prev };
-        delete next[slot];
-        return next;
-      }
-      const next = { ...prev, [slot]: key };
-      // How much a click displaces depends on what a lane is in this mode:
-      //   layered  — nothing; a click may add a lane, so rival elements coexist.
-      //   borrowed — the same SECTION only. One lane, but its sound is already fixed by hand, so
-      //              each section may hold a different element's timing (§3.4 does not bind here).
-      //   else     — the whole CATEGORY. One lane, one element, so a click swaps which element owns
-      //              it; a lingering rival would decide the lane by element order, not by your click.
-      if (!layering) {
+      const next = { ...current };
+      // One timing per slot: a lane has one Introduction, so choosing another replaces it rather
+      // than stacking two overlapping regions on one voice, where the second would never sound.
+      if (next[slot] === key) delete next[slot];
+      else next[slot] = key;
+      // Borrowing collapses the category to ONE lane, so its slots are sections rather than
+      // element×sections. Two elements' Introductions would land on the same voice, overlap, and
+      // one of them would never be heard — so choosing a section's timing replaces what was there.
+      if (borrowing) {
         for (const k of Object.keys(next)) {
-          const [cat, el, sec] = k.split('|');
-          if (cat !== rule.category || el === rule.source.element) continue;
-          if (borrowing && sec !== rule.section) continue;
-          delete next[k];
+          if (k === slot) continue;
+          const [, , sec] = k.split('|');
+          if (sec === rule.section) delete next[k];
         }
       }
+      return { ...prev, [cat]: next };
+    });
+  }, [frozen, borrowing]);
+
+  const resetCategory = useCallback((c: Category) => {
+    setManual((prev) => {
+      if (!(c in prev)) return prev;
+      const next = { ...prev };
+      delete next[c];
       return next;
     });
-  }, [layering, borrowing]);
+  }, []);
 
   return {
     tracks: draw.tracks,
@@ -191,8 +212,9 @@ export function useRemix(): RemixState {
     canSound,
     lanesPerTrack,
     setLanesPerTrack,
-    pins,
-    togglePin,
+    manual,
+    toggleChip,
+    resetCategory,
     setMode,
     setElement,
     setSection,
