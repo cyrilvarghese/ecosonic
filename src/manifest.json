@@ -50,12 +50,6 @@
     ],
     "ELEMENT": [
       {
-        "name": "ANKLUNG",
-        "path": "EARTH/ELEMENT/ANKLUNG.wav",
-        "bytes": 41277680,
-        "ext": ".wav"
-      },
-      {
         "name": "BIRDS",
         "path": "EARTH/ELEMENT/BIRDS.wav",
         "bytes": 59361200,
@@ -115,6 +109,12 @@
       }
     ],
     "ELEMENT_SUB": [
+      {
+        "name": "ANKLUNG",
+        "path": "EARTH/ELEMENT/SUB/ANKLUNG.wav",
+        "bytes": 41277680,
+        "ext": ".wav"
+      },
       {
         "name": "DRUM",
         "path": "EARTH/ELEMENT/SUB/DRUM.wav",
@@ -384,6 +384,12 @@
       }
     ],
     "MELODY": [
+      {
+        "name": "MELODY 2",
+        "path": "AIR/SOUND/MELODY/MELODY 2.wav",
+        "bytes": 33572654,
+        "ext": ".wav"
+      },
       {
         "name": "MELODY",
         "path": "AIR/SOUND/MELODY/MELODY.wav",
