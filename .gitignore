@@ -1,6 +1,9 @@
 # Audio library — 5.8 GB of raw samples, never commit
 ECOSONIC FILES/
 
+# Hosted copy of the library — ~585 MB built by `npm run transcode:web`, lives in R2, not git
+web-audio/
+
 # Runtime analysis cache (saved reference-track analyses)
 config/analyses.json
 

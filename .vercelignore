@@ -1,0 +1,5 @@
+# Vercel builds from a git clone, so the gitignored audio is already absent — but a `vercel` CLI
+# deploy uploads the working directory instead, where Hobby caps source at 100 MB. Without these
+# lines that deploy would try to send ~6.5 GB of audio and fail.
+ECOSONIC FILES/
+web-audio/
