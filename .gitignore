@@ -32,5 +32,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Agent worktrees — each is its own checkout, and `git add -A` would commit them
+# as gitlinks pointing at commits no clone can resolve.
+.claude/worktrees/
+
 # SDD scratch
 .superpowers/
