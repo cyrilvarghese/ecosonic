@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "build:manifest": "tsx scripts/build-manifest.ts",
     "transcode:web": "tsx scripts/transcode-web.ts",
-    "upload:r2": "tsx scripts/upload-r2.ts"
+    "upload:r2": "tsx scripts/upload-r2.ts",
+    "verify:r2": "tsx scripts/verify-r2.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
