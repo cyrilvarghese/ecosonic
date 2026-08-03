@@ -1,0 +1,720 @@
+{
+  "EARTH": {
+    "ISO": [
+      {
+        "name": "1hz",
+        "path": "EARTH/ISO/1hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "2hz",
+        "path": "EARTH/ISO/2hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "3hz",
+        "path": "EARTH/ISO/3hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "4hz",
+        "path": "EARTH/ISO/4hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "PLANET": [
+      {
+        "name": "MERCURY",
+        "path": "EARTH/PLANET/MERCURY.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "SUN",
+        "path": "EARTH/PLANET/SUN.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "NOISE": [
+      {
+        "name": "NOISE EARTH",
+        "path": "EARTH/NOISE/NOISE EARTH.wav",
+        "bytes": 115344080,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT": [
+      {
+        "name": "ANKLUNG",
+        "path": "EARTH/ELEMENT/ANKLUNG.wav",
+        "bytes": 41277680,
+        "ext": ".wav"
+      },
+      {
+        "name": "BIRDS",
+        "path": "EARTH/ELEMENT/BIRDS.wav",
+        "bytes": 59361200,
+        "ext": ".wav"
+      },
+      {
+        "name": "FROG",
+        "path": "EARTH/ELEMENT/FROG.wav",
+        "bytes": 68758148,
+        "ext": ".wav"
+      },
+      {
+        "name": "NATURE",
+        "path": "EARTH/ELEMENT/NATURE.mp3",
+        "bytes": 6145072,
+        "ext": ".mp3"
+      }
+    ],
+    "BASS": [
+      {
+        "name": "BASS",
+        "path": "EARTH/SOUND/BASS/BASS.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ],
+    "PAD": [
+      {
+        "name": "PAD 2",
+        "path": "EARTH/SOUND/PAD/PAD 2.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ],
+    "MELODY": [
+      {
+        "name": "MELODY",
+        "path": "EARTH/SOUND/MELODY/MELODY.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ],
+    "FX": [
+      {
+        "name": "FX",
+        "path": "EARTH/SOUND/FX/FX.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ],
+    "ARP": [
+      {
+        "name": "ARP",
+        "path": "EARTH/SOUND/ARP/ARP.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT_SUB": [
+      {
+        "name": "DRUM",
+        "path": "EARTH/ELEMENT/SUB/DRUM.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      },
+      {
+        "name": "EKTARA",
+        "path": "EARTH/ELEMENT/SUB/EKTARA.wav",
+        "bytes": 42847370,
+        "ext": ".wav"
+      },
+      {
+        "name": "FLUTE",
+        "path": "EARTH/ELEMENT/SUB/FLUTE.wav",
+        "bytes": 22464080,
+        "ext": ".wav"
+      },
+      {
+        "name": "FROG&BIRDS",
+        "path": "EARTH/ELEMENT/SUB/FROG&BIRDS.wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ],
+    "DRONE": [
+      {
+        "name": "DRONE EARTH (PAD)",
+        "path": "EARTH/DRONE/DRONE EARTH (PAD).wav",
+        "bytes": 27648080,
+        "ext": ".wav"
+      }
+    ]
+  },
+  "WATER": {
+    "ISO": [
+      {
+        "name": "5hz",
+        "path": "WATER/ISO/5hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "6hz",
+        "path": "WATER/ISO/6hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "7hz",
+        "path": "WATER/ISO/7hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "8hz",
+        "path": "WATER/ISO/8hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "PLANET": [
+      {
+        "name": "EARTH",
+        "path": "WATER/PLANET/EARTH.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "VENUS",
+        "path": "WATER/PLANET/VENUS.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "NOISE": [
+      {
+        "name": "NOISE WATER",
+        "path": "WATER/NOISE/NOISE WATER.wav",
+        "bytes": 37073540,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT": [
+      {
+        "name": "OCEAN",
+        "path": "WATER/ELEMENT/OCEAN.wav",
+        "bytes": 177811280,
+        "ext": ".wav"
+      },
+      {
+        "name": "RAIN",
+        "path": "WATER/ELEMENT/RAIN.wav",
+        "bytes": 94510880,
+        "ext": ".wav"
+      },
+      {
+        "name": "SUB WATER",
+        "path": "WATER/ELEMENT/SUB/SUB WATER.wav",
+        "bytes": 31752080,
+        "ext": ".wav"
+      },
+      {
+        "name": "WHALES 2",
+        "path": "WATER/ELEMENT/SUB/WHALES 2.wav",
+        "bytes": 84287210,
+        "ext": ".wav"
+      },
+      {
+        "name": "WHALES",
+        "path": "WATER/ELEMENT/SUB/WHALES.wav",
+        "bytes": 177198626,
+        "ext": ".wav"
+      },
+      {
+        "name": "WATER",
+        "path": "WATER/ELEMENT/WATER.wav",
+        "bytes": 80823356,
+        "ext": ".wav"
+      },
+      {
+        "name": "XYLO",
+        "path": "WATER/ELEMENT/XYLO.wav",
+        "bytes": 32281280,
+        "ext": ".wav"
+      }
+    ],
+    "BASS": [
+      {
+        "name": "BASS",
+        "path": "WATER/SOUND/BASS/BASS.wav",
+        "bytes": 20107718,
+        "ext": ".wav"
+      }
+    ],
+    "PAD": [
+      {
+        "name": "PAD",
+        "path": "WATER/SOUND/PAD/PAD.wav",
+        "bytes": 20107718,
+        "ext": ".wav"
+      }
+    ],
+    "MELODY": [
+      {
+        "name": "MELODY",
+        "path": "WATER/SOUND/MELODY/MELODY.wav",
+        "bytes": 20107718,
+        "ext": ".wav"
+      }
+    ],
+    "FX": [
+      {
+        "name": "FX",
+        "path": "WATER/SOUND/FX/FX.wav",
+        "bytes": 60322994,
+        "ext": ".wav"
+      }
+    ],
+    "ARP": [
+      {
+        "name": "ARP",
+        "path": "WATER/SOUND/ARP/ARP.wav",
+        "bytes": 20107718,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT_SUB": [],
+    "DRONE": [
+      {
+        "name": "DRONE WATER",
+        "path": "WATER/DRONE/DRONE WATER.wav",
+        "bytes": 60322994,
+        "ext": ".wav"
+      }
+    ]
+  },
+  "AIR": {
+    "ISO": [
+      {
+        "name": "10hz",
+        "path": "AIR/ISO/10hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "11hz",
+        "path": "AIR/ISO/11hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "12hz",
+        "path": "AIR/ISO/12hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "9hz",
+        "path": "AIR/ISO/9hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "PLANET": [
+      {
+        "name": "JUPITER",
+        "path": "AIR/PLANET/JUPITER.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "MARS",
+        "path": "AIR/PLANET/MARS.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "NOISE": [
+      {
+        "name": "NOISE AIR",
+        "path": "AIR/NOISE/NOISE AIR.wav",
+        "bytes": 32091512,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT": [
+      {
+        "name": "STORM",
+        "path": "AIR/ELEMENT/STORM.wav",
+        "bytes": 78994370,
+        "ext": ".wav"
+      },
+      {
+        "name": "STORMDRUM",
+        "path": "AIR/ELEMENT/STORMDRUM.wav",
+        "bytes": 67145228,
+        "ext": ".wav"
+      },
+      {
+        "name": "WIND 2",
+        "path": "AIR/ELEMENT/WIND 2.wav",
+        "bytes": 57270938,
+        "ext": ".wav"
+      },
+      {
+        "name": "WIND",
+        "path": "AIR/ELEMENT/WIND.wav",
+        "bytes": 29129228,
+        "ext": ".wav"
+      }
+    ],
+    "BASS": [
+      {
+        "name": "BASS",
+        "path": "AIR/SOUND/BASS/BASS.wav",
+        "bytes": 31597796,
+        "ext": ".wav"
+      }
+    ],
+    "PAD": [
+      {
+        "name": "PAD",
+        "path": "AIR/SOUND/PAD/PAD.wav",
+        "bytes": 31597796,
+        "ext": ".wav"
+      }
+    ],
+    "MELODY": [
+      {
+        "name": "MELODY",
+        "path": "AIR/SOUND/MELODY/MELODY.wav",
+        "bytes": 31597796,
+        "ext": ".wav"
+      }
+    ],
+    "FX": [
+      {
+        "name": "FX AIR",
+        "path": "AIR/SOUND/FX/FX AIR.wav",
+        "bytes": 3949796,
+        "ext": ".wav"
+      }
+    ],
+    "ARP": [
+      {
+        "name": "ARP 2",
+        "path": "AIR/SOUND/ARP/ARP 2.wav",
+        "bytes": 31597796,
+        "ext": ".wav"
+      },
+      {
+        "name": "ARP",
+        "path": "AIR/SOUND/ARP/ARP.wav",
+        "bytes": 31597796,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT_SUB": [
+      {
+        "name": "BLUMER",
+        "path": "AIR/ELEMENT/SUB/BLUMER.wav",
+        "bytes": 62454938,
+        "ext": ".wav"
+      },
+      {
+        "name": "FLUTE WIND 2",
+        "path": "AIR/ELEMENT/SUB/FLUTE WIND 2.wav",
+        "bytes": 55296080,
+        "ext": ".wav"
+      },
+      {
+        "name": "FLUTE WIND",
+        "path": "AIR/ELEMENT/SUB/FLUTE WIND.wav",
+        "bytes": 39497228,
+        "ext": ".wav"
+      },
+      {
+        "name": "MONOFLUTE",
+        "path": "AIR/ELEMENT/SUB/MONOFLUTE.wav",
+        "bytes": 40484654,
+        "ext": ".wav"
+      }
+    ],
+    "DRONE": [
+      {
+        "name": "DRONE AIR (FX)",
+        "path": "AIR/DRONE/DRONE AIR (FX).wav",
+        "bytes": 31597796,
+        "ext": ".wav"
+      }
+    ]
+  },
+  "FIRE": {
+    "ISO": [
+      {
+        "name": "15hz",
+        "path": "FIRE/ISO/15hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "18hz",
+        "path": "FIRE/ISO/18hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "21hz",
+        "path": "FIRE/ISO/21hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "24hz",
+        "path": "FIRE/ISO/24hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "PLANET": [
+      {
+        "name": "SATURN",
+        "path": "FIRE/PLANET/SATURN.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "URANUS",
+        "path": "FIRE/PLANET/URANUS.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "NOISE": [
+      {
+        "name": "NOISE FIRE",
+        "path": "FIRE/NOISE/NOISE FIRE.wav",
+        "bytes": 33503690,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT": [
+      {
+        "name": "BELLS ",
+        "path": "FIRE/ELEMENT/BELLS .wav",
+        "bytes": 35328080,
+        "ext": ".wav"
+      },
+      {
+        "name": "CHIMES",
+        "path": "FIRE/ELEMENT/CHIMES.wav",
+        "bytes": 36864080,
+        "ext": ".wav"
+      },
+      {
+        "name": "TAMB",
+        "path": "FIRE/ELEMENT/TAMB.wav",
+        "bytes": 35328080,
+        "ext": ".wav"
+      }
+    ],
+    "BASS": [
+      {
+        "name": "BASS",
+        "path": "FIRE/SOUND/BASS/BASS.wav",
+        "bytes": 24576080,
+        "ext": ".wav"
+      }
+    ],
+    "PAD": [
+      {
+        "name": "PAD",
+        "path": "FIRE/SOUND/PAD/PAD.wav",
+        "bytes": 24576080,
+        "ext": ".wav"
+      }
+    ],
+    "MELODY": [
+      {
+        "name": "MELODY",
+        "path": "FIRE/SOUND/MELODY/MELODY.wav",
+        "bytes": 24576080,
+        "ext": ".wav"
+      }
+    ],
+    "FX": [
+      {
+        "name": "FX FIRE",
+        "path": "FIRE/SOUND/FX/FX FIRE.wav",
+        "bytes": 6912080,
+        "ext": ".wav"
+      }
+    ],
+    "ARP": [
+      {
+        "name": "ARP",
+        "path": "FIRE/SOUND/ARP/ARP.wav",
+        "bytes": 18144080,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT_SUB": [
+      {
+        "name": "FIRE",
+        "path": "FIRE/ELEMENT/SUB/FIRE.wav",
+        "bytes": 33792080,
+        "ext": ".wav"
+      },
+      {
+        "name": "FOREST",
+        "path": "FIRE/ELEMENT/SUB/FOREST.wav",
+        "bytes": 79872080,
+        "ext": ".wav"
+      },
+      {
+        "name": "PLATE",
+        "path": "FIRE/ELEMENT/SUB/PLATE.wav",
+        "bytes": 154368080,
+        "ext": ".wav"
+      },
+      {
+        "name": "TUBE",
+        "path": "FIRE/ELEMENT/SUB/TUBE.wav",
+        "bytes": 153600080,
+        "ext": ".wav"
+      }
+    ],
+    "DRONE": [
+      {
+        "name": "DRONE FIRE",
+        "path": "FIRE/DRONE/DRONE FIRE.wav",
+        "bytes": 73728080,
+        "ext": ".wav"
+      }
+    ]
+  },
+  "ETHER": {
+    "ISO": [
+      {
+        "name": "27hz",
+        "path": "ETHER/ISO/27hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "30hz",
+        "path": "ETHER/ISO/30hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "33hz",
+        "path": "ETHER/ISO/33hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "36hz",
+        "path": "ETHER/ISO/36hz.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "PLANET": [
+      {
+        "name": "NEPTUNE",
+        "path": "ETHER/PLANET/NEPTUNE.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      },
+      {
+        "name": "PLUTO",
+        "path": "ETHER/PLANET/PLUTO.wav",
+        "bytes": 86400080,
+        "ext": ".wav"
+      }
+    ],
+    "NOISE": [
+      {
+        "name": "NOISE ETHER",
+        "path": "ETHER/NOISE/NOISE ETHER.wav",
+        "bytes": 34560080,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT": [
+      {
+        "name": "BOWLS",
+        "path": "ETHER/ELEMENT/BOWLS.wav",
+        "bytes": 180160082,
+        "ext": ".wav"
+      },
+      {
+        "name": "GONG",
+        "path": "ETHER/ELEMENT/GONG.wav",
+        "bytes": 157120082,
+        "ext": ".wav"
+      },
+      {
+        "name": "STONE",
+        "path": "ETHER/ELEMENT/STONE.wav",
+        "bytes": 165440084,
+        "ext": ".wav"
+      }
+    ],
+    "BASS": [
+      {
+        "name": "BASS",
+        "path": "ETHER/SOUND/BASS/BASS.wav",
+        "bytes": 40960082,
+        "ext": ".wav"
+      }
+    ],
+    "PAD": [
+      {
+        "name": "PAD",
+        "path": "ETHER/SOUND/PAD/PAD.wav",
+        "bytes": 40960082,
+        "ext": ".wav"
+      }
+    ],
+    "MELODY": [
+      {
+        "name": "MELODY",
+        "path": "ETHER/SOUND/MELODY/MELODY.wav",
+        "bytes": 40960082,
+        "ext": ".wav"
+      },
+      {
+        "name": "MELODY2",
+        "path": "ETHER/SOUND/MELODY/MELODY2.wav",
+        "bytes": 20480084,
+        "ext": ".wav"
+      }
+    ],
+    "FX": [
+      {
+        "name": "FX",
+        "path": "ETHER/SOUND/FX/FX.wav",
+        "bytes": 40960082,
+        "ext": ".wav"
+      }
+    ],
+    "ARP": [
+      {
+        "name": "ARP",
+        "path": "ETHER/SOUND/ARP/ARP.wav",
+        "bytes": 20480084,
+        "ext": ".wav"
+      }
+    ],
+    "ELEMENT_SUB": [],
+    "DRONE": [
+      {
+        "name": "DRONE ETHER",
+        "path": "ETHER/DRONE/DRONE ETHER.wav",
+        "bytes": 57600080,
+        "ext": ".wav"
+      }
+    ]
+  }
+}
