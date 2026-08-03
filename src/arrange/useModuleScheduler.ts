@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import type { AudioEngine } from '@/audio/AudioEngine';
 import { arrangementStore } from '@/arrange/arrangementStore';
-import { regionEnvAt } from '@/arrange/regionEnv';
+import { regionAt, regionEnvAt } from '@/arrange/regionEnv';
 import { config } from '@/config';
 
 /** Loop the module clock and control each track's PLAYBACK: when the playhead enters a
@@ -18,12 +18,12 @@ export function useModuleScheduler(engine: AudioEngine): void {
     let sinceSteer = 0; // live-playback time accrued toward the next auto-steer
     let lastMode = arrangementStore.getState().activeMode; // detect session boundaries
     const active = new Set<string>();
-    const D = config.layerTwo.moduleSeconds;
     const tickSec = config.layerTwo.schedulerTickMs / 1000;
     const autoSteerSec = 60; // live playback: recompose the un-played future this often
 
     const frame = (now: number) => {
       const st = arrangementStore.getState();
+      const D = st.durationSec ?? config.layerTwo.moduleSeconds; // free-mix loops over totalSec
       if (st.playing) {
         const t = now / 1000;
         const dt = last === null ? 0 : t - last;
@@ -56,8 +56,9 @@ export function useModuleScheduler(engine: AudioEngine): void {
         if (doTick) sinceTick = 0;
 
         for (const track of st.tracks) {
-          const region = st.moduleRegions.find((r) => r.trackId === track.id);
-          const inside = !!region && pos >= region.enterSec && pos < region.exitSec;
+          // Whichever phrase is under the playhead — a free-mix rule can contribute several.
+          const region = regionAt(st.moduleRegions, track.id, pos);
+          const inside = !!region;
           const was = active.has(track.id);
           if (inside && region && (!was || resync)) {
             active.add(track.id);

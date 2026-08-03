@@ -1,10 +1,12 @@
 import { Layer } from '@/audio/Layer';
+import { buildEffectBuses, type EffectBuses, type EffectsConfig } from '@/audio/effects';
 
 export interface EngineConfig {
   thresholdBytes: number;
   minDb: number;
   muteRampMs: number;
   changeRampMs: number;
+  effects: EffectsConfig;
 }
 
 export interface TrackAudioSpec {
@@ -14,12 +16,15 @@ export interface TrackAudioSpec {
   volumeDb: number;
   muted: boolean;
   playing: boolean;
+  reverbSend: number;
+  delaySend: number;
 }
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
+  private buses: EffectBuses | null = null;
   private layers = new Map<string, Layer>();
   private running = false;
   private masterDb = 0;
@@ -54,17 +59,21 @@ export class AudioEngine {
       if (existing && existing.path === s.path) {
         if (s.muted) existing.mute(this.cfg.muteRampMs); else existing.unmute(this.cfg.muteRampMs);
         existing.setVolumeDb(s.volumeDb, this.cfg.changeRampMs);
+        existing.setSend('reverb', s.reverbSend, this.cfg.changeRampMs);
+        existing.setSend('delay', s.delaySend, this.cfg.changeRampMs);
         existing.setWantPlaying(s.playing, this.running, this.cfg.muteRampMs);
         continue;
       }
       if (existing) { existing.dispose(); this.layers.delete(s.id); }
       const ctx = this.ctx;
       const master = this.master;
-      if (!ctx || !master) return; // context cleared (e.g. navigation/unmount) mid-load
+      const buses = this.buses;
+      if (!ctx || !master || !buses) return; // context cleared (e.g. navigation/unmount) mid-load
       const layer = new Layer(ctx, master, {
         id: s.id, path: s.path, bytes: s.bytes,
         thresholdBytes: this.cfg.thresholdBytes, volumeDb: s.volumeDb, minDb: this.cfg.minDb,
-      });
+        reverbSend: s.reverbSend, delaySend: s.delaySend,
+      }, buses);
       this.layers.set(s.id, layer);
       await layer.load();
       if (!this.ctx) { layer.dispose(); this.layers.delete(s.id); return; } // cleared during the await
@@ -74,6 +83,10 @@ export class AudioEngine {
   }
 
   setTrackVolume(id: string, db: number) { this.layers.get(id)?.setVolumeDb(db, this.cfg.changeRampMs); }
+  /** Ramp one of a track's aux sends (0..1). */
+  setTrackSend(id: string, kind: 'reverb' | 'delay', value: number) {
+    this.layers.get(id)?.setSend(kind, value, this.cfg.changeRampMs);
+  }
   setTrackEnvelope(id: string, scalar: number) { this.layers.get(id)?.setEnvelope(scalar, this.cfg.changeRampMs); }
 
   /** Layer Two: start a track's sample at `offsetSec` into itself (0 = beginning; mid = scrub). */
@@ -109,7 +122,7 @@ export class AudioEngine {
   clear(): void {
     for (const l of this.layers.values()) l.dispose();
     this.layers.clear();
-    if (this.ctx) { void this.ctx.close(); this.ctx = null; this.master = null; this.analyser = null; }
+    if (this.ctx) { void this.ctx.close(); this.ctx = null; this.master = null; this.analyser = null; this.buses = null; }
     this.running = false;
   }
 
@@ -124,6 +137,7 @@ export class AudioEngine {
     this.ctx = ctx;
     this.master = master;
     this.analyser = analyser;
+    this.buses = buildEffectBuses(ctx, master, this.cfg.effects);
     this.applyMaster();
   }
 

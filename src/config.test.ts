@@ -6,6 +6,11 @@ const valid = {
     hybridThresholdBytes: 8388608,
     volume: { minDb: -60, maxDb: 0, trackMinDb: -20, trackMaxDb: 20, defaultTrackDb: 0, defaultMasterDb: 0, muteRampMs: 80, changeRampMs: 200 },
     tuning: { baseHz: 440, defaultHz: 440, presetsHz: [432, 440] },
+    effects: {
+      reverb: { seconds: 2.5, decay: 2, preDelayMs: 30, seed: 1 },
+      delay: { timeSec: 0.375, feedback: 0.3, dampHz: 3000, maxTimeSec: 5 },
+      defaultSends: { MELODY: { reverb: 0.2, delay: 0.12 } },
+    },
   },
   selection: {
     ISO: { min: 1, max: 1 }, PLANET: { min: 2, max: 2 }, NOISE: { min: 1, max: 1 },

@@ -10,6 +10,7 @@ import { steerModule, type SteerNudge } from '@/arrange/generate/steerModule';
 import { buildSessionModules, type SessionModules } from '@/arrange/session';
 import type { ArrangementFile } from '@/arrange/arrangementFile';
 import { config } from '@/config';
+import { defaultSendsFor, DRY, type TrackSends } from '@/audio/effects';
 
 type Selection = { element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number };
 
@@ -19,10 +20,14 @@ export interface ArrangementState {
   tracks: ArrTrack[];
   moduleRegions: TemplateRegion[];
   trackDurations: Record<string, number>; // real sample length (sec), filled once loaded
+  /** Per-track aux send levels, keyed by track id. Runtime mix state, like trackDurations —
+   *  deliberately not on ArrTrack, which describes what a track IS. */
+  trackSends: Record<string, TrackSends>;
   playing: boolean;
   positionSec: number;
   scrubbing: boolean; // true while dragging the position slider — holds the clock
   masterDb: number;
+  durationSec: number; // length the scheduler loops over — moduleSeconds, or totalSec for a free-mix
   // Phase 2 machinery (built + tested, not yet surfaced in the UI).
   composition: Composition | null;
   durationMin: number;
@@ -34,6 +39,11 @@ export interface ArrangementState {
   initFrom: (sel: Selection, durationMin: number) => void;
   setDurationMin: (min: number) => void;
   play: () => void;
+  /** Play a free-mix arrangement: a flat absolute region set over one module of `totalSec`.
+   *  `startSec` resumes mid-mix — always go through here rather than just setting `playing`, or the
+   *  scheduler runs whatever regions the store happens to hold (initFrom seeds a Layer Two
+   *  template that stops at `moduleSeconds`). */
+  playFreeMix: (regions: TemplateRegion[], totalSec: number, startSec?: number) => void;
   pause: () => void;
   seek: (sec: number) => void;
   setPosition: (sec: number) => void;
@@ -60,9 +70,8 @@ export interface ArrangementState {
   setTrackDuration: (trackId: string, sec: number) => void;
   /** Set a track's volume ceiling (dB) — the max level its clip reaches. Inherited from Layer One. */
   setTrackCeilingDb: (trackId: string, db: number) => void;
+  setTrackSend: (trackId: string, kind: 'reverb' | 'delay', value: number) => void;
 }
-
-const clampModule = (sec: number) => Math.max(0, Math.min(config.layerTwo.moduleSeconds, sec));
 
 /** Seed the module from a mode's density table (continuity bed spans the module; active/sparse
  *  drivers stagger toward the peak). */
@@ -80,10 +89,12 @@ export function createArrangementStore() {
       tracks: [],
       moduleRegions: [],
       trackDurations: {},
+      trackSends: {},
       playing: false,
       positionSec: 0,
       scrubbing: false,
       masterDb: 0,
+      durationSec: config.layerTwo.moduleSeconds,
       composition: null,
       durationMin: 30,
       activeMode: 'INTRODUCTION',
@@ -99,6 +110,7 @@ export function createArrangementStore() {
           activeMode: config.layerTwo.modes[0],
           moduleRegions: seedModuleFromTable(sel.tracks, config.layerTwo.modes[0]),
           trackDurations: {},
+          trackSends: defaultSendsFor(sel.tracks, config.audio.effects.defaultSends),
           masterDb: sel.masterDb,
           playing: false,
           positionSec: 0,
@@ -110,10 +122,12 @@ export function createArrangementStore() {
         if (!selection) { set({ durationMin: min }); return; }
         set({ composition: buildComposition(selection, min * 60), durationMin: min });
       },
-      play: () => set({ playing: true, session: null }),
+      play: () => set({ playing: true, session: null, durationSec: config.layerTwo.moduleSeconds }),
+      playFreeMix: (regions, totalSec, startSec = 0) =>
+        set({ moduleRegions: regions, durationSec: totalSec, session: null, activeMode: 'INTRODUCTION', positionSec: startSec, playing: true }),
       pause: () => set({ playing: false }),
-      seek: (sec) => set({ positionSec: clampModule(sec) }),
-      setPosition: (sec) => set({ positionSec: clampModule(sec) }),
+      seek: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
+      setPosition: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setScrubbing: (b) => set({ scrubbing: b }),
       setActiveMode: (mode) => set({ activeMode: mode }),
       loadMode: (mode) =>
@@ -135,6 +149,7 @@ export function createArrangementStore() {
           const first = built.order[0];
           return {
             session: { ...built, index: 0 },
+            durationSec: config.layerTwo.moduleSeconds,
             activeMode: first,
             moduleRegions: built.regionsByMode[first],
             positionSec: 0,
@@ -175,6 +190,13 @@ export function createArrangementStore() {
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
       setTrackCeilingDb: (trackId, db) =>
         set((s) => ({ tracks: s.tracks.map((t) => (t.id === trackId ? { ...t, ceilingDb: db } : t)) })),
+      setTrackSend: (trackId, kind, value) =>
+        set((s) => {
+          const cur = s.trackSends[trackId] ?? DRY;
+          const v = Math.min(1, Math.max(0, value));
+          if (cur[kind] === v) return {};
+          return { trackSends: { ...s.trackSends, [trackId]: { ...cur, [kind]: v } } };
+        }),
       updateModuleRegion: (trackId, next) =>
         set((s) => {
           const width = Math.max(0.001, next.exitSec - next.enterSec);

@@ -62,6 +62,41 @@ interface Project { element: ElementName|null; tracks: Track[]; masterVolumeDb; 
   - `getDuration()` — real sample length once loaded.
   - `dbToGain(db, minDb)` (`src/audio/dsp.ts`): `db<=minDb ? 0 : 10^(db/20)`.
 
+### 4a. Effect sends (`src/audio/effects.ts`)
+
+Each track has two aux sends, reverb and delay, feeding chains shared across the whole engine —
+one `ConvolverNode` and one `DelayNode` per `AudioContext`, not per track. `buildEffectBuses(ctx,
+master, cfg)` builds them, typed on `BaseAudioContext` so live playback and the offline export
+share one definition and cannot drift.
+
+Sends tap the layer's gain **post-fade**, so when `release()` ramps a track to zero the effects
+stop receiving signal but keep decaying — that ringing tail is what smooths a phrase boundary. The
+effect nodes are owned by `AudioEngine`, never by `Layer`, so disposing a track cannot cut its own
+tail short.
+
+The reverb impulse response is synthesized, not a shipped file: decaying white noise from a seeded
+PRNG (`impulseChannel`), so every context builds the identical room and an export matches what was
+heard. `tailSecFor(cfg)` derives how long the chains keep sounding — `max(reverb.seconds, delay
+decay to −60 dB)` — and the offline renderers extend their window by it so a tail is never
+truncated mid-decay.
+
+Levels are seeded per category from `audio.effects.defaultSends` — MELODY is wet by default,
+everything else dry — held in `arrangementStore.trackSends` keyed by track id, and adjustable per
+track in the remix track pool. Layer One has the buses but no send UI, so its tracks are dry.
+
+**The shipped settings are large on purpose.** A 30-second reverb at a 75% MELODY send is an
+ambient wash, not a room simulation: the goal is a melody phrase that dissolves into the bed rather
+than one that stops. Three consequences follow from `reverb.seconds = 30` and are all intended:
+
+- `tailSecFor` returns 30 s (reverb dominates; the delay chain decays in ~3.4 s), so every offline
+  render is 30 s longer than its timeline and every exported WAV grows by ~5 MB.
+- A chained session export overlap-adds a 30 s tail into the next module's opening.
+- The live `ConvolverNode` runs a 2 × 1.32 M-sample impulse response. That is real CPU, and it is
+  the first thing to shorten if playback ever stutters.
+
+There is no limiter anywhere in the chain and `encodeWavPcm16` hard-clamps, so summed tails at
+these send levels are the most likely source of clipping in an export.
+
 ## 5. Layer One (`src/session/`, `src/components/`, `src/audio/useAudioEngine.ts`)
 
 - **`buildSelection(element, manifest, cfg, rng)`** (pure) — picks tracks per
@@ -203,7 +238,6 @@ config/ecosonic.config.json + src/config.ts
 ## 10. Known gaps (see PRD §8)
 
 - `tuningHz` carried but never applied (no `playbackRate`).
-- No per-track effects model.
-- No persistence.
+- No persistence — including per-track send levels, which are runtime mix state (§4a).
 - Multi-module composition & mode selection are implemented at the engine level but not surfaced in
   the UI.

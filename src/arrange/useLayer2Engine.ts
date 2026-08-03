@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { AudioEngine, type TrackAudioSpec } from '@/audio/AudioEngine';
-import { arrangementStore } from '@/arrange/arrangementStore';
+import { arrangementStore, useArrangement } from '@/arrange/arrangementStore';
 import { config } from '@/config';
+import { DRY } from '@/audio/effects';
 
 /** Mount an audio engine for Layer Two: load the handed-off tracks (not started), and
  *  resume/suspend the context on play/pause. The scheduler triggers each track from 0. */
@@ -14,16 +15,24 @@ export function useLayer2Engine(): AudioEngine {
       minDb: config.audio.volume.minDb,
       muteRampMs: config.audio.volume.muteRampMs,
       changeRampMs: config.audio.volume.changeRampMs,
+      effects: config.audio.effects,
     });
   }
   const engine = ref.current;
 
+  // Reload whenever the set of tracks or their samples changes. Layer Two hands its tracks over once
+  // before mount, but /remix derives its own after a fetch and redraws them on every regenerate — a
+  // mount-only load would leave the engine empty there forever. A joined string, so an unchanged
+  // track list is Object.is-equal and costs no re-render.
+  const trackKey = useArrangement((s) => s.tracks.map((t) => `${t.id}:${t.sample.path}`).join('|'));
+
   useEffect(() => {
     const st = arrangementStore.getState();
-    if (!st.tracks.length) return;
     const specs: TrackAudioSpec[] = st.tracks.map((t) => ({
       id: t.id, path: t.sample.path, bytes: t.sample.bytes,
       volumeDb: t.ceilingDb, muted: false, playing: false, // loaded, not started; scheduler triggers from 0
+      reverbSend: (st.trackSends[t.id] ?? DRY).reverb,
+      delaySend: (st.trackSends[t.id] ?? DRY).delay,
     }));
     engine.setMasterVolume(st.masterDb);
 
@@ -45,6 +54,7 @@ export function useLayer2Engine(): AudioEngine {
 
     let wasPlaying = false;
     const ceilings = new Map(st.tracks.map((t) => [t.id, t.ceilingDb]));
+    const sends = new Map(st.tracks.map((t) => [t.id, st.trackSends[t.id] ?? DRY]));
     const unsub = arrangementStore.subscribe((s) => {
       // Per-track volume ceiling (Layer Two slider) — ramp the layer's gain like Layer One does.
       for (const t of s.tracks) {
@@ -53,6 +63,15 @@ export function useLayer2Engine(): AudioEngine {
           engine.setTrackVolume(t.id, t.ceilingDb);
         }
       }
+      // Aux sends. These ride the subscription, not trackKey — putting them in trackKey would
+      // re-fetch and re-decode every sample on each slider movement.
+      for (const t of s.tracks) {
+        const next = s.trackSends[t.id] ?? DRY;
+        const prev = sends.get(t.id) ?? DRY;
+        if (prev.reverb !== next.reverb) engine.setTrackSend(t.id, 'reverb', next.reverb);
+        if (prev.delay !== next.delay) engine.setTrackSend(t.id, 'delay', next.delay);
+        sends.set(t.id, next);
+      }
       if (s.playing !== wasPlaying) {
         wasPlaying = s.playing;
         if (s.playing) engine.resumeContext();
@@ -60,7 +79,7 @@ export function useLayer2Engine(): AudioEngine {
       }
     });
     return () => { cancelled = true; unsub(); engine.clear(); };
-  }, [engine]);
+  }, [engine, trackKey]);
 
   return engine;
 }
