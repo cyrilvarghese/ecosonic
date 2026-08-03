@@ -1,0 +1,137 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ECOSONIC effects probe</title>
+<style>
+  body { font: 14px/1.5 ui-monospace, monospace; padding: 24px; max-width: 900px; }
+  h1 { font-size: 16px; }
+  pre { background: #f4f4f5; padding: 12px; overflow-x: auto; border-radius: 6px; }
+  .bad { color: #b91c1c; font-weight: bold; }
+  .good { color: #15803d; font-weight: bold; }
+</style>
+<h1>ECOSONIC effects probe — does the reverb tail survive a phrase ending?</h1>
+<p>Builds the exact live-path graph (layer gain → post-fade send → shared bus → master),
+plays 1 s of noise, then releases the track the way <code>Layer.release()</code> does, and measures
+the output level every 2 s afterwards, out to 36 s.</p>
+<pre id="out">running…</pre>
+
+<script>
+const CFG = {
+  reverb: { seconds: 30, decay: 2.0, preDelayMs: 60, seed: 1 },
+  delay:  { timeSec: 0.375, feedback: 0.3, dampHz: 3000, maxTimeSec: 5 },
+};
+const SEND = 0.75;      // the shipped MELODY default
+const MUTE_RAMP_MS = 80; // config.audio.volume.muteRampMs
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function impulseChannel(length, decay, seed) {
+  const rand = mulberry32(seed);
+  const out = new Float32Array(length);
+  for (let i = 0; i < length; i++) out[i] = (rand() * 2 - 1) * Math.pow(1 - i / length, decay);
+  return out;
+}
+
+// Mirrors src/audio/effects.ts buildEffectBuses, with `normalize` exposed so we can measure it.
+function buildEffectBuses(ctx, master, cfg, normalize) {
+  const { reverb, delay } = cfg;
+  const reverbBus = ctx.createGain();
+  const preDelaySec = Math.max(0.001, reverb.preDelayMs / 1000);
+  const preDelay = ctx.createDelay(preDelaySec);
+  preDelay.delayTime.value = preDelaySec;
+  const convolver = ctx.createConvolver();
+  convolver.normalize = normalize;
+  const len = Math.max(1, Math.floor(ctx.sampleRate * reverb.seconds));
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  ir.copyToChannel(impulseChannel(len, reverb.decay, reverb.seed), 0);
+  ir.copyToChannel(impulseChannel(len, reverb.decay, reverb.seed + 1), 1);
+  convolver.buffer = ir;
+  reverbBus.connect(preDelay); preDelay.connect(convolver); convolver.connect(master);
+
+  const delayBus = ctx.createGain();
+  const line = ctx.createDelay(delay.maxTimeSec);
+  line.delayTime.value = Math.min(delay.timeSec, delay.maxTimeSec);
+  const damp = ctx.createBiquadFilter();
+  damp.type = 'lowpass'; damp.frequency.value = delay.dampHz;
+  const feedback = ctx.createGain();
+  feedback.gain.value = Math.min(Math.max(delay.feedback, 0), 0.95);
+  delayBus.connect(line); line.connect(damp); damp.connect(feedback); feedback.connect(line);
+  line.connect(master);
+  return { reverbBus, delayBus };
+}
+
+async function probe({ send, normalize, dryStops }) {
+  const sr = 44100, total = 36;
+  const ctx = new OfflineAudioContext(2, sr * total, sr);
+  const master = ctx.createGain();
+  master.connect(ctx.destination);
+  const { reverbBus, delayBus } = buildEffectBuses(ctx, master, CFG, normalize);
+
+  // A "layer": noise source -> gain -> master (dry), gain -> send -> bus (wet).
+  const nb = ctx.createBuffer(1, sr * 2, sr);
+  const d = nb.getChannelData(0);
+  const r = mulberry32(99);
+  for (let i = 0; i < d.length; i++) d[i] = (r() * 2 - 1) * 0.5;
+  const src = ctx.createBufferSource();
+  src.buffer = nb; src.loop = true;
+
+  const gain = ctx.createGain();
+  gain.gain.value = 1;
+  src.connect(gain);
+  gain.connect(master);
+
+  const rev = ctx.createGain(); rev.gain.value = send;
+  gain.connect(rev); rev.connect(reverbBus);
+  const dly = ctx.createGain(); dly.gain.value = send * 0.6;
+  gain.connect(dly); dly.connect(delayBus);
+
+  src.start(0);
+  if (dryStops) {
+    // exactly what Layer.release() does: ramp to 0 over muteRampMs, stop shortly after
+    const t = 1.0;
+    gain.gain.setValueAtTime(1, t);
+    gain.gain.linearRampToValueAtTime(0, t + MUTE_RAMP_MS / 1000);
+    src.stop(t + MUTE_RAMP_MS / 1000 + 0.03);
+  }
+  const buf = await ctx.startRendering();
+  const ch = buf.getChannelData(0);
+  const win = Math.floor(sr * 2.0);
+  const rows = [];
+  for (let w = 0; w * win < ch.length; w++) {
+    let sum = 0;
+    for (let i = w * win; i < Math.min((w + 1) * win, ch.length); i++) sum += ch[i] * ch[i];
+    const rms = Math.sqrt(sum / win);
+    rows.push({ t: (w * 2.0).toFixed(2), db: rms > 0 ? (20 * Math.log10(rms)).toFixed(1) : '-inf' });
+  }
+  return rows;
+}
+
+(async () => {
+  const lines = [];
+  const runs = [
+    ['send 0.75 (current default)', { send: SEND, normalize: true, dryStops: true }],
+    ['send 1.00 (maximum)', { send: 1.0, normalize: true, dryStops: true }],
+    ['send 0.50 (for comparison)', { send: 0.5, normalize: true, dryStops: true }],
+  ];
+  for (const [label, opts] of runs) {
+    const rows = await probe(opts);
+    lines.push('=== ' + label + ' ===');
+    lines.push('  time   level(dBFS)   <- dry stops at 1.00s');
+    for (const r of rows) {
+      const mark = Number(r.t) >= 2 ? '  TAIL' : '';
+      lines.push('  ' + r.t.padStart(5) + '   ' + String(r.db).padStart(8) + mark);
+    }
+    const tail = rows.filter((r) => Number(r.t) >= 2 && r.db !== '-inf').map((r) => Number(r.db));
+    const peakTail = tail.length ? Math.max(...tail) : -Infinity;
+    lines.push('  --> loudest tail after 2s: ' + (isFinite(peakTail) ? peakTail.toFixed(1) + ' dBFS' : 'SILENT'));
+    lines.push('');
+  }
+  document.getElementById('out').textContent = lines.join('\n');
+})().catch((e) => { document.getElementById('out').textContent = 'ERROR: ' + e.message; });
+</script>

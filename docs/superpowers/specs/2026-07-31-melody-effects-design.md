@@ -178,14 +178,21 @@ setSend(kind: 'reverb' | 'delay', value: number, rampMs: number): void;
 
 ```jsonc
 "effects": {
-  "reverb": { "seconds": 2.5, "decay": 2.0, "preDelayMs": 30, "seed": 1 },
+  "reverb": { "seconds": 30, "decay": 2.0, "preDelayMs": 60, "seed": 1 },
   "delay":  { "timeSec": 0.375, "feedback": 0.3, "dampHz": 3000, "maxTimeSec": 5 },
-  "defaultSends": { "MELODY": { "reverb": 0.20, "delay": 0.12 } }
+  "defaultSends": { "MELODY": { "reverb": 0.75, "delay": 0.3 } }
 }
 ```
 
 Validated by a zod schema in `src/config.ts` alongside `volume` and `tuning`. `defaultSends` is a
 partial record over `Category`; any category not listed defaults to `{ reverb: 0, delay: 0 }`.
+
+**Retuned by ear after implementation.** This design was written against
+`seconds: 2.5, preDelayMs: 30, MELODY 0.20/0.12`, and those values shipped first. They turned out
+inaudible against a full ambient bed — the continuity layers never stop, so a short quiet tail has
+nothing to emerge from. The values above are the third pass and the shipped ones. Nothing in the
+architecture changed; only the numbers did, which is the point of deriving `tailSec` from config
+rather than hardcoding it. See §9 for what the larger tail costs.
 
 ## 6. Data flow
 
@@ -246,8 +253,10 @@ module's opening, where it belongs.
 Two consequences:
 
 - Summing overlapping tails can exceed 1.0 where a loud module ending meets a loud module opening.
-  The existing renderer has no limiter and `encodeWavPcm16` will clamp. Acceptable at the send
-  levels in `defaultSends`, but it is a real edge and should be listened for.
+  The existing renderer has no limiter and `encodeWavPcm16` will clamp. At the shipped 0.75 reverb
+  send with a 30 s tail this is no longer a narrow edge — the overlap is ~5% of every module and
+  the tail is loud. Nothing tests for it; it is checked by ear. A limiter on `master` is the fix if
+  it ever bites.
 - `renderSessionWav.test.ts` asserts exact output sample counts. Those expectations change to
   `n × D + tailSec`.
 
@@ -274,8 +283,14 @@ browser". This design follows that convention.
 
 ## 9. Risks and accepted limitations
 
-- **Export length changes.** WAVs become `tailSec` (~2.5 s) longer than `totalSec`. Intended, but
-  it makes the export duration differ from the arrangement duration, which should be documented.
+- **Export length changes.** WAVs become `tailSec` longer than `totalSec` — 30 s at the shipped
+  reverb length, roughly 5 MB of 16-bit stereo. Intended, but it makes the export duration differ
+  from the arrangement duration, which is documented in remix rule 5a.4 and counted by
+  `estimatedWavBytes`.
+- **Convolution cost scales with `reverb.seconds`.** A 30 s IR at 44.1 kHz is 2 × 1.32 M samples
+  convolved live, per context. It is comfortable on a desktop browser and it is the first knob to
+  turn down if playback stutters on weaker hardware — halving `seconds` halves the work and the
+  export overhead together, with no code change.
 - **Export is not a bit-identical bounce, and never was.** Live triggers land on
   `requestAnimationFrame` boundaries (~16 ms, `useModuleScheduler.ts:24`) while the offline renderer
   schedules sample-exactly; and `chooseSourceKind` streams large files live but decodes everything

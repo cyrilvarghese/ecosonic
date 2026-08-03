@@ -1,6 +1,6 @@
 # ECOSONIC — Product Requirements Document
 
-**Status:** Living document · **Last updated:** 2026-07-19
+**Status:** Living document · **Last updated:** 2026-08-02
 **Related:** [SPEC.md](./SPEC.md) · [ROADMAP.md](./ROADMAP.md) · [ADRs](./adr/README.md) ·
 [Generative framework](./generative/03-generation-framework.md)
 
@@ -43,7 +43,8 @@ beats. The tool should feel like tending a garden, not sequencing a track.
 - Not a general-purpose DAW; no beat grid, MIDI, or piano-roll.
 - No rhythmic/quantized structures (explicitly avoided per the meditation brief).
 - No cloud accounts, sharing, or persistence layer yet (in-memory session).
-- No per-track effects UI yet (delay/reverb are not modeled — see §9).
+- No effects beyond reverb and delay sends (§6.4) — no EQ, compression, or limiting, and no
+  effects UI in Layer One.
 
 ## 3. Users & core use cases
 
@@ -64,6 +65,7 @@ Core flows:
 | `/` | Element selector | Choose EARTH / WATER / AIR / FIRE / ETHER |
 | `/layer1` | Builder | The multitrack sound ecosystem |
 | `/layer2` | Module Designer | Orchestrate track entrances/exits on a timeline |
+| `/remix` | Remix | Draw a playable mix from the five **authored** session timelines — cross-element, scoped to one element, or one element's sound on every element's timings; full session or one section; play and export WAV (§6.4) |
 | `/rules` | Rule Discovery | List all composition rules; analyze a reference track (three blind per-mode passes) into candidate rules — Cards or Timeline view; keep/promote; save & reload analyses by file name (§7) |
 
 Navigation is one-way-friendly: `/` → `/layer1` → `/layer2`, with "back" links. State is held in
@@ -90,7 +92,8 @@ memory; a hard refresh returns to `/`.
 Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]):
 - **Non-muted tracks** (muted = "not selected") with their **volume ceiling** (Layer One volume).
 - The chosen **element** (for theming), **tuning**, and **master** (read-only passthrough).
-- *Not* effects (Layer One has none) — see §9.
+- *Not* effect sends. Sends exist in the engine (§6.4) but are seeded per **category** from config,
+  not inherited from Layer One, which still has no effects UI.
 
 ### 6.2 The module designer (current MVP)
 - The handed-off tracks appear as **lanes** on a single **Wave Module** timeline (~10 min).
@@ -149,8 +152,58 @@ Layer Two **snapshots** the Layer One selection on entry (see [ADR-0006 context]
   is implemented and unit-tested; it is simply not wired into the UI yet. This is also where the
   generated ~30-min composition becomes playable end-to-end.)
 - **Advanced** (deferred): live **sample regeneration** of unlocked tracks between/within modules,
-  ISO↔PLANETS alternation & rarefaction dynamics, BPM/Key/Quantize, effects inheritance,
-  per-instance variation (today repeated instances of a mode share one generated template).
+  ISO↔PLANETS alternation & rarefaction dynamics, BPM/Key/Quantize, Layer One effects UI and
+  effects inheritance (§6.4), per-instance variation (today repeated instances of a mode share one
+  generated template).
+
+### 6.4 Remix — playing the authored sessions (`/remix`)
+
+Built 2026-07-26 → 07-28; effect sends added 2026-07-31. A distinct surface that **reuses Layer
+Two's machinery** — the same arrangement store, audio engine, scheduler and offline renderer — but
+takes its timings from somewhere else entirely. Full behavioural reference:
+[remix-rules.md](./remix-rules.md).
+
+Where §6.3's grammar *emits* timings from `canon ± half` ranges, Remix *draws* them from the five
+**authored** session tables in `config/sessions/*.md` — real, hand-written 30-minute sessions, one
+per element. The product question it answers is one the generator cannot: *what does EARTH's noise
+under WATER's planets under AIR's bass actually sound like?*
+
+- **The pool.** Every session file parses into `AuthoredRule`s — one layer's timing within one
+  section of one element. A rule carries **timing only, never audio**. Authored layer names are
+  normalised onto Categories, so two elements spelling a layer differently still meet on one lane
+  and no timing is stranded by naming.
+- **Three ways to narrow it.** **Cross-element** (default) uses the whole pool, and each track's
+  sample follows the rule that won it. **Scoped**(el) uses one element's rules *and* samples.
+  **Borrowed timings**(el) uses the whole pool for timing but one chosen element's samples
+  throughout — which is the only mode that can play one element's *sound* on another's *clock*.
+- **Full session or one section.** Thirty minutes as authored, or a single section rebased onto a
+  10-minute timeline. Section windows differ per element (AIR's are 30 seconds early), so the
+  rebase origin comes from the authored data, never from an index.
+- **One track per category**, stacked in the vertical grammar's order. **Absence is never
+  repaired**: a category no rule covers gets no track, a section an element never authored is
+  simply silent, and nothing is substituted to fill the gap.
+- **Deterministic.** The same pool, manifest, seed, element and section always give the same draw.
+  *Regenerate* advances the seed.
+- **Effect sends.** Each track row carries a **reverb** and a **delay** send, 0–100%, feeding one
+  shared room and one shared echo rather than a copy per track. MELODY ships wet, every other
+  category dry. Sends are tapped *after* the track's fader, so a phrase that ends keeps ringing —
+  which is what stops melody phrases cutting off dead between non-contiguous phrases. Levels are
+  runtime mix state: not saved with an arrangement, the same as per-track volume.
+- **Adjust to whole loops** (opt-in, off by default). Resizes each interval to contain a whole
+  number of loops so no pass is cut part-way, never shrinking below one loop and never moving an
+  interval's **start** — authored entry points and their fades survive.
+- **Playback and export.** Plays live, and exports the mix to WAV. The export mirrors playback
+  *musically*, not byte for byte, and runs past the end of the timeline so the final decay finishes
+  rather than being chopped — so an exported file is longer than its timeline.
+- **What the screen tells you.** Chips list only candidates the current scope could actually have
+  drawn; lit chips are the picks. Bars read `MELODY 1:56 ×5` — material and repeat count — against
+  the interval length, with `×N+` written honestly where the sample does not divide evenly. In
+  Borrowed timings, bars take the **sample**'s element colour and chips keep the **rule**'s, so the
+  mode is visible rather than merely enabled.
+
+**Deliberately not done:** stitching three section modules into one session · per-section separate
+tracks · crossfading loop wraps · invariant repair of any kind · in-app rule editing · saving a
+generated result.
 
 ## 7. Rule Discovery — reference-track analysis (`/rules`)
 
@@ -216,6 +269,18 @@ Discover lists them; **Load** repopulates the tabs/timeline instantly with **no 
   ranges + ordering constraints that *emit* mode timing tables when seeded.
 - **Drift** — how far a generated draw may stray from the brief's canonical timings:
   `STRICT / MODERATE / EXPLORATORY`.
+- **Authored rule** — one layer's timing within one section of one element's hand-written session
+  table. **Timing only, never audio** — which is why a remix track's audio comes from its element
+  rather than from the rule (§6.4).
+- **Borrowed timings** — the remix mode that fixes the sample element by hand, freeing every
+  track's rules to be drawn from any element.
+- **Reverb / delay** — a *room* and an *echo*. Reverb is a wash of reflections you cannot pick
+  apart; delay is distinct repeats you can count. Both are shared once across the mix, not copied
+  per track.
+- **Send** — how much of a track is fed into a shared effect, 0–100%. 0% is **dry** (untouched),
+  100% fully **wet**. Melody ships at 75% reverb; everything else at 0%.
+- **Tail** — how long an effect keeps sounding *after* its input stops. The reason a phrase can
+  dissolve rather than cut, and the reason an exported WAV is longer than its timeline.
 
 ## 9. Constraints & principles
 
@@ -230,9 +295,14 @@ Discover lists them; **Load** repopulates the tabs/timeline instantly with **no 
 - **Known gaps:**
   - **Tuning is inert** — `tuningHz` is carried through but never applied (no `playbackRate` is set,
     in Layer One *or* Two). Wiring it is a small, isolated change.
-  - **Effects not modeled** — Layer One's `Track` has no delay/reverb fields, so the spec's
-    "effects inheritance" is blocked until Layer One grows them.
-  - **No persistence** — sessions are in-memory only.
+  - **Effects are engine-wide but only surfaced in Remix** — every `AudioEngine` builds the reverb
+    and delay buses, yet only `/remix` has send sliders (§6.4). Layer One's `Track` still has no
+    send fields, so "effects inheritance" through the Layer One → Layer Two handoff remains
+    blocked until it grows them.
+  - **No limiter anywhere.** Nothing catches a summed peak above full scale; the WAV encoder simply
+    clamps. Overlapping effect tails at high send levels are the most likely place for that to
+    bite, and it is checked by ear rather than by a test.
+  - **No persistence** — sessions are in-memory only, including per-track send levels.
 
 ## 10. Success criteria (current phase)
 
@@ -249,3 +319,10 @@ Discover lists them; **Load** repopulates the tabs/timeline instantly with **no 
   tick, audio uninterrupted; stopping keeps the arrangement editable on the timeline.
 - **Export**: JSON round-trips the arrangement; WAV renders the module as heard, mid-play, without
   glitching live playback.
+- **Remix**: `/remix` draws a playable mix from the authored sessions; the same seed reproduces it
+  exactly and *Regenerate* changes it. Every lit chip is a candidate the current scope could have
+  drawn. Switching to Borrowed timings turns the timeline one colour while the chips stay many —
+  one element's sound on every element's clock.
+- **Effect sends**: melody phrases ring out past their last note instead of stopping dead, live and
+  in the export alike; moving a send slider changes the wet level smoothly with no dropout and no
+  sample reload; an exported WAV ends in a decay rather than a cut.
