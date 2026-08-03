@@ -75,7 +75,7 @@ This *sidesteps* three Vercel limits rather than solving them:
 ┌────────────────────────────────┐     ┌────────────────────────────────────┐
 │  /   /layer1   /layer2  /remix │     │  EARTH/ISO/1hz.flac                │
 │  + manifest.json               │ ──► │  EARTH/PAD/BOWLS.m4a               │
-│  + sessionStore.json           │     │  198 files, ~580 MB (measured)     │
+│  + sessionStore.json           │     │  101 files, 585 MB (built)         │
 │  no server, no API, no key     │     │  CORS: GET from the Vercel origin  │
 └────────────────────────────────┘     └────────────────────────────────────┘
 
@@ -158,21 +158,35 @@ person who is going to look at this.
 
 ## 6. Audio: why transcode, measured
 
-The library is 5.9 GB across 198 files; the largest is 171.8 MB, and
+The library is 5.9 GB across **101 samples**; the largest is 171.8 MB, and
 [Layer.ts:83-85](../../../src/audio/Layer.ts) downloads each file *whole* before it can play a
 note. Locally that is a disk read. Over the internet it is a multi-minute wait, and several
 loaded layers risk exhausting tab memory (decoded float ≈ 1.3× the WAV).
 
-Measured with ffmpeg 8.1.2 on one real file of each kind:
+**Built 2026-08-03** with ffmpeg 8.1.2 — 101 of 101 encoded, none failed:
 
-| Sample | Source | Encoded | Ratio |
+| | Files | Hosted | Share |
 | --- | --- | --- | --- |
-| `BOWLS.wav` (largest in library) | 171.8 MB | **9.7 MB** AAC 128 k | 17.7× |
-| `18hz.wav` (largest ISO) | 82.4 MB | **17.6 MB** FLAC | 4.7× |
+| AAC 128 k | 81 | 239.7 MB | 41% |
+| FLAC (`ISO/**`) | 20 | 345.8 MB | 59% |
+| **Total** | **101** | **585.4 MB** | 5.9% of R2's free tier |
 
-Projected: ~4.3 GB non-ISO ≈ 243 MB, plus 1.6 GB ISO ≈ 340 MB → **~580 MB**, about 6% of R2's
-free tier. Note the inversion: ISO is 27% of the source but **58% of the hosted payload**,
-because lossless cannot compete with lossy. The largest single download becomes 17.6 MB.
+6018 MB → 585 MB, **10.3× overall**. Per-file the range is wide: `BOWLS.wav` 171.8 → 9.7 MB
+(17.7×), one FX bed 57.5 → 0.8 MB (73×), while ISO manages only ~4.7×. The **largest single
+download is now 19.1 MB** (`ETHER/ISO/33hz.flac`), down from 171.8 MB.
+
+Note the inversion, which held: ISO is a fifth of the files but **59% of the hosted payload**,
+because lossless cannot compete with lossy. If size ever becomes a problem, ISO is the only
+lever worth pulling.
+
+**Two corrections this run forced.** The library has 101 samples, not the 198 an earlier count
+claimed — 97 of those were macOS AppleDouble `._*.wav` sidecars, metadata stubs that
+`manifestBuild` already filters and a naive directory walk does not. And the committed manifest
+was stale (generated 2026-07-10): it named `EARTH/ELEMENT/ANKLUNG.wav`, which had since moved to
+`EARTH/ELEMENT/SUB/`, and missed `AIR/SOUND/MELODY/MELODY 2.wav`. **That is a live bug in the
+running app** — a picked sample that 404s — and it surfaced only because a batch job demands
+every manifest entry resolve, where the player fails soft on one silent track. Regenerating is
+now part of the workflow: `build:manifest` must be re-run and committed when the library changes.
 
 **Why `ISO/**` stays lossless.** That material is isochronic/binaural, where the effect lives
 in the inter-channel frequency difference. AAC's joint-stereo (mid/side) coding is designed to
@@ -184,7 +198,7 @@ the bulk run, and the fallback is shipping `ISO/**` as original WAVs (still insi
 
 | Fact | Source | Consequence |
 | --- | --- | --- |
-| R2 free tier: 10 GB storage, 1M Class A, 10M Class B, **egress free** | [R2 pricing](https://developers.cloudflare.com/r2/pricing/) | ~580 MB and one listener sit far inside. $0. |
+| R2 free tier: 10 GB storage, 1M Class A, 10M Class B, **egress free** | [R2 pricing](https://developers.cloudflare.com/r2/pricing/) | 585 MB and one listener sit far inside — 5.9% of storage. $0. |
 | `r2.dev` is rate-limited, "development purposes" only | [public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/) | Fine for one tester; custom domain is the upgrade path. |
 | R2 CORS via `wrangler r2 bucket cors set` — `AllowedOrigins` / `AllowedMethods` / `AllowedHeaders` / `ExposeHeaders` | [R2 CORS](https://developers.cloudflare.com/r2/buckets/cors/) | One GET rule. |
 | Functions cap bodies at **4.5 MB**, all plans | [limits](https://vercel.com/docs/functions/limitations) | Confirms analyze can't be hosted. |

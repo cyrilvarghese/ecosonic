@@ -76,10 +76,18 @@ async function main() {
       srcBytes += before;
 
       // Resume: a previous run already produced this one.
-      if (existsSync(out) && (await stat(out)).size > 0) {
-        outBytes += (await stat(out)).size;
-        skipped += 1;
-        return;
+      //
+      // The size is awaited into a variable before the `+=`. Writing
+      // `outBytes += (await stat(out)).size` reads outBytes, suspends at the await, and lets
+      // another worker's write land in between — then overwrites it. Lost updates, and a total
+      // that differs run to run over the same files.
+      if (existsSync(out)) {
+        const existing = (await stat(out)).size;
+        if (existing > 0) {
+          outBytes += existing;
+          skipped += 1;
+          return;
+        }
       }
 
       await ffmpeg(src, out, isLossless(rel));
