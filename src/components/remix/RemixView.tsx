@@ -51,7 +51,7 @@ export function RemixView() {
   useModuleScheduler(engine);
 
   const {
-    tracks, picks, regions, totalSec, warnings, loading,
+    tracks, picks, regions, totalSec, warnings, loading, loadError,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
     lanesPerTrack, setLanesPerTrack, manual, toggleChip, resetCategory, canSound,
   } = useRemix();
@@ -193,6 +193,11 @@ export function RemixView() {
   return (
     <div className="flex flex-col gap-4">
       {loading && <p className="text-sm text-muted-foreground">Loading rules…</p>}
+      {loadError && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          Could not load the authored sessions — every pool below will be empty. {loadError}
+        </p>
+      )}
       {warnings.length > 0 && (
         <details className="text-xs text-amber-600 dark:text-amber-400">
           <summary className="cursor-pointer">

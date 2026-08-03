@@ -107,7 +107,8 @@ const STORE = {
 };
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async () => ({ json: async () => ({ store: STORE, warnings: [] }) })));
+  // `ok` matters: useRemix checks it before parsing, so a stub without it takes the error path.
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ store: STORE, warnings: [] }) })));
   // jsdom implements neither of these; the download path calls both.
   vi.stubGlobal('URL', { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} });
   // ...and clicking the download anchor makes jsdom log "navigation to another Document".
@@ -372,8 +373,20 @@ describe('RemixView', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Export WAV/ })).toBeInTheDocument());
   });
 
+  it('says why the rules are missing instead of showing an empty pool', async () => {
+    // Static export: /api/sessions is not there. Silently rendering nothing reads as a broken
+    // page, so the reason has to reach the screen.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) })));
+
+    render(<RemixView />);
+
+    expect(await screen.findByText(/could not load/i)).toBeInTheDocument();
+    expect(screen.getByText(/404/)).toBeInTheDocument();
+  });
+
   it('spells out each warning rather than only counting them', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
       json: async () => ({ store: STORE, warnings: ['ELEMENT_SUB: no ETHER sample for the picked rule'] }),
     })));
     render(<RemixView />);

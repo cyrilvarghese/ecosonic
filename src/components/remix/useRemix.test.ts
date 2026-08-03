@@ -52,8 +52,10 @@ const STORE = {
   }],
 };
 
+// `ok`/`status` are part of the stub because the hook checks them before parsing — a Response
+// mock that omits them is not a Response, and every test would take the error path.
 const stubSessions = (body: unknown) =>
-  vi.stubGlobal('fetch', vi.fn(async () => ({ json: async () => body })));
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => body })));
 
 const elementOf = (s: RemixState, category: string) =>
   s.picks.find((p) => p.track.category === category)?.rule.source.element;
@@ -66,6 +68,39 @@ beforeEach(() => {
 });
 
 describe('useRemix', () => {
+  it('stops loading when the session store cannot be fetched', async () => {
+    // Hosted as a static export there is no /api/sessions, so the fetch rejects. Without a catch
+    // the hook stays `loading` forever and /remix is a permanently-spinning page.
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+
+    const { result } = renderHook(() => useRemix());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
+
+  it('reports the reason when the session store cannot be fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+
+    const { result } = renderHook(() => useRemix());
+
+    await waitFor(() => expect(result.current.loadError).toBeTruthy());
+    expect(result.current.loadError).toContain('Failed to fetch');
+  });
+
+  it('treats a non-ok response as a failure rather than parsing it', async () => {
+    // A static export answers /api/sessions with the 404 page, so res.json() would throw on HTML.
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      json: async () => { throw new SyntaxError('Unexpected token <'); },
+    })));
+
+    const { result } = renderHook(() => useRemix());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.loadError).toContain('404');
+  });
+
   it('draws from the whole pool in cross mode, the default', async () => {
     const { result } = renderHook(() => useRemix());
     await waitFor(() => expect(result.current.tracks).toHaveLength(3));

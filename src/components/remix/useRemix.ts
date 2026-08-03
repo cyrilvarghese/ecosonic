@@ -24,6 +24,9 @@ export interface RemixState {
   totalSec: number;
   warnings: string[];
   loading: boolean;
+  /** null = the authored-rule store loaded. Non-null = why it did not. Without this a failed
+   *  fetch left the page spinning forever, which is what a static export would have shipped. */
+  loadError: string | null;
   mode: RemixMode;
   element: ElementName;
   /** null = the whole session on its absolute timeline; a Mode = one fixed-length section module. */
@@ -61,6 +64,8 @@ export function useRemix(): RemixState {
   const [sessionMin] = useState(() => arrangementStore.getState().durationMin);
   const [store, setStore] = useState<RuleStore>(EMPTY_STORE);
   const [parserWarnings, setParserWarnings] = useState<string[]>([]);
+  /** null = the store loaded. Non-null = why it did not, for the UI to show instead of spinning. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [seed, setSeed] = useState(1);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<RemixMode>('cross');
@@ -71,11 +76,20 @@ export function useRemix(): RemixState {
 
   const refetch = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/sessions');
-    const body = (await res.json()) as { store: RuleStore; warnings: string[] };
-    setStore(body.store);
-    setParserWarnings(body.warnings ?? []);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const res = await fetch('/api/sessions');
+      // Checked before parsing: a static export answers this with the 404 *page*, and res.json()
+      // on HTML throws a SyntaxError that says nothing about what actually went wrong.
+      if (!res.ok) throw new Error(`/api/sessions responded ${res.status}`);
+      const body = (await res.json()) as { store: RuleStore; warnings: string[] };
+      setStore(body.store);
+      setParserWarnings(body.warnings ?? []);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // Standard fetch-on-mount: refetch only setStates after the awaited fetch resolves.
@@ -205,6 +219,7 @@ export function useRemix(): RemixState {
     totalSec: draw.totalSec,
     warnings: [...parserWarnings, ...draw.warnings],
     loading,
+    loadError,
     mode,
     element,
     section,
