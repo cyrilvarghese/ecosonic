@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:manifest": "tsx scripts/build-manifest.ts",
-    "transcode:web": "tsx scripts/transcode-web.ts"
+    "transcode:web": "tsx scripts/transcode-web.ts",
+    "upload:r2": "tsx scripts/upload-r2.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -30,6 +31,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
