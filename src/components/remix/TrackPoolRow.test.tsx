@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AuthoredRule } from '@/remix/sessionRules';
 import { ruleKey, slotKey } from '@/remix/pins';
@@ -13,6 +13,8 @@ const rule = (
   category: 'MELODY', section, sectionStartSec: 0, phrases,
   source: { element: 'WATER', sessionId, track: 'MELODY' },
 });
+
+const noop = () => {};
 
 describe('TrackPoolRow', () => {
   it('names the element, section and interval on hover', () => {
@@ -70,6 +72,29 @@ describe('TrackPoolRow', () => {
     const r = rule([{ enterSec: 0, exitSec: 60, fadeInSec: 0, fadeOutSec: 0 }]);
     render(<TrackPoolRow category="MELODY" candidates={[r]} picked={new Set()} />);
     expect(screen.getByText('Water·I')).toHaveAttribute('data-element', 'water');
+  });
+
+  it('renders a slider for each send, at the current value', () => {
+    render(
+      <TrackPoolRow
+        category="MELODY" candidates={[]} picked={new Set()}
+        sends={{ reverb: 0.2, delay: 0.1 }} onSend={noop}
+      />,
+    );
+    expect((screen.getByLabelText('Reverb send') as HTMLInputElement).value).toBe('0.2');
+    expect((screen.getByLabelText('Delay send') as HTMLInputElement).value).toBe('0.1');
+  });
+
+  it('reports the kind and the new value on change', () => {
+    const onSend = vi.fn();
+    render(
+      <TrackPoolRow
+        category="MELODY" candidates={[]} picked={new Set()}
+        sends={{ reverb: 0, delay: 0 }} onSend={onSend}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Reverb send'), { target: { value: '0.5' } });
+    expect(onSend).toHaveBeenCalledWith('reverb', 0.5);
   });
 });
 

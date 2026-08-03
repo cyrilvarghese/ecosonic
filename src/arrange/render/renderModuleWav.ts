@@ -4,6 +4,7 @@ import { resolveSampleUrl } from '@/samples';
 import { dbToGain } from '@/audio/dsp';
 import { envelopeCurve } from '@/arrange/render/envelopeCurve';
 import { encodeWavPcm16 } from '@/audio/wavEncode';
+import { buildEffectBuses, DRY, tailSecFor, type TrackSends } from '@/audio/effects';
 
 /** Offline-render the module to a WAV Blob, mirroring live playback: one looping buffer source
  *  per region started at enterSec and stopped at exitSec (the sample loops from 0 under the clip,
@@ -15,6 +16,8 @@ export async function renderModuleToChannels(
     tracks: ArrTrack[];
     regions: TemplateRegion[];
     masterDb: number;
+    /** Per-track aux send levels, keyed by track id. Omitted or missing entries render dry. */
+    sends?: Record<string, TrackSends>;
     sampleRate?: number;
     onProgress?: (frac: number) => void;
   },
@@ -23,11 +26,16 @@ export async function renderModuleToChannels(
   const sr = args.sampleRate ?? 44100;
   const D = cfg.layerTwo.moduleSeconds;
   const minDb = cfg.audio.volume.minDb;
-  const ctx = new OfflineAudioContext(2, Math.ceil(D * sr), sr);
+  // Render past the timeline so reverb and delay tails are not truncated mid-decay. Regions are
+  // clipped to the timeline (rule 4.3), so everything past D is pure tail.
+  const tailSec = tailSecFor(cfg.audio.effects);
+  const renderSec = D + tailSec;
+  const ctx = new OfflineAudioContext(2, Math.ceil(renderSec * sr), sr);
 
   const master = ctx.createGain();
   master.gain.value = dbToGain(args.masterDb, minDb);
   master.connect(ctx.destination);
+  const { reverbBus, delayBus } = buildEffectBuses(ctx, master, cfg.audio.effects);
 
   // Decode each distinct sample once, even if several tracks share a file.
   const decoded = new Map<string, Promise<AudioBuffer>>();
@@ -57,6 +65,20 @@ export async function renderModuleToChannels(
       gain.gain.setValueCurveAtTime(curve, r.enterSec, r.exitSec - r.enterSec);
       src.connect(gain);
       gain.connect(master);
+      // Post-fade sends, mirroring the live graph: the send taps the region's own envelope gain.
+      const send = args.sends?.[r.trackId] ?? DRY;
+      if (send.reverb > 0) {
+        const g = ctx.createGain();
+        g.gain.value = send.reverb;
+        gain.connect(g);
+        g.connect(reverbBus);
+      }
+      if (send.delay > 0) {
+        const g = ctx.createGain();
+        g.gain.value = send.delay;
+        gain.connect(g);
+        g.connect(delayBus);
+      }
       src.start(r.enterSec);
       src.stop(r.exitSec);
     }),
@@ -64,10 +86,10 @@ export async function renderModuleToChannels(
 
   // Coarse progress: suspend at 30-timeline-second marks (must be scheduled before rendering).
   if (args.onProgress) {
-    for (let s = 30; s < D; s += 30) {
+    for (let s = 30; s < renderSec; s += 30) {
       const at = s;
       void ctx.suspend(at).then(() => {
-        args.onProgress!(at / D);
+        args.onProgress!(at / renderSec);
         void ctx.resume();
       });
     }
@@ -84,6 +106,8 @@ export async function renderModuleToWav(
     tracks: ArrTrack[];
     regions: TemplateRegion[];
     masterDb: number;
+    /** Per-track aux send levels, keyed by track id. Omitted or missing entries render dry. */
+    sends?: Record<string, TrackSends>;
     sampleRate?: number;
     onProgress?: (frac: number) => void;
   },

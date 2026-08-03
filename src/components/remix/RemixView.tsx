@@ -2,12 +2,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import { Check, ChevronDown } from 'lucide-react';
-import { ELEMENTS, type ElementName } from '@/types';
+import { ELEMENTS, type Category, type ElementName } from '@/types';
 import { STACK_ORDER, type Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
 import { estimatedWavBytes, exportFreeMixWav } from '@/remix/renderFreeMix';
+import { DRY } from '@/audio/effects';
 import { adjustToWholeLoops } from '@/remix/wholeLoops';
 import { useRemix, type RemixMode } from './useRemix';
 import { TrackPoolRow } from './TrackPoolRow';
@@ -63,6 +64,8 @@ export function RemixView() {
   const setScrubbing = useArrangement((s) => s.setScrubbing);
   // Real sample lengths, filled in by useLayer2Engine once each file has loaded.
   const trackDurations = useArrangement((s) => s.trackDurations);
+  const trackSends = useArrangement((s) => s.trackSends);
+  const setTrackSend = useArrangement((s) => s.setTrackSend);
 
   // Always install the mix, even when resuming: initFrom seeds moduleRegions with a Layer Two
   // module template that stops at moduleSeconds, so merely flipping `playing` played ten minutes
@@ -82,6 +85,15 @@ export function RemixView() {
   // then silenced has no lanes, and deriving rows from tracks would make its row vanish — taking the
   // chips you would click to bring it back with it.
   const categories = STACK_ORDER.filter((c) => candidatesFor(c).length > 0);
+
+  // Sends are stored per LANE, but a pool row is a category and may cover several lanes. The row
+  // shows what its lanes hold in common — the first lane's level, since the only control that moves
+  // them moves them together — and setting it writes through to every lane of that category.
+  const lanesOf = (c: Category) => tracks.filter((t) => t.category === c);
+  const sendsFor = (c: Category) => trackSends[lanesOf(c)[0]?.id ?? ''] ?? DRY;
+  const setCategorySend = (c: Category, kind: 'reverb' | 'delay', value: number) => {
+    for (const t of lanesOf(c)) setTrackSend(t.id, kind, value);
+  };
   // Borrowed timings splits audio from timing, so colour has to pick a side per surface. Bars are
   // what you HEAR — one sample element, one colour, and a visible signal the mode is on. The pool
   // chips keep the rule's element, because which element's pattern won each section is the whole
@@ -123,7 +135,8 @@ export function RemixView() {
     setRenderPct(0);
     try {
       const blob = await exportFreeMixWav({
-        tracks: audible, regions: audibleRegions, totalSec, masterDb, onProgress: setRenderPct,
+        tracks: audible, regions: audibleRegions, totalSec, masterDb, sends: trackSends,
+        onProgress: setRenderPct,
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -343,6 +356,8 @@ export function RemixView() {
               canSound={canSound}
               manual={c in manual}
               onReset={() => resetCategory(c)}
+              sends={sendsFor(c)}
+              onSend={(kind, value) => setCategorySend(c, kind, value)}
             />
           ))
         )}

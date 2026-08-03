@@ -10,6 +10,7 @@ import { steerModule, type SteerNudge } from '@/arrange/generate/steerModule';
 import { buildSessionModules, type SessionModules } from '@/arrange/session';
 import type { ArrangementFile } from '@/arrange/arrangementFile';
 import { config } from '@/config';
+import { defaultSendsFor, DRY, type TrackSends } from '@/audio/effects';
 
 type Selection = { element: ElementName | null; tracks: ArrTrack[]; tuningHz: number; masterDb: number };
 
@@ -19,6 +20,9 @@ export interface ArrangementState {
   tracks: ArrTrack[];
   moduleRegions: TemplateRegion[];
   trackDurations: Record<string, number>; // real sample length (sec), filled once loaded
+  /** Per-track aux send levels, keyed by track id. Runtime mix state, like trackDurations —
+   *  deliberately not on ArrTrack, which describes what a track IS. */
+  trackSends: Record<string, TrackSends>;
   playing: boolean;
   positionSec: number;
   scrubbing: boolean; // true while dragging the position slider — holds the clock
@@ -66,6 +70,7 @@ export interface ArrangementState {
   setTrackDuration: (trackId: string, sec: number) => void;
   /** Set a track's volume ceiling (dB) — the max level its clip reaches. Inherited from Layer One. */
   setTrackCeilingDb: (trackId: string, db: number) => void;
+  setTrackSend: (trackId: string, kind: 'reverb' | 'delay', value: number) => void;
 }
 
 /** Seed the module from a mode's density table (continuity bed spans the module; active/sparse
@@ -84,6 +89,7 @@ export function createArrangementStore() {
       tracks: [],
       moduleRegions: [],
       trackDurations: {},
+      trackSends: {},
       playing: false,
       positionSec: 0,
       scrubbing: false,
@@ -104,6 +110,7 @@ export function createArrangementStore() {
           activeMode: config.layerTwo.modes[0],
           moduleRegions: seedModuleFromTable(sel.tracks, config.layerTwo.modes[0]),
           trackDurations: {},
+          trackSends: defaultSendsFor(sel.tracks, config.audio.effects.defaultSends),
           masterDb: sel.masterDb,
           playing: false,
           positionSec: 0,
@@ -183,6 +190,13 @@ export function createArrangementStore() {
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
       setTrackCeilingDb: (trackId, db) =>
         set((s) => ({ tracks: s.tracks.map((t) => (t.id === trackId ? { ...t, ceilingDb: db } : t)) })),
+      setTrackSend: (trackId, kind, value) =>
+        set((s) => {
+          const cur = s.trackSends[trackId] ?? DRY;
+          const v = Math.min(1, Math.max(0, value));
+          if (cur[kind] === v) return {};
+          return { trackSends: { ...s.trackSends, [trackId]: { ...cur, [kind]: v } } };
+        }),
       updateModuleRegion: (trackId, next) =>
         set((s) => {
           const width = Math.max(0.001, next.exitSec - next.enterSec);

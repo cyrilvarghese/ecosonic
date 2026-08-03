@@ -224,6 +224,49 @@ master gain, sized to the mix rather than to a Layer Two module.
 
 **5.6 — Mute is part of the mix.** A muted track is silenced live *and* omitted from the export.
 
+**5.7 — Export mirrors playback musically, not byte for byte.** Live triggers land on
+animation-frame boundaries (~16 ms) while the offline renderer schedules sample-exactly, and live
+playback loops where an export is a single linear pass. Both predate effects; a seeded impulse
+response makes the *room* identical, not the render.
+
+## 5a. Effect sends
+
+**5a.1 — Two sends per lane**, reverb and delay, 0–100%. MELODY starts wet (reverb 75%, delay
+30%); every other category starts dry. Values come from `audio.effects.defaultSends`.
+
+**They are stored per lane but driven per category.** `arrangementStore.trackSends` is keyed by
+lane id, and both exporters read it that way, so the model is per lane throughout. The only control
+is on the pool row — and a pool row is a **category** (§7), which may cover several lanes — so
+moving a slider writes the same level to every lane of that category, and the row shows the level
+they share. This is deliberately the coarser of the two: per-lane sends exist in the store and would
+need a per-lane control (the timeline rows are the obvious home) before they could be set apart.
+
+These levels are deliberately high, and were tuned by ear after the feature worked. The subtle
+settings the design started from (20% / 12% into a 2.5-second room) were inaudible over a full
+ambient bed — the tail has to compete with continuity layers that never stop. A melody phrase
+ending is meant to *dissolve*, not to be dabbed with a hint of room.
+
+**5a.2 — Sends are post-fade.** A phrase that ends still rings out. This is what smooths the gap
+rule 5.3 opens when it releases and re-triggers between non-contiguous phrases — the tail covers
+the seam without moving any authored entry point (rule 6.5).
+
+**5a.3 — Sends are runtime mix state.** They are not saved with an arrangement, the same as
+per-track volume.
+
+**5a.4 — An export runs past the end of the timeline** by the effect tail length, so the final
+decay completes rather than being cut. As shipped the reverb is a 30-second room, so an exported
+file is 30 seconds longer than its timeline (~5 MB at 16-bit stereo). `estimatedWavBytes` counts
+the difference, so the pre-render size warning is honest about it.
+
+**5a.5 — A chained session export overlap-adds.** Each module is rendered longer than its slot, and
+the next module starts on the grid regardless — so one module's tail rings over the next module's
+opening instead of becoming a gap. With a 30-second tail against a 600-second module, roughly the
+first 5% of every module has the previous module still ringing under it. That is the intent: it is
+what live playback does, where the context runs continuously across `advanceSession()`.
+
+**5a.6 — Effects do not smooth loop seams (rule 5.2).** A tail cannot bridge a seam in a signal
+that never stopped.
+
 ## 6. Adjust intervals to whole loops (opt-in)
 
 Off by default. When on, every interval is resized so it contains a whole number of loops and no

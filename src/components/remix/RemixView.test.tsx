@@ -14,6 +14,7 @@ vi.mock('@/audio/AudioEngine', () => ({
     resumeContext = vi.fn();
     suspendContext = vi.fn();
     setTrackVolume = vi.fn();
+    setTrackSend = vi.fn();
     setTrackEnvelope = vi.fn();
     setMute = vi.fn();
     triggerTrack = vi.fn();
@@ -672,5 +673,36 @@ describe('RemixView — taking a track over by clicking', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
     await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
     expect(screen.getByText('Water·I').tagName).toBe('SPAN');
+  });
+});
+
+describe('RemixView — send sliders across a category', () => {
+  it('moves every lane of a category together, because a row covers them all', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+
+    const row = screen.getByTestId('pool-MELODY');
+    fireEvent.change(within(row).getByLabelText('Reverb send'), { target: { value: '0.4' } });
+
+    // Sends are stored per lane; the row is per category, so one slider writes through to both.
+    const sends = arrangementStore.getState().trackSends;
+    expect(sends['MELODY·WATER'].reverb).toBe(0.4);
+    expect(sends['MELODY·FIRE'].reverb).toBe(0.4);
+    // …and only that kind, on only that category.
+    expect(sends['MELODY·WATER'].delay).toBe(sends['MELODY·FIRE'].delay);
+    expect(sends['PAD·FIRE']?.reverb ?? 0).not.toBe(0.4);
+  });
+
+  it('shows what the category holds, not a stale default', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    const row = screen.getByTestId('pool-MELODY');
+    fireEvent.change(within(row).getByLabelText('Delay send'), { target: { value: '0.25' } });
+
+    expect((within(screen.getByTestId('pool-MELODY'))
+      .getByLabelText('Delay send') as HTMLInputElement).value).toBe('0.25');
   });
 });

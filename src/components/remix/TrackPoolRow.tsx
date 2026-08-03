@@ -1,6 +1,7 @@
 import type { Category } from '@/types';
 import type { AuthoredRule } from '@/remix/sessionRules';
 import { ruleKey, slotKey, type Pins } from '@/remix/pins';
+import type { TrackSends } from '@/audio/effects';
 
 const SECTION_ABBR: Record<AuthoredRule['section'], string> = {
   INTRODUCTION: 'I', DEEP_RELAXATION: 'Rx', RETURN: 'Rt',
@@ -29,6 +30,9 @@ const chipTitle = (r: AuthoredRule): string => {
     + r.phrases.map((p) => `${clock(p.enterSec)}–${clock(p.exitSec)}`).join(', ');
 };
 
+const SEND_LABEL: Record<'reverb' | 'delay', string> = { reverb: 'Rev', delay: 'Dly' };
+const SEND_A11Y: Record<'reverb' | 'delay', string> = { reverb: 'Reverb send', delay: 'Delay send' };
+
 /** One row of layout A: a CATEGORY's pool of authored candidates, and the count. A full-session
  *  draw takes one rule per section, so several chips in a row can be lit at once.
  *
@@ -41,7 +45,7 @@ const chipTitle = (r: AuthoredRule): string => {
  *  you. Omit `onPick` and the chips stay inert hints, which is what Scoped and Borrowed want —
  *  neither has a per-element lane a click could address. */
 export function TrackPoolRow({
-  category, candidates, picked, pins, onPick, canSound, manual, onReset,
+  category, candidates, picked, pins, onPick, canSound, manual, onReset, sends, onSend,
 }: {
   category: Category;
   candidates: AuthoredRule[];
@@ -57,11 +61,17 @@ export function TrackPoolRow({
    *  the element it would sound through ships no sample for this category (§3.6) — so it is shown
    *  struck through and inert rather than accepting a click that would visibly do nothing. */
   canSound?: (rule: AuthoredRule) => boolean;
+  /** The reverb and delay levels this row shows. A row is a category and a category may hold several
+   *  lanes, so this is the level they hold in common — `onSend` sets it on **every lane at once**.
+   *  `arrangementStore.trackSends` and both exporters still key sends per lane; this control is
+   *  deliberately the coarser of the two. Omit both to render no sliders. */
+  sends?: TrackSends;
+  onSend?: (kind: 'reverb' | 'delay', value: number) => void;
 }) {
   return (
     <div
       data-testid={`pool-${category}`}
-      className="grid grid-cols-[140px_1fr] items-center gap-3 border-t border-border py-2"
+      className="grid grid-cols-[140px_1fr_auto] items-center gap-3 border-t border-border py-2"
     >
       <div className="text-sm font-medium">
         {category}
@@ -125,6 +135,26 @@ export function TrackPoolRow({
             );
           })
         )}
+      </div>
+      {/* One pair of sliders for the whole category, moving every lane it holds together. */}
+      <div className="flex items-center gap-3 pl-2">
+        {sends && onSend && (['reverb', 'delay'] as const).map((kind) => (
+          <label key={kind} className="flex items-center gap-1 text-xs text-muted-foreground">
+            {SEND_LABEL[kind]}
+            <input
+              type="range"
+              aria-label={SEND_A11Y[kind]}
+              min={0}
+              max={1}
+              step={0.01}
+              value={sends[kind]}
+              onChange={(e) => onSend(kind, Number(e.target.value))}
+              className="h-1 w-16 cursor-pointer"
+              style={{ accentColor: 'var(--accent-ink)' }}
+            />
+            <span className="w-7 text-right tabular-nums">{Math.round(sends[kind] * 100)}%</span>
+          </label>
+        ))}
       </div>
     </div>
   );

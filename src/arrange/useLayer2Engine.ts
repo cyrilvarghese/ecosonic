@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { AudioEngine, type TrackAudioSpec } from '@/audio/AudioEngine';
 import { arrangementStore, useArrangement } from '@/arrange/arrangementStore';
 import { config } from '@/config';
+import { DRY } from '@/audio/effects';
 
 /** Mount an audio engine for Layer Two: load the handed-off tracks (not started), and
  *  resume/suspend the context on play/pause. The scheduler triggers each track from 0. */
@@ -14,6 +15,7 @@ export function useLayer2Engine(): AudioEngine {
       minDb: config.audio.volume.minDb,
       muteRampMs: config.audio.volume.muteRampMs,
       changeRampMs: config.audio.volume.changeRampMs,
+      effects: config.audio.effects,
     });
   }
   const engine = ref.current;
@@ -29,6 +31,8 @@ export function useLayer2Engine(): AudioEngine {
     const specs: TrackAudioSpec[] = st.tracks.map((t) => ({
       id: t.id, path: t.sample.path, bytes: t.sample.bytes,
       volumeDb: t.ceilingDb, muted: false, playing: false, // loaded, not started; scheduler triggers from 0
+      reverbSend: (st.trackSends[t.id] ?? DRY).reverb,
+      delaySend: (st.trackSends[t.id] ?? DRY).delay,
     }));
     engine.setMasterVolume(st.masterDb);
 
@@ -50,6 +54,7 @@ export function useLayer2Engine(): AudioEngine {
 
     let wasPlaying = false;
     const ceilings = new Map(st.tracks.map((t) => [t.id, t.ceilingDb]));
+    const sends = new Map(st.tracks.map((t) => [t.id, st.trackSends[t.id] ?? DRY]));
     const unsub = arrangementStore.subscribe((s) => {
       // Per-track volume ceiling (Layer Two slider) — ramp the layer's gain like Layer One does.
       for (const t of s.tracks) {
@@ -57,6 +62,15 @@ export function useLayer2Engine(): AudioEngine {
           ceilings.set(t.id, t.ceilingDb);
           engine.setTrackVolume(t.id, t.ceilingDb);
         }
+      }
+      // Aux sends. These ride the subscription, not trackKey — putting them in trackKey would
+      // re-fetch and re-decode every sample on each slider movement.
+      for (const t of s.tracks) {
+        const next = s.trackSends[t.id] ?? DRY;
+        const prev = sends.get(t.id) ?? DRY;
+        if (prev.reverb !== next.reverb) engine.setTrackSend(t.id, 'reverb', next.reverb);
+        if (prev.delay !== next.delay) engine.setTrackSend(t.id, 'delay', next.delay);
+        sends.set(t.id, next);
       }
       if (s.playing !== wasPlaying) {
         wasPlaying = s.playing;

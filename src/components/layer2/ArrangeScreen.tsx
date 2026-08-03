@@ -26,6 +26,7 @@ export function ArrangeScreen() {
   const tracks = useArrangement((s) => s.tracks);
   const moduleRegions = useArrangement((s) => s.moduleRegions);
   const trackDurations = useArrangement((s) => s.trackDurations);
+  const trackSends = useArrangement((s) => s.trackSends);
   const playing = useArrangement((s) => s.playing);
   const positionSec = useArrangement((s) => s.positionSec);
   const play = useArrangement((s) => s.play);
@@ -76,6 +77,7 @@ export function ArrangeScreen() {
         tracks,
         regions: moduleRegions,
         masterDb,
+        sends: trackSends,
         onProgress: (f) => setRenderPct(f),
       });
       downloadBlob(blob, `ecosonic-${activeMode.toLowerCase()}.wav`);
@@ -95,6 +97,7 @@ export function ArrangeScreen() {
         regionsByMode,
         order,
         masterDb,
+        sends: trackSends,
         onProgress: (f) => setRenderPct(f),
       });
       downloadBlob(blob, el ? `session_${el}.wav` : 'session.wav');
