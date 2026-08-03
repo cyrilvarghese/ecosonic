@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { arrangementStore } from '@/arrange/arrangementStore';
@@ -105,6 +105,10 @@ const STORE = {
     ],
   }],
 };
+
+// Env stubs must not leak: one test setting NEXT_PUBLIC_STATIC_EXPORT would otherwise put every
+// later test on the baked-store path, where the fixture STORE below is never consulted.
+afterEach(() => { vi.unstubAllEnvs(); });
 
 beforeEach(() => {
   // `ok` matters: useRemix checks it before parsing, so a stub without it takes the error path.
@@ -371,6 +375,27 @@ describe('RemixView', () => {
 
     await act(async () => { exportCtl.release?.(); });
     await waitFor(() => expect(screen.getByRole('button', { name: /Export WAV/ })).toBeInTheDocument());
+  });
+
+  it('offers no upload when hosted, where there is no route to accept it', async () => {
+    // Static export: POST /api/sessions does not exist. A button that always fails is worse than
+    // no button — the sessions ship baked into the bundle instead.
+    vi.stubEnv('NEXT_PUBLIC_STATIC_EXPORT', 'true');
+
+    render(<RemixView />);
+    // Anchored on the mode switch, not a lane: hosted, the store comes from the baked JSON rather
+    // than this file's fixture, so the fixture's lanes are not what renders. The upload control
+    // sits in this same header section and renders in the same pass.
+    await screen.findByRole('button', { name: /cross-element/i });
+
+    expect(screen.queryByRole('button', { name: /upload session/i })).not.toBeInTheDocument();
+  });
+
+  it('offers upload locally, where the route is there', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    expect(screen.getByRole('button', { name: /upload session/i })).toBeInTheDocument();
   });
 
   it('says why the rules are missing instead of showing an empty pool', async () => {

@@ -283,6 +283,10 @@ export function RemixView() {
 
         {/* Adding source material, kept away from the controls that shape the current mix. */}
         <div className="flex shrink-0 flex-col items-end gap-1">
+          {/* Hosted, POST /api/sessions does not exist — a control that can only fail is worse
+              than no control. Sessions ship baked into the bundle instead; authoring stays local. */}
+          {!process.env.NEXT_PUBLIC_STATIC_EXPORT && (
+          <>
           {/* Split button: upload, with the element it files under attached to the same control. */}
           <div className="inline-flex overflow-hidden rounded-md border border-border shadow-sm">
             <button
@@ -335,6 +339,8 @@ export function RemixView() {
           </div>
           {uploadError && (
             <p className="text-xs text-red-600 dark:text-red-400">Upload failed — {uploadError}</p>
+          )}
+          </>
           )}
         </div>
       </section>

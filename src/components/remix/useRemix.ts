@@ -8,6 +8,7 @@ import { arrangementStore } from '@/arrange/arrangementStore';
 import type { AuthoredRule, RuleStore } from '@/remix/sessionRules';
 import { generateRemix, type RemixPick } from '@/remix/generateRemix';
 import { ruleKey, slotKey, type Manual, type Pins } from '@/remix/pins';
+import { loadSessionStore } from '@/sessions';
 
 const manifest = manifestJson as unknown as Manifest;
 const EMPTY_STORE: RuleStore = { EARTH: [], WATER: [], AIR: [], FIRE: [], ETHER: [] };
@@ -78,11 +79,9 @@ export function useRemix(): RemixState {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch('/api/sessions');
-      // Checked before parsing: a static export answers this with the 404 *page*, and res.json()
-      // on HTML throws a SyntaxError that says nothing about what actually went wrong.
-      if (!res.ok) throw new Error(`/api/sessions responded ${res.status}`);
-      const body = (await res.json()) as { store: RuleStore; warnings: string[] };
+      // Goes through the seam, not fetch: hosted as a static export there is no /api/sessions,
+      // and the same data is baked into the bundle at build time.
+      const body = await loadSessionStore();
       setStore(body.store);
       setParserWarnings(body.warnings ?? []);
     } catch (e) {

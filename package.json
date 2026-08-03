@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:manifest": "tsx scripts/build-manifest.ts",
+    "build:sessions": "tsx scripts/build-sessions.ts",
     "transcode:web": "tsx scripts/transcode-web.ts",
     "upload:r2": "tsx scripts/upload-r2.ts",
     "verify:r2": "tsx scripts/verify-r2.ts"

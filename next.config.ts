@@ -9,7 +9,16 @@ import type { NextConfig } from "next";
 const target = process.env.BUILD_TARGET;
 
 // The default next/image optimizer needs a server; disable it for any export.
-const exportBase: NextConfig = { output: "export", images: { unoptimized: true } };
+//
+// NEXT_PUBLIC_STATIC_EXPORT is set by the build target rather than configured by hand: it means
+// "this bundle has no API routes", which is a fact about how it was built, not a deployment
+// preference. Client code branches on it to read baked data instead of fetching (src/sessions.ts)
+// and to hide controls that would post to routes that are not there.
+const exportBase: NextConfig = {
+  output: "export",
+  images: { unoptimized: true },
+  env: { NEXT_PUBLIC_STATIC_EXPORT: "true" },
+};
 
 const nextConfig: NextConfig =
   target === "electron"

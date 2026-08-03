@@ -1,0 +1,2085 @@
+{
+  "store": {
+    "EARTH": [
+      {
+        "id": "earth-session-layer-timeline",
+        "element": "EARTH",
+        "label": "earth-session-layer-timeline.md",
+        "rules": [
+          {
+            "category": "ELEMENT",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 120,
+                "exitSec": 600,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 180,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 180,
+                "fadeInSec": 180,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 180,
+                "exitSec": 600,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 180,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 180,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 120,
+                "exitSec": 600,
+                "fadeInSec": 270,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 270,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "MELODY 2",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 480,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "MELODY 2"
+            }
+          },
+          {
+            "category": "ELEMENT_SUB",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 120,
+                "exitSec": 390,
+                "fadeInSec": 0,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "SUB ELEMENTS"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1200,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1200,
+                "fadeInSec": 0,
+                "fadeOutSec": 210
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 630,
+                "exitSec": 1020,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 690,
+                "exitSec": 1020,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "ELEMENT_SUB",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 570,
+                "exitSec": 1140,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "SUB ELEMENTS"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1620,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1740,
+                "fadeInSec": 0,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1230,
+                "exitSec": 1620,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1230,
+                "exitSec": 1620,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1260,
+                "exitSec": 1620,
+                "fadeInSec": 0,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1320,
+                "exitSec": 1590,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "EARTH",
+              "sessionId": "earth-session-layer-timeline",
+              "track": "MELODY"
+            }
+          }
+        ]
+      }
+    ],
+    "WATER": [
+      {
+        "id": "water-session-layer-timeline",
+        "element": "WATER",
+        "label": "water-session-layer-timeline.md",
+        "rules": [
+          {
+            "category": "ELEMENT",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 60,
+                "exitSec": 540,
+                "fadeInSec": 60,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 120,
+                "exitSec": 540,
+                "fadeInSec": 60,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 180,
+                "exitSec": 540,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 240,
+                "exitSec": 510,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 270,
+                "exitSec": 300,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 360,
+                "exitSec": 420,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "ELEMENT_SUB",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1200,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "SUB ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1080,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1080,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1080,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1800,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1800,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1260,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1320,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1380,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1440,
+                "exitSec": 1710,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1470,
+                "exitSec": 1500,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1560,
+                "exitSec": 1620,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "WATER",
+              "sessionId": "water-session-layer-timeline",
+              "track": "MELODY"
+            }
+          }
+        ]
+      }
+    ],
+    "AIR": [
+      {
+        "id": "air-session-layer-timeline",
+        "element": "AIR",
+        "label": "air-session-layer-timeline.md",
+        "rules": [
+          {
+            "category": "ELEMENT",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 570,
+                "fadeInSec": 0,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 570,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 192,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 192,
+                "exitSec": 570,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "PLANET"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 192,
+                "exitSec": 534,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 192,
+                "exitSec": 327,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 381,
+                "exitSec": 489,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 165,
+                "exitSec": 273,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 327,
+                "exitSec": 435,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "MELODY 2",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 108,
+                "exitSec": 219,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 273,
+                "exitSec": 327,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 381,
+                "exitSec": 543,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "MELODY 2"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 219,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 327,
+                "exitSec": 489,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 543,
+                "exitSec": 570,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 570,
+            "phrases": [
+              {
+                "enterSec": 570,
+                "exitSec": 1140,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "ELEMENT_SUB",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 570,
+            "phrases": [
+              {
+                "enterSec": 630,
+                "exitSec": 750,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "SUB ELEMENTS"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "SUB MELODY",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 570,
+            "phrases": [
+              {
+                "enterSec": 810,
+                "exitSec": 930,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 990,
+                "exitSec": 1110,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "SUB MELODY"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 570,
+            "phrases": [
+              {
+                "enterSec": 570,
+                "exitSec": 1200,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 570,
+            "phrases": [
+              {
+                "enterSec": 570,
+                "exitSec": 1200,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 570,
+            "phrases": [
+              {
+                "enterSec": 690,
+                "exitSec": 1200,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1770,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1140,
+                "exitSec": 1770,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1320,
+                "exitSec": 1770,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1380,
+                "exitSec": 1710,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1380,
+                "exitSec": 1590,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1320,
+                "exitSec": 1590,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "MELODY 2",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1140,
+                "exitSec": 1200,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 1260,
+                "exitSec": 1380,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 1500,
+                "exitSec": 1560,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "MELODY 2"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1360,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "AIR",
+              "sessionId": "air-session-layer-timeline",
+              "track": "ARP"
+            }
+          }
+        ]
+      }
+    ],
+    "FIRE": [
+      {
+        "id": "fire-session-layer-timeline",
+        "element": "FIRE",
+        "label": "fire-session-layer-timeline.md",
+        "rules": [
+          {
+            "category": "ELEMENT",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 60,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 250,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 160,
+                "exitSec": 510,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 250,
+                "exitSec": 570,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 80,
+                "exitSec": 420,
+                "fadeInSec": 80,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 250,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              },
+              {
+                "enterSec": 340,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 420,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 720,
+                "fadeInSec": 0,
+                "fadeOutSec": 120
+              },
+              {
+                "enterSec": 1140,
+                "exitSec": 1200,
+                "fadeInSec": 60,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1170,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1170,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 660,
+                "exitSec": 1140,
+                "fadeInSec": 30,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "SUB MELODY",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 660,
+                "exitSec": 1170,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "SUB MELODY"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "SUB MELODY 2",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 660,
+                "exitSec": 1170,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "SUB MELODY 2"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1290,
+                "exitSec": 1800,
+                "fadeInSec": 60,
+                "fadeOutSec": 180
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1140,
+                "exitSec": 1800,
+                "fadeInSec": 60,
+                "fadeOutSec": 180
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1560,
+                "fadeInSec": 150,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1260,
+                "exitSec": 1620,
+                "fadeInSec": 30,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1350,
+                "exitSec": 1620,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1350,
+                "exitSec": 1620,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1650,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1650,
+                "exitSec": 1770,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "FIRE",
+              "sessionId": "fire-session-layer-timeline",
+              "track": "MELODY"
+            }
+          }
+        ]
+      }
+    ],
+    "ETHER": [
+      {
+        "id": "ether-session-layer-timeline",
+        "element": "ETHER",
+        "label": "ether-session-layer-timeline.md",
+        "rules": [
+          {
+            "category": "ELEMENT",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 0,
+                "exitSec": 600,
+                "fadeInSec": 150,
+                "fadeOutSec": 90
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 90,
+                "exitSec": 540,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 240,
+                "exitSec": 540,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 150,
+                "exitSec": 600,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 210,
+                "exitSec": 540,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 270,
+                "exitSec": 540,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "INTRODUCTION",
+            "sectionStartSec": 0,
+            "phrases": [
+              {
+                "enterSec": 360,
+                "exitSec": 540,
+                "fadeInSec": 0,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1200,
+                "fadeInSec": 0,
+                "fadeOutSec": 30
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 600,
+                "exitSec": 1200,
+                "fadeInSec": 120,
+                "fadeOutSec": 90
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 660,
+                "exitSec": 1200,
+                "fadeInSec": 0,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 660,
+                "exitSec": 1200,
+                "fadeInSec": 60,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "ELEMENT_SUB",
+            "section": "DEEP_RELAXATION",
+            "sectionStartSec": 600,
+            "phrases": [
+              {
+                "enterSec": 630,
+                "exitSec": 1170,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "SUB ELEMENTS"
+            }
+          },
+          {
+            "category": "ELEMENT",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ELEMENTS"
+            }
+          },
+          {
+            "category": "NOISE",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1200,
+                "exitSec": 1800,
+                "fadeInSec": 90,
+                "fadeOutSec": 120
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "NOISE"
+            }
+          },
+          {
+            "category": "ISO",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1290,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ISO"
+            }
+          },
+          {
+            "category": "PLANET",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1290,
+                "exitSec": 1740,
+                "fadeInSec": 60,
+                "fadeOutSec": 60
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "PLANETS"
+            }
+          },
+          {
+            "category": "BASS",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1260,
+                "exitSec": 1710,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "BASS"
+            }
+          },
+          {
+            "category": "PAD",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1320,
+                "exitSec": 1440,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "PAD"
+            }
+          },
+          {
+            "category": "ARP",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1440,
+                "exitSec": 1560,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "ARP"
+            }
+          },
+          {
+            "category": "MELODY",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1440,
+                "exitSec": 1560,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "MELODY"
+            }
+          },
+          {
+            "category": "MELODY",
+            "variant": "MELODY 2",
+            "section": "RETURN",
+            "sectionStartSec": 1200,
+            "phrases": [
+              {
+                "enterSec": 1560,
+                "exitSec": 1680,
+                "fadeInSec": 0,
+                "fadeOutSec": 0
+              }
+            ],
+            "source": {
+              "element": "ETHER",
+              "sessionId": "ether-session-layer-timeline",
+              "track": "MELODY 2"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "warnings": []
+}
