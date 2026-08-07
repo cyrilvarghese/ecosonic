@@ -1,5 +1,6 @@
 import type { Category } from '@/types';
 import type { AuthoredRule } from '@/remix/sessionRules';
+import { config } from '@/config';
 import { ruleKey, slotKey, type Pins } from '@/remix/pins';
 import type { TrackSends } from '@/audio/effects';
 
@@ -33,6 +34,8 @@ const chipTitle = (r: AuthoredRule): string => {
 const SEND_LABEL: Record<'reverb' | 'delay', string> = { reverb: 'Rev', delay: 'Dly' };
 const SEND_A11Y: Record<'reverb' | 'delay', string> = { reverb: 'Reverb send', delay: 'Delay send' };
 
+const { trackMinDb, trackMaxDb } = config.audio.volume;
+
 /** One row of layout A: a CATEGORY's pool of authored candidates, and the count. A full-session
  *  draw takes one rule per section, so several chips in a row can be lit at once.
  *
@@ -46,6 +49,7 @@ const SEND_A11Y: Record<'reverb' | 'delay', string> = { reverb: 'Reverb send', d
  *  neither has a per-element lane a click could address. */
 export function TrackPoolRow({
   category, candidates, picked, pins, onPick, canSound, manual, onReset, sends, onSend,
+  volumeDb, onVolume,
 }: {
   category: Category;
   candidates: AuthoredRule[];
@@ -67,6 +71,11 @@ export function TrackPoolRow({
    *  deliberately the coarser of the two. Omit both to render no sliders. */
   sends?: TrackSends;
   onSend?: (kind: 'reverb' | 'delay', value: number) => void;
+  /** The level this row's lanes hold, in dB, on the same category-wide terms as `sends` — 0 dB is
+   *  unity, and `onVolume` sets it on every lane at once. Omit both to render no slider.
+   *  The floor of the range is quiet, not silent; muting a lane is still the timeline's job. */
+  volumeDb?: number;
+  onVolume?: (db: number) => void;
 }) {
   return (
     <div
@@ -136,8 +145,28 @@ export function TrackPoolRow({
           })
         )}
       </div>
-      {/* One pair of sliders for the whole category, moving every lane it holds together. */}
+      {/* One set of sliders for the whole category, moving every lane it holds together. Level
+          leads: it is the control you ride, and it matches Layer Two's column order. It stays in dB
+          rather than joining the sends' percent — that is the unit the store, the engine and the
+          renderer all speak, so nothing here has to convert. */}
       <div className="flex items-center gap-3 pl-2">
+        {volumeDb !== undefined && onVolume && (
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+            Vol
+            <input
+              type="range"
+              aria-label="Volume"
+              min={trackMinDb}
+              max={trackMaxDb}
+              step={1}
+              value={volumeDb}
+              onChange={(e) => onVolume(Number(e.target.value))}
+              className="h-1 w-16 cursor-pointer"
+              style={{ accentColor: 'var(--accent-ink)' }}
+            />
+            <span className="w-12 text-right tabular-nums">{volumeDb} dB</span>
+          </label>
+        )}
         {sends && onSend && (['reverb', 'delay'] as const).map((kind) => (
           <label key={kind} className="flex items-center gap-1 text-xs text-muted-foreground">
             {SEND_LABEL[kind]}

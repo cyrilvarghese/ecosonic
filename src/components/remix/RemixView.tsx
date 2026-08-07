@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import { Check, ChevronDown } from 'lucide-react';
 import { ELEMENTS, type Category, type ElementName } from '@/types';
-import { STACK_ORDER, type Mode } from '@/arrange/types';
+import { config } from '@/config';
+import { STACK_ORDER, type ArrTrack, type Mode } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { useLayer2Engine } from '@/arrange/useLayer2Engine';
 import { useModuleScheduler } from '@/arrange/useModuleScheduler';
@@ -54,6 +55,7 @@ export function RemixView() {
     tracks, picks, regions, totalSec, warnings, loading, loadError,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
     lanesPerTrack, setLanesPerTrack, manual, toggleChip, resetCategory, canSound,
+    setCategoryVolume, setCategorySend,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
@@ -65,7 +67,10 @@ export function RemixView() {
   // Real sample lengths, filled in by useLayer2Engine once each file has loaded.
   const trackDurations = useArrangement((s) => s.trackDurations);
   const trackSends = useArrangement((s) => s.trackSends);
-  const setTrackSend = useArrangement((s) => s.setTrackSend);
+  // The DRAW's tracks always carry the ceiling the generator handed out; a level you set lives on
+  // the store's copy of them. Everything that reads a level — the sliders, the export — has to come
+  // through here, or it reads a default that is never anything but 0 dB.
+  const storeTracks = useArrangement((s) => s.tracks);
 
   // Always install the mix, even when resuming: initFrom seeds moduleRegions with a Layer Two
   // module template that stops at moduleSeconds, so merely flipping `playing` played ten minutes
@@ -86,13 +91,15 @@ export function RemixView() {
   // chips you would click to bring it back with it.
   const categories = STACK_ORDER.filter((c) => candidatesFor(c).length > 0);
 
-  // Sends are stored per LANE, but a pool row is a category and may cover several lanes. The row
+  // Levels are stored per LANE, but a pool row is a category and may cover several lanes. The row
   // shows what its lanes hold in common — the first lane's level, since the only control that moves
   // them moves them together — and setting it writes through to every lane of that category.
   const lanesOf = (c: Category) => tracks.filter((t) => t.category === c);
   const sendsFor = (c: Category) => trackSends[lanesOf(c)[0]?.id ?? ''] ?? DRY;
-  const setCategorySend = (c: Category, kind: 'reverb' | 'delay', value: number) => {
-    for (const t of lanesOf(c)) setTrackSend(t.id, kind, value);
+  const leveled = (t: ArrTrack) => storeTracks.find((s) => s.id === t.id) ?? t;
+  const volumeFor = (c: Category) => {
+    const first = lanesOf(c)[0];
+    return first ? leveled(first).ceilingDb : config.audio.volume.defaultTrackDb;
   };
   // Borrowed timings splits audio from timing, so colour has to pick a side per surface. Bars are
   // what you HEAR — one sample element, one colour, and a visible signal the mode is on. The pool
@@ -126,8 +133,10 @@ export function RemixView() {
   const [wholeLoops, setWholeLoops] = useState(false);
   const mixRegions = wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions;
 
-  // Mute is part of the mix, not just monitoring — a muted track is absent from the export too.
-  const audible = tracks.filter((t) => !mutedIds.has(t.id));
+  // Mute is part of the mix, not just monitoring — a muted track is absent from the export too. So
+  // is volume: the renderer builds its envelope from ceilingDb, so the export takes the store's
+  // copy of each track rather than the draw's, which never carries anything but the default.
+  const audible = tracks.filter((t) => !mutedIds.has(t.id)).map(leveled);
   const audibleRegions = mixRegions.filter((r) => !mutedIds.has(r.trackId));
 
   const onExport = async () => {
@@ -369,6 +378,8 @@ export function RemixView() {
               onReset={() => resetCategory(c)}
               sends={sendsFor(c)}
               onSend={(kind, value) => setCategorySend(c, kind, value)}
+              volumeDb={volumeFor(c)}
+              onVolume={(db) => setCategoryVolume(c, db)}
             />
           ))
         )}
