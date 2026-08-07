@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AuthoredRule } from '@/remix/sessionRules';
+import { config } from '@/config';
 import { ruleKey, slotKey } from '@/remix/pins';
 import { TrackPoolRow } from './TrackPoolRow';
 
@@ -95,6 +96,48 @@ describe('TrackPoolRow', () => {
     );
     fireEvent.change(screen.getByLabelText('Reverb send'), { target: { value: '0.5' } });
     expect(onSend).toHaveBeenCalledWith('reverb', 0.5);
+  });
+});
+
+describe('TrackPoolRow — volume', () => {
+  it('renders a slider at the current level, read out in dB', () => {
+    render(
+      <TrackPoolRow
+        category="MELODY" candidates={[]} picked={new Set()}
+        volumeDb={-9} onVolume={noop}
+      />,
+    );
+    expect((screen.getByLabelText('Volume') as HTMLInputElement).value).toBe('-9');
+    expect(screen.getByText('-9 dB')).toBeInTheDocument();
+  });
+
+  it('reports the new level in dB, not as a fraction', () => {
+    const onVolume = vi.fn();
+    render(
+      <TrackPoolRow
+        category="MELODY" candidates={[]} picked={new Set()}
+        volumeDb={0} onVolume={onVolume}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Volume'), { target: { value: '-6' } });
+    expect(onVolume).toHaveBeenCalledWith(-6);
+  });
+
+  it('spans the track range, so a buried lane can be lifted as well as cut', () => {
+    render(
+      <TrackPoolRow
+        category="MELODY" candidates={[]} picked={new Set()}
+        volumeDb={0} onVolume={noop}
+      />,
+    );
+    const slider = screen.getByLabelText('Volume') as HTMLInputElement;
+    expect(slider.min).toBe(String(config.audio.volume.trackMinDb));
+    expect(slider.max).toBe(String(config.audio.volume.trackMaxDb));
+  });
+
+  it('renders no slider for a row given no level, as with the sends', () => {
+    render(<TrackPoolRow category="MELODY" candidates={[]} picked={new Set()} />);
+    expect(screen.queryByLabelText('Volume')).toBeNull();
   });
 });
 

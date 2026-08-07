@@ -39,7 +39,7 @@ const { exportCtl } = vi.hoisted(() => ({
     release: null as null | (() => void),
     progress: null as null | ((frac: number) => void),
     lastArgs: null as null | {
-      tracks: { id: string }[];
+      tracks: { id: string; ceilingDb: number }[];
       regions: { trackId: string; exitSec: number }[];
     },
   },
@@ -48,7 +48,7 @@ vi.mock('@/remix/renderFreeMix', () => ({
   estimatedWavBytes: (totalSec: number) => totalSec * 44100 * 4 + 44,
   exportFreeMixWav: vi.fn(async (args: {
     onProgress?: (frac: number) => void;
-    tracks: { id: string }[];
+    tracks: { id: string; ceilingDb: number }[];
     regions: { trackId: string; exitSec: number }[];
   }) => {
     if (exportCtl.fail) throw new Error('decode failed');
@@ -742,5 +742,111 @@ describe('RemixView — send sliders across a category', () => {
 
     expect((within(screen.getByTestId('pool-MELODY'))
       .getByLabelText('Delay send') as HTMLInputElement).value).toBe('0.25');
+  });
+});
+
+describe('RemixView — volume across a category', () => {
+  const ceilingOf = (id: string) =>
+    arrangementStore.getState().tracks.find((t) => t.id === id)?.ceilingDb;
+
+  it('moves every lane of a category together, and leaves the others alone', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
+
+    const row = screen.getByTestId('pool-MELODY');
+    fireEvent.change(within(row).getByLabelText('Volume'), { target: { value: '-9' } });
+
+    // A row is a category and may cover several lanes, so one slider writes through to all of them.
+    expect(ceilingOf('MELODY·WATER')).toBe(-9);
+    expect(ceilingOf('MELODY·FIRE')).toBe(-9);
+    expect(ceilingOf('PAD·FIRE')).toBe(0);
+  });
+
+  it('shows the level the category holds, not a stale default', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    fireEvent.change(
+      within(screen.getByTestId('pool-PAD')).getByLabelText('Volume'), { target: { value: '6' } },
+    );
+
+    expect((within(screen.getByTestId('pool-PAD'))
+      .getByLabelText('Volume') as HTMLInputElement).value).toBe('6');
+    expect(within(screen.getByTestId('pool-PAD')).getByText('6 dB')).toBeInTheDocument();
+  });
+
+  it('exports the level you set, not the ceiling the draw handed out', async () => {
+    // The draw's tracks always carry the DEFAULT ceiling — a level lives on the store's copy. Read
+    // the wrong one and the WAV comes out ignoring every volume in the mix.
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    fireEvent.change(
+      within(screen.getByTestId('pool-PAD')).getByLabelText('Volume'), { target: { value: '-9' } },
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    expect(exportCtl.lastArgs!.tracks.find((t) => t.id === 'PAD·FIRE')?.ceilingDb).toBe(-9);
+  });
+});
+
+describe('RemixView — a mix you dialled in survives a redraw', () => {
+  // PAD is authored by FIRE alone, so its lane is `PAD·FIRE` in every draw — the id a level is keyed
+  // on cannot drift out from under these tests the way a cross-drawn MELODY lane's would.
+  const padRow = () => screen.getByTestId('pool-PAD');
+
+  it('keeps a volume through Regenerate', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    fireEvent.change(within(padRow()).getByLabelText('Volume'), { target: { value: '-9' } });
+
+    for (let i = 0; i < 4; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /Regenerate/ }));
+    }
+
+    expect(arrangementStore.getState().tracks.find((t) => t.id === 'PAD·FIRE')?.ceilingDb).toBe(-9);
+    expect((within(padRow()).getByLabelText('Volume') as HTMLInputElement).value).toBe('-9');
+  });
+
+  it('keeps a send through a chip click, which used to wipe it', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    fireEvent.change(within(padRow()).getByLabelText('Reverb send'), { target: { value: '0.4' } });
+
+    // Any chip click redraws, and a redraw reseeds every send from the config defaults.
+    await userEvent.click(within(screen.getByTestId('pool-MELODY')).getAllByRole('button')[0]);
+
+    expect(arrangementStore.getState().trackSends['PAD·FIRE'].reverb).toBe(0.4);
+  });
+
+  it('keeps a level through a section switch and back', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    fireEvent.change(within(padRow()).getByLabelText('Volume'), { target: { value: '-3' } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Return' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Full session' }));
+
+    expect(arrangementStore.getState().tracks.find((t) => t.id === 'PAD·FIRE')?.ceilingDb).toBe(-3);
+  });
+
+  it('does not carry a level onto another element’s lane', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Scoped' }));
+    await userEvent.click(screen.getByRole('button', { name: 'WATER' }));
+    fireEvent.change(
+      within(screen.getByTestId('pool-MELODY')).getByLabelText('Volume'), { target: { value: '-12' } },
+    );
+    expect(arrangementStore.getState().tracks.find((t) => t.id === 'MELODY·WATER')?.ceilingDb).toBe(-12);
+
+    await userEvent.click(screen.getByRole('button', { name: 'FIRE' }));
+
+    // A level belongs to a lane, not to a category — FIRE's MELODY is a different lane and starts flat.
+    expect(arrangementStore.getState().tracks.find((t) => t.id === 'MELODY·FIRE')?.ceilingDb).toBe(0);
   });
 });

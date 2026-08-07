@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import manifestJson from '@/manifest.json';
 import { ELEMENTS, type Category, type ElementName, type Manifest } from '@/types';
 import type { ArrTrack, Mode, TemplateRegion } from '@/arrange/types';
@@ -49,6 +49,10 @@ export interface RemixState {
   toggleChip: (rule: AuthoredRule) => void;
   /** Hand a category back to the generator. */
   resetCategory: (c: Category) => void;
+  /** Set the level (dB) on every lane of a category, and remember it across redraws. */
+  setCategoryVolume: (c: Category, db: number) => void;
+  /** Set one aux send on every lane of a category, and remember it across redraws. */
+  setCategorySend: (c: Category, kind: 'reverb' | 'delay', value: number) => void;
   setMode: (m: RemixMode) => void;
   setElement: (e: ElementName) => void;
   setSection: (s: Mode | null) => void;
@@ -74,6 +78,12 @@ export function useRemix(): RemixState {
   const [section, setSection] = useState<Mode | null>(null);
   const [lanesPerTrack, setLanesPerTrack] = useState(2);
   const [manual, setManual] = useState<Manual>({});
+  /** The mix you dialled in, keyed by lane id — and ONLY what you actually moved, so a category you
+   *  never touched keeps its config default rather than being pinned to whatever it happened to
+   *  start at. `initFrom` rebuilds `tracks` and reseeds `trackSends` on every redraw, so without
+   *  this a chip click silently reset your whole mix. A ref, not state: re-applying writes to the
+   *  store, and the store is what the sliders render from. */
+  const levels = useRef<Record<string, { volumeDb?: number; reverb?: number; delay?: number }>>({});
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -145,7 +155,39 @@ export function useRemix(): RemixState {
     // initFrom leaves durationSec at the Layer Two module default; seek() clamps against it, so
     // without this the playhead could not be dragged past 10 minutes of a 30-minute mix.
     arrangementStore.setState({ durationSec: draw.totalSec });
+
+    // Put your levels back. initFrom has just flattened them to the config defaults, so this runs in
+    // the SAME effect body — no render sits between the reset and the restore, and the engine's
+    // reload (keyed on the track list, which only changes once this has landed) reads the restored
+    // state rather than a momentary default. A lane the draw did not produce is skipped but kept:
+    // come back to that element and your level is still there.
+    const st = arrangementStore.getState();
+    const drawn = new Set(draw.tracks.map((t) => t.id));
+    for (const [id, level] of Object.entries(levels.current)) {
+      if (!drawn.has(id)) continue;
+      if (level.volumeDb !== undefined) st.setTrackCeilingDb(id, level.volumeDb);
+      if (level.reverb !== undefined) st.setTrackSend(id, 'reverb', level.reverb);
+      if (level.delay !== undefined) st.setTrackSend(id, 'delay', level.delay);
+    }
   }, [draw, scopedTo, sampleElement, sessionMin]);
+
+  // Both write through to every lane of the category: a pool row IS a category, and in layered mode
+  // a category may hold several. Coarser than the store, which keys both per lane — deliberately so.
+  const setCategoryVolume = useCallback((c: Category, db: number) => {
+    const st = arrangementStore.getState();
+    for (const t of draw.tracks.filter((t) => t.category === c)) {
+      levels.current[t.id] = { ...levels.current[t.id], volumeDb: db };
+      st.setTrackCeilingDb(t.id, db);
+    }
+  }, [draw.tracks]);
+
+  const setCategorySend = useCallback((c: Category, kind: 'reverb' | 'delay', value: number) => {
+    const st = arrangementStore.getState();
+    for (const t of draw.tracks.filter((t) => t.category === c)) {
+      levels.current[t.id] = { ...levels.current[t.id], [kind]: value };
+      st.setTrackSend(t.id, kind, value);
+    }
+  }, [draw.tracks]);
 
   // Mirrors the generator's filters exactly — a chip the draw could never pick would be a lie.
   const candidatesFor = useCallback(
@@ -229,6 +271,8 @@ export function useRemix(): RemixState {
     manual,
     toggleChip,
     resetCategory,
+    setCategoryVolume,
+    setCategorySend,
     setMode,
     setElement,
     setSection,
