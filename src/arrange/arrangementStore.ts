@@ -44,6 +44,12 @@ export interface ArrangementState {
    *  scheduler runs whatever regions the store happens to hold (initFrom seeds a Layer Two
    *  template that stops at `moduleSeconds`). */
   playFreeMix: (regions: TemplateRegion[], totalSec: number, startSec?: number) => void;
+  /** Swap the regions the scheduler is playing, leaving the transport alone. `playFreeMix` installs
+   *  the mix once, at the moment Play is pressed; anything that reshapes it AFTER that — adjusting
+   *  intervals to whole loops, a redraw — has to come back through here. The scheduler reads
+   *  `moduleRegions` every frame while the view draws its own copy, so a reshape that skips this
+   *  leaves the timeline showing one thing and the audio playing another. */
+  setMixRegions: (regions: TemplateRegion[]) => void;
   pause: () => void;
   seek: (sec: number) => void;
   setPosition: (sec: number) => void;
@@ -125,6 +131,7 @@ export function createArrangementStore() {
       play: () => set({ playing: true, session: null, durationSec: config.layerTwo.moduleSeconds }),
       playFreeMix: (regions, totalSec, startSec = 0) =>
         set({ moduleRegions: regions, durationSec: totalSec, session: null, activeMode: 'INTRODUCTION', positionSec: startSec, playing: true }),
+      setMixRegions: (regions) => set({ moduleRegions: regions }),
       pause: () => set({ playing: false }),
       seek: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),
       setPosition: (sec) => set((s) => ({ positionSec: Math.max(0, Math.min(s.durationSec, sec)) })),

@@ -286,6 +286,34 @@ describe('RemixView', () => {
     expect(pad?.exitSec).toBe(80);
   });
 
+  it('adjusts what is PLAYING when the box is ticked mid-playback', async () => {
+    // The scheduler reads moduleRegions from the store every frame; the view draws its own
+    // mixRegions. moduleRegions is only written when Play is pressed, so ticking the box while
+    // playing used to redraw a clipped bar over a track that went on sounding to its old end.
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
+
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+
+    expect(arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec)
+      .toBe(80);
+  });
+
+  it('puts the authored intervals back when the box is unticked mid-playback', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+
+    expect(arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec)
+      .toBe(60);
+  });
+
   it('uploads a session under the element chosen for it', async () => {
     const posts: { element?: string; filename?: string }[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: { body?: string }) => {

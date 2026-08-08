@@ -59,6 +59,7 @@ export function RemixView() {
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
   const playFreeMix = useArrangement((s) => s.playFreeMix);
+  const setMixRegions = useArrangement((s) => s.setMixRegions);
   const playing = useArrangement((s) => s.playing);
   const positionSec = useArrangement((s) => s.positionSec);
   const pause = useArrangement((s) => s.pause);
@@ -132,6 +133,16 @@ export function RemixView() {
   // reported sample lengths, so it does nothing until those arrive.
   const [wholeLoops, setWholeLoops] = useState(false);
   const mixRegions = wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions;
+
+  // Play installs the mix ONCE. Reshape it while the transport is running — tick the whole-loops
+  // box, or have the engine report a sample length that changes the trim — and the scheduler was
+  // still reading what got installed back then: the timeline drew a clipped track that went on
+  // sounding to its old end. Recomputed here rather than depending on `mixRegions`, which is a
+  // fresh array every render and would reinstall the mix on each one.
+  useEffect(() => {
+    if (!playing) return;
+    setMixRegions(wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions);
+  }, [playing, wholeLoops, regions, trackDurations, totalSec, setMixRegions]);
 
   // Mute is part of the mix, not just monitoring — a muted track is absent from the export too. So
   // is volume: the renderer builds its envelope from ceilingDb, so the export takes the store's
