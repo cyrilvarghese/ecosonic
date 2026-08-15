@@ -1,4 +1,4 @@
-import { ELEMENTS, type ElementName, type Manifest } from '@/types';
+import { ELEMENTS, type Category, type ElementName, type Manifest } from '@/types';
 import { STACK_ORDER, type ArrTrack, type Mode, type TemplateRegion } from '@/arrange/types';
 import { makeRng, seedFrom, type RNG } from '@/arrange/prng';
 import { config } from '@/config';
@@ -10,6 +10,20 @@ const SECTION_ORDER: Mode[] = ['INTRODUCTION', 'DEEP_RELAXATION', 'RETURN'];
 
 /** "WATER" → "Water" — a lane label reads `MELODY 2 · Water`, not `MELODY 2 · WATER`. */
 const titleCase = (el: string): string => el[0] + el.slice(1).toLowerCase();
+
+/** Categories that sound EVERY sample their element ships, side by side on one timing, rather than
+ *  drawing one and dropping the rest.
+ *
+ *  PLANET alone. Its files are distinct celestial bodies — EARTH ships MERCURY and SUN, ETHER ships
+ *  NEPTUNE and PLUTO — authored to be heard together, so drawing one silently silenced the other
+ *  half of the library. Every other multi-sample category (ISO's four, ELEMENT's three to seven) is
+ *  a set of ALTERNATES to choose between; fanning those out would double the voice count and thicken
+ *  the bed well past what the grammar asks for. */
+const FANS_OUT: ReadonlySet<Category> = new Set<Category>(['PLANET']);
+
+/** How many voices a fanning category takes. Two: a lane is a voice, and every element ships exactly
+ *  two planets — the cap only bites if a third file is ever added. */
+const FAN_OUT_MAX = 2;
 
 /** One derived lane: category × element. Rules and audio are the same element everywhere except
  *  Borrowed, where the audio is fixed by hand and the rules stay wide open (§3.4). */
@@ -191,22 +205,37 @@ export function generateRemix(
         continue;
       }
 
-      const sample = samples[Math.floor(laneRng.float() * samples.length)];
-      const track: ArrTrack = {
-        // A lane is category × element, so the id carries both — and carries them even when there is
-        // only one lane, because an id that changed shape when a sibling appeared would lose this
-        // lane's mute state and make the engine reload it mid-session.
-        id: `${category}·${lane.audioElement}`,
-        category,
-        label: `${drawn[0].rule.variant ?? category} · ${titleCase(lane.audioElement)}`,
-        sample: { name: sample.name, path: sample.path, bytes: sample.bytes },
-        ceilingDb: config.audio.volume.defaultTrackDb,
-        locked: false,
-      };
-      tracks.push(track);
-      for (const c of drawn) {
-        picks.push({ track, rule: c.rule, poolSize: c.poolSize });
-        for (const r of c.regions) regions.push({ ...r, trackId: track.id });
+      // A fanning category sounds its element's samples TOGETHER; every other draws one of them.
+      const fans = FANS_OUT.has(category);
+      const voices = fans
+        ? samples.slice(0, FAN_OUT_MAX)
+        : [samples[Math.floor(laneRng.float() * samples.length)]];
+
+      for (const sample of voices) {
+        const track: ArrTrack = {
+          // A lane is category × element, so the id carries both — and carries them even when there
+          // is only one lane, because an id that changed shape when a sibling appeared would lose
+          // this lane's mute state and make the engine reload it mid-session. A fanning category
+          // carries the sample too, for the same reason and one more: keyed on the body rather than
+          // on a slot, your mute and level follow THAT planet across a redraw. It carries it even
+          // where the element ships a single sample, so the shape never depends on the count.
+          id: fans
+            ? `${category}·${lane.audioElement}·${sample.name}`
+            : `${category}·${lane.audioElement}`,
+          category,
+          label: `${drawn[0].rule.variant ?? category} · ${titleCase(lane.audioElement)}`
+            + (fans ? ` · ${titleCase(sample.name)}` : ''),
+          sample: { name: sample.name, path: sample.path, bytes: sample.bytes },
+          ceilingDb: config.audio.volume.defaultTrackDb,
+          locked: false,
+        };
+        tracks.push(track);
+        // Every voice takes the SAME timings — one rule, laid on each of them, so the pair sounds
+        // as one gesture and a single chip lights for both.
+        for (const c of drawn) {
+          picks.push({ track, rule: c.rule, poolSize: c.poolSize });
+          for (const r of c.regions) regions.push({ ...r, trackId: track.id });
+        }
       }
     }
 

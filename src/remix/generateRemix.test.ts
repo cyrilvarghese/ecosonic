@@ -485,6 +485,78 @@ describe('generateRemix — lanes', () => {
   });
 });
 
+describe('generateRemix — PLANET sounds every sample its element ships', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  /** fakeManifest, but EARTH ships two PLANET samples — the shape the real library has, where every
+   *  element carries two distinct bodies (EARTH: MERCURY + SUN). */
+  const twoPlanets = (): Manifest => {
+    const m = fakeManifest();
+    m.EARTH.PLANET = [entry('MERCURY'), entry('SUN')];
+    return m;
+  };
+
+  it('gives one lane per sample, rather than drawing one and dropping the other', () => {
+    const { tracks } = generateRemix([rule('PLANET', 'EARTH')], twoPlanets(), BASE);
+    expect(tracks.map((t) => t.sample.name)).toEqual(['MERCURY', 'SUN']);
+  });
+
+  it('ids and labels each lane by the body it plays', () => {
+    const { tracks } = generateRemix([rule('PLANET', 'EARTH')], twoPlanets(), BASE);
+    expect(tracks.map((t) => t.id)).toEqual(['PLANET·EARTH·MERCURY', 'PLANET·EARTH·SUN']);
+    expect(tracks.map((t) => t.label)).toEqual(['PLANET · Earth · Mercury', 'PLANET · Earth · Sun']);
+  });
+
+  it('lays both lanes on identical timings', () => {
+    const pool = [rule('PLANET', 'EARTH', [ph(0, 600), ph(900, 1200, 30, 30)])];
+    const { regions } = generateRemix(pool, twoPlanets(), BASE);
+    const times = (id: string) => regions.filter((r) => r.trackId === id)
+      .map((r) => `${r.enterSec}-${r.exitSec}-${r.fadeInSec}-${r.fadeOutSec}`);
+    expect(times('PLANET·EARTH·MERCURY')).toEqual(['0-600-0-0', '900-1200-30-30']);
+    expect(times('PLANET·EARTH·SUN')).toEqual(times('PLANET·EARTH·MERCURY'));
+  });
+
+  it('gives both lanes the same rule, so one chip lights for the pair', () => {
+    const r = rule('PLANET', 'EARTH');
+    const { picks } = generateRemix([r], twoPlanets(), BASE);
+    expect(picks).toHaveLength(2);
+    expect(new Set(picks.map((p) => p.rule))).toEqual(new Set([r]));
+  });
+
+  it('keeps the id shape when an element ships only one, so a lane never renames itself', () => {
+    // fakeManifest gives one PLANET sample. The id carries it anyway — an id whose shape depended on
+    // the count would lose that lane's mute and level the day a second file was added.
+    const { tracks } = generateRemix([rule('PLANET', 'EARTH')], fakeManifest(), BASE);
+    expect(tracks.map((t) => t.id)).toEqual(['PLANET·EARTH·EARTH-PLANET']);
+  });
+
+  it('leaves every other multi-sample category on one drawn sample', () => {
+    // ISO ships four per element; those are alternates to choose between, not bodies to stack.
+    const m = fakeManifest();
+    m.EARTH.ISO = [entry('ISO-A'), entry('ISO-B')];
+    const { tracks } = generateRemix([rule('ISO', 'EARTH')], m, BASE);
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0].id).toBe('ISO·EARTH');
+    expect(['ISO-A', 'ISO-B']).toContain(tracks[0].sample.name);
+  });
+
+  it('fans out under Borrowed too, where the two files still differ', () => {
+    // The §6.1 cap existed because extra lanes would be the SAME file staggered. Two planets are
+    // two different files, so that argument does not reach them.
+    const { tracks } = generateRemix([rule('PLANET', 'WATER')], twoPlanets(), {
+      ...BASE, sampleElement: 'EARTH',
+    });
+    expect(tracks.map((t) => t.id)).toEqual(['PLANET·EARTH·MERCURY', 'PLANET·EARTH·SUN']);
+  });
+
+  it('takes two when an element ships more, so a lane stays a voice', () => {
+    const m = fakeManifest();
+    m.EARTH.PLANET = [entry('MERCURY'), entry('SUN'), entry('LUNA')];
+    const { tracks } = generateRemix([rule('PLANET', 'EARTH')], m, BASE);
+    expect(tracks).toHaveLength(2);
+  });
+});
+
 describe('generateRemix — a track taken over by hand', () => {
   const BASE = { seed: 1, sessionSec: 1800 };
 

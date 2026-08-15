@@ -62,9 +62,12 @@ vi.mock('@/remix/renderFreeMix', () => ({
 const { MANIFEST } = vi.hoisted(() => {
   const CATS = ['ISO', 'PLANET', 'NOISE', 'ELEMENT', 'ELEMENT_SUB', 'BASS', 'PAD', 'DRONE', 'ARP', 'MELODY', 'FX'];
   const m: Record<string, Record<string, unknown[]>> = {};
+  const sample = (name: string) => ({ name, path: `${name}.wav`, bytes: 1, ext: '.wav' });
   for (const el of ['EARTH', 'WATER', 'AIR', 'FIRE', 'ETHER']) {
     m[el] = {};
-    for (const c of CATS) m[el][c] = [{ name: `${el}-${c}`, path: `${el}-${c}.wav`, bytes: 1, ext: '.wav' }];
+    for (const c of CATS) m[el][c] = [sample(`${el}-${c}`)];
+    // Every element really does ship two planets, and PLANET sounds both — mirror that here.
+    m[el].PLANET = [sample(`${el}-MERCURY`), sample(`${el}-SUN`)];
   }
   return { MANIFEST: m };
 });
@@ -556,6 +559,62 @@ describe('RemixView — borrowed timings', () => {
     const chipElements = new Set([...chips].map((c) => c.getAttribute('data-element')));
     expect(chipElements.has('ether')).toBe(false);
     expect(chipElements).toEqual(new Set(['water', 'fire']));
+  });
+});
+
+describe('RemixView — PLANET on two lanes', () => {
+  /** The fixture store plus a PLANET rule, so the category actually draws. */
+  const withPlanet = () => vi.stubGlobal('fetch', vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      store: {
+        ...STORE,
+        EARTH: [{ id: 'e', element: 'EARTH', label: 'e', rules: [rule('PLANET', 'EARTH')] }],
+      },
+      warnings: [],
+    }),
+  })));
+
+  it('draws a row per body, both on the same timing', async () => {
+    withPlanet();
+    render(<RemixView />);
+
+    await screen.findByTestId('region-PLANET·EARTH·EARTH-MERCURY-0');
+    expect(screen.getByTestId('region-PLANET·EARTH·EARTH-SUN-0')).toBeInTheDocument();
+    // One rule, laid on both — so the pair enters and leaves together.
+    const both = screen.getAllByTestId(/^region-PLANET·/);
+    expect(both).toHaveLength(2);
+  });
+
+  it('lists the pool once, so one set of sliders drives the pair', async () => {
+    withPlanet();
+    render(<RemixView />);
+    await screen.findByTestId('region-PLANET·EARTH·EARTH-MERCURY-0');
+
+    expect(screen.getAllByTestId('pool-PLANET')).toHaveLength(1);
+
+    fireEvent.change(
+      within(screen.getByTestId('pool-PLANET')).getByLabelText('Volume'), { target: { value: '-6' } },
+    );
+
+    const ceiling = (id: string) =>
+      arrangementStore.getState().tracks.find((t) => t.id === id)?.ceilingDb;
+    expect(ceiling('PLANET·EARTH·EARTH-MERCURY')).toBe(-6);
+    expect(ceiling('PLANET·EARTH·EARTH-SUN')).toBe(-6);
+  });
+
+  it('mutes one body without silencing the other', async () => {
+    withPlanet();
+    render(<RemixView />);
+    await screen.findByTestId('region-PLANET·EARTH·EARTH-MERCURY-0');
+
+    await userEvent.click(screen.getByRole('button', { name: /Mute PLANET · Earth · Earth-sun/i }));
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    const ids = exportCtl.lastArgs!.tracks.map((t) => t.id);
+    expect(ids).not.toContain('PLANET·EARTH·EARTH-SUN');
+    expect(ids).toContain('PLANET·EARTH·EARTH-MERCURY');
   });
 });
 

@@ -139,6 +139,21 @@ category as well as across categories.
 `manifest[element][category]`, drawn at random from that list. `element` is the lead rule's element
 in Cross-element and Scoped; in **Borrowed timings** it is the element you picked, for every track.
 
+**3.5a — PLANET sounds every sample its element ships.** One category is exempt from "drawn at
+random from that list": `PLANET` takes **both** files rather than one, as two lanes on one timing.
+Its samples are distinct celestial bodies — EARTH ships MERCURY and SUN, ETHER ships NEPTUNE and
+PLUTO — authored to be heard together, so drawing one silently silenced half the library. Every
+other multi-sample category (ISO's four, ELEMENT's three to seven) is a set of **alternates** to
+choose between, and fanning those out would double the voice count.
+
+A fanning lane's id carries the sample: `PLANET·EARTH·MERCURY`. Keyed on the body rather than on a
+slot, your mute and level follow *that planet* across a redraw; keyed on a slot they would follow
+whichever body the seed happened to put first. The id carries it even where an element ships one
+sample, so the shape never depends on the count (§3.1). Capped at two — a lane is a voice.
+
+This applies in **Borrowed timings** too. The §6.1 argument against extra lanes was that they would
+be the same file staggered in time; two planets are two different files, so it does not reach them.
+
 **3.6 — No sample, no track.** If the element has no sample for that category, the track is skipped
 with a warning. `ELEMENT_SUB` is the **only** such gap in the shipped material — every other
 category×element cell has both a rule and a sample:
