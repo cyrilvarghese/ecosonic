@@ -60,6 +60,7 @@ function loopFit(clipDur: number, total: number | undefined) {
 export function ResultTimeline({
   regions, totalSec, tracks, positionSec = 0, trackElements,
   onScrub, onScrubStart, onScrubEnd, mutedIds, onToggleMute, onToggleLock, trackDurations,
+  highlightedIds, onHoverTrack,
 }: {
   regions: TemplateRegion[];
   totalSec: number;
@@ -78,6 +79,11 @@ export function ResultTimeline({
   /** Omit to render without lock controls. Whether a lane IS locked is read off the track itself
    *  (`ArrTrack.locked`), which the generator sets — no second source of truth for the same fact. */
   onToggleLock?: (trackId: string) => void;
+  /** Lanes to wash with the accent — the pool row under the cursor drives these, which is how a row
+   *  shows you which lanes it actually governs. */
+  highlightedIds?: ReadonlySet<string>;
+  /** Hovering a lane reports it back, so the link runs both ways. null on leave. */
+  onHoverTrack?: (trackId: string | null) => void;
   /** trackId → real sample length in seconds; only known once the engine has loaded it. */
   trackDurations?: Record<string, number>;
 }) {
@@ -111,8 +117,18 @@ export function ResultTimeline({
 
       {tracks.map((t) => {
         const muted = mutedIds?.has(t.id) ?? false;
+        const lit = highlightedIds?.has(t.id) ?? false;
         return (
-          <div key={t.id} className="flex items-center gap-2">
+          <div
+            key={t.id}
+            data-testid={`lane-${t.id}`}
+            data-highlighted={lit}
+            onMouseEnter={() => onHoverTrack?.(t.id)}
+            onMouseLeave={() => onHoverTrack?.(null)}
+            className={`flex items-center gap-2 rounded-sm transition-calm ${
+              lit ? 'bg-[var(--accent-ink)]/8 ring-1 ring-inset ring-[var(--accent-ink)]/25' : ''
+            }`}
+          >
             <span className="flex w-44 shrink-0 items-center gap-1">
               {onToggleLock && (
                 <button

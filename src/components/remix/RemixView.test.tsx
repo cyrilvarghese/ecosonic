@@ -646,19 +646,19 @@ describe('RemixView — locking a track against Regenerate', () => {
   });
 });
 
-describe('RemixView — PLANET on two lanes', () => {
-  /** The fixture store plus a PLANET rule, so the category actually draws. */
-  const withPlanet = () => vi.stubGlobal('fetch', vi.fn(async () => ({
-    ok: true,
-    json: async () => ({
-      store: {
-        ...STORE,
-        EARTH: [{ id: 'e', element: 'EARTH', label: 'e', rules: [rule('PLANET', 'EARTH')] }],
-      },
-      warnings: [],
-    }),
-  })));
+/** The fixture store plus a PLANET rule, so the category actually draws — and draws two lanes. */
+const withPlanet = () => vi.stubGlobal('fetch', vi.fn(async () => ({
+  ok: true,
+  json: async () => ({
+    store: {
+      ...STORE,
+      EARTH: [{ id: 'e', element: 'EARTH', label: 'e', rules: [rule('PLANET', 'EARTH')] }],
+    },
+    warnings: [],
+  }),
+})));
 
+describe('RemixView — PLANET on two lanes', () => {
   it('draws a row per body, both on the same timing', async () => {
     withPlanet();
     render(<RemixView />);
@@ -699,6 +699,64 @@ describe('RemixView — PLANET on two lanes', () => {
     const ids = exportCtl.lastArgs!.tracks.map((t) => t.id);
     expect(ids).not.toContain('PLANET·EARTH·EARTH-SUN');
     expect(ids).toContain('PLANET·EARTH·EARTH-MERCURY');
+  });
+});
+
+describe('RemixView — hovering links a pool row to its lanes', () => {
+  const lit = (el: HTMLElement) => el.getAttribute('data-highlighted') === 'true';
+
+  it('lights the matching lane when a pool row is hovered', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.hover(screen.getByTestId('pool-PAD'));
+
+    expect(lit(screen.getByTestId('pool-PAD'))).toBe(true);
+    expect(lit(screen.getByTestId('lane-PAD·FIRE'))).toBe(true);
+  });
+
+  it('lights the pool row when its lane is hovered — the link runs both ways', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.hover(screen.getByTestId('lane-PAD·FIRE'));
+
+    expect(lit(screen.getByTestId('pool-PAD'))).toBe(true);
+    expect(lit(screen.getByTestId('lane-PAD·FIRE'))).toBe(true);
+  });
+
+  it('leaves every other row alone', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.hover(screen.getByTestId('pool-PAD'));
+
+    expect(lit(screen.getByTestId('pool-MELODY'))).toBe(false);
+    const melodyLane = screen.getAllByTestId(/^lane-MELODY·/)[0];
+    expect(lit(melodyLane)).toBe(false);
+  });
+
+  it('clears when the pointer leaves', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.hover(screen.getByTestId('pool-PAD'));
+    await userEvent.unhover(screen.getByTestId('pool-PAD'));
+
+    expect(lit(screen.getByTestId('pool-PAD'))).toBe(false);
+    expect(lit(screen.getByTestId('lane-PAD·FIRE'))).toBe(false);
+  });
+
+  it('lights BOTH planet lanes from the one pool row', async () => {
+    // The case that motivates the feature: one row drives two lanes, and nothing on screen said so.
+    withPlanet();
+    render(<RemixView />);
+    await screen.findByTestId('region-PLANET·EARTH·EARTH-MERCURY-0');
+
+    await userEvent.hover(screen.getByTestId('pool-PLANET'));
+
+    expect(lit(screen.getByTestId('lane-PLANET·EARTH·EARTH-MERCURY'))).toBe(true);
+    expect(lit(screen.getByTestId('lane-PLANET·EARTH·EARTH-SUN'))).toBe(true);
   });
 });
 

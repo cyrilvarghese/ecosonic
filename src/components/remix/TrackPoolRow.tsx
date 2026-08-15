@@ -49,7 +49,7 @@ const { trackMinDb, trackMaxDb } = config.audio.volume;
  *  neither has a per-element lane a click could address. */
 export function TrackPoolRow({
   category, candidates, picked, pins, onPick, canSound, manual, onReset, sends, onSend,
-  volumeDb, onVolume,
+  volumeDb, onVolume, highlighted, onHover,
 }: {
   category: Category;
   candidates: AuthoredRule[];
@@ -76,11 +76,21 @@ export function TrackPoolRow({
    *  The floor of the range is quiet, not silent; muting a lane is still the timeline's job. */
   volumeDb?: number;
   onVolume?: (db: number) => void;
+  /** Washed with the accent while this category is the one under the cursor — on either surface.
+   *  A row can drive several lanes (PLANET's pair, a category you took over), and until now nothing
+   *  on screen said which. */
+  highlighted?: boolean;
+  onHover?: (hovering: boolean) => void;
 }) {
   return (
     <div
       data-testid={`pool-${category}`}
-      className="grid grid-cols-[140px_1fr_auto] items-center gap-3 border-t border-border py-2"
+      data-highlighted={highlighted ?? false}
+      onMouseEnter={() => onHover?.(true)}
+      onMouseLeave={() => onHover?.(false)}
+      className={`grid grid-cols-[140px_1fr_auto] items-center gap-3 border-t border-border py-2 transition-calm ${
+        highlighted ? 'bg-[var(--accent-ink)]/8' : ''
+      }`}
     >
       <div className="text-sm font-medium">
         {category}

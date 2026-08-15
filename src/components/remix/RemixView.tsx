@@ -114,6 +114,13 @@ export function RemixView() {
   const [renderPct, setRenderPct] = useState<number | null>(null);
   const [exportFailed, setExportFailed] = useState(false);
   const [mutedIds, setMutedIds] = useState<ReadonlySet<string>>(new Set());
+  // Which CATEGORY is under the cursor, wherever the cursor is. Held here rather than in either
+  // component so the link is symmetric by construction: both surfaces render from the same fact,
+  // rather than one pushing a highlight into the other.
+  const [hoveredCategory, setHoveredCategory] = useState<Category | null>(null);
+  const highlightedIds = new Set(
+    hoveredCategory ? tracks.filter((t) => t.category === hoveredCategory).map((t) => t.id) : [],
+  );
 
   const toggleMute = (trackId: string) =>
     setMutedIds((prev) => {
@@ -387,6 +394,8 @@ export function RemixView() {
               onSend={(kind, value) => setCategorySend(c, kind, value)}
               volumeDb={volumeFor(c)}
               onVolume={(db) => setCategoryVolume(c, db)}
+              highlighted={hoveredCategory === c}
+              onHover={(on) => setHoveredCategory(on ? c : null)}
             />
           ))
         )}
@@ -415,6 +424,10 @@ export function RemixView() {
             if (track) toggleLock(track.category);
           }}
           trackDurations={trackDurations}
+          highlightedIds={highlightedIds}
+          // A lane reports itself; the category it belongs to is what both surfaces highlight on.
+          onHoverTrack={(id) =>
+            setHoveredCategory(id ? tracks.find((t) => t.id === id)?.category ?? null : null)}
         />
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
