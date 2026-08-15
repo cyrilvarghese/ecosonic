@@ -485,6 +485,68 @@ describe('generateRemix — lanes', () => {
   });
 });
 
+describe('generateRemix — the draw never picks a rule it could not play', () => {
+  const BASE = { sessionSec: 1800 };
+
+  it('leaves a lead it cannot sound out of the draw entirely', () => {
+    // WATER authors ELEMENT_SUB but ships no sample for it. Drawing that lead used to cost the
+    // whole category its lane — the chip is struck through in the UI for exactly this reason.
+    const pool = [rule('ELEMENT_SUB', 'WATER'), rule('ELEMENT_SUB', 'EARTH')];
+    const manifest = fakeManifest({ WATER: ['ELEMENT_SUB'] });
+
+    for (let seed = 1; seed <= 40; seed++) {
+      const { tracks, warnings } = generateRemix(pool, manifest, { ...BASE, seed });
+      expect(tracks.map((t) => t.id)).toEqual(['ELEMENT_SUB·EARTH']);
+      expect(warnings).toEqual([]); // nothing was skipped, so there is nothing to report
+    }
+  });
+
+  it('skips the category only when NO candidate could play, and names them', () => {
+    const pool = [rule('ELEMENT_SUB', 'WATER'), rule('ELEMENT_SUB', 'ETHER')];
+    const { tracks, warnings } = generateRemix(
+      pool,
+      fakeManifest({ WATER: ['ELEMENT_SUB'], ETHER: ['ELEMENT_SUB'] }),
+      { ...BASE, seed: 1 },
+    );
+    expect(tracks).toEqual([]);
+    expect(warnings).toEqual(['ELEMENT_SUB: no WATER, ETHER sample — those lanes skipped']);
+  });
+
+  it('judges by the borrowed element, which is what would actually sound', () => {
+    // Borrowing is what rescues these timings: WATER ships no ELEMENT_SUB, but under EARTH's audio
+    // its rule plays fine — so it must stay drawable there.
+    const pool = [rule('ELEMENT_SUB', 'WATER')];
+    const { tracks, picks } = generateRemix(pool, fakeManifest({ WATER: ['ELEMENT_SUB'] }), {
+      ...BASE, seed: 1, sampleElement: 'EARTH',
+    });
+    expect(tracks.map((t) => t.id)).toEqual(['ELEMENT_SUB·EARTH']);
+    expect(picks[0].rule.source.element).toBe('WATER');
+  });
+
+  it('names the borrowed element when it is the one shipping nothing', () => {
+    const pool = [rule('ELEMENT_SUB', 'EARTH')];
+    const { tracks, warnings } = generateRemix(pool, fakeManifest({ WATER: ['ELEMENT_SUB'] }), {
+      ...BASE, seed: 1, sampleElement: 'WATER',
+    });
+    expect(tracks).toEqual([]);
+    // WATER is what would sound and what is missing; EARTH merely supplied the timing.
+    expect(warnings).toEqual(['ELEMENT_SUB: no WATER sample — those lanes skipped']);
+  });
+
+  it('leaves a fully-stocked category drawing exactly as before', () => {
+    const pool = ELEMENTS.map((el) => rule('MELODY', el));
+    const manifest = fakeManifest();
+    for (let seed = 1; seed <= 20; seed++) {
+      const { tracks } = generateRemix(pool, manifest, { ...BASE, seed });
+      expect(tracks).toHaveLength(1);
+    }
+    // and it still lands on more than one element across seeds
+    const landed = new Set(Array.from({ length: 20 }, (_, i) =>
+      generateRemix(pool, manifest, { ...BASE, seed: i + 1 }).tracks[0].id));
+    expect(landed.size).toBeGreaterThan(1);
+  });
+});
+
 describe('generateRemix — a locked category holds its draw', () => {
   const BASE = { sessionSec: 1800 };
 

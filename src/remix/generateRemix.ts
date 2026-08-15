@@ -130,7 +130,15 @@ export function generateRemix(
     const lockedAt = opts.locked?.[category];
     const catSeed = lockedAt ?? opts.seed;
     const catRng = makeRng(seedFrom(catSeed, category));
-    const lead = drawLead(cands, catRng);
+
+    // The generator does not draw a lead it could never play. A rule sounds through the element
+    // borrowing fixed by hand, or through its own — and if that element ships no sample for this
+    // category (§3.6), picking it silently cost the whole category its lane. The pool row already
+    // strikes those chips through and refuses your click; the draw now holds to the same rule.
+    const drawable = cands.filter(
+      (r) => (manifest[opts.sampleElement ?? r.source.element]?.[category] ?? []).length > 0,
+    );
+    const lead = drawable.length > 0 ? drawLead(drawable, catRng) : null;
 
     let lanes: Lane[];
     if (manual) {
@@ -146,6 +154,14 @@ export function generateRemix(
           audioElement: e,
           lead: taken.find((r) => r.source.element === e)!,
         }));
+    } else if (!lead) {
+      // Not one dead lead among several — every candidate is dead, so there is nothing to draw.
+      // Named by the element that would have SOUNDED, which borrowing can make differ from the
+      // element that wrote the rule.
+      for (const el of new Set(cands.map((r) => opts.sampleElement ?? r.source.element))) {
+        noSample.push(el);
+      }
+      lanes = [];
     } else {
       // A generated category is one lane, on the element its lead landed on.
       lanes = [{

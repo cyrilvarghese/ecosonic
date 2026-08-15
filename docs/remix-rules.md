@@ -154,30 +154,47 @@ sample, so the shape never depends on the count (§3.1). Capped at two — a lan
 This applies in **Borrowed timings** too. The §6.1 argument against extra lanes was that they would
 be the same file staggered in time; two planets are two different files, so it does not reach them.
 
-**3.6 — No sample, no track.** If the element has no sample for that category, the track is skipped
-with a warning. `ELEMENT_SUB` is the **only** such gap in the shipped material — every other
-category×element cell has both a rule and a sample:
+**3.6 — No sample, no lead.** A rule can only sound through an element that ships a sample for its
+category, and **the draw does not pick a lead it could not play.** The pool row already strikes those
+chips through and refuses a click on them; the generator holds to the same rule, so a dead candidate
+costs nothing. A category is skipped — with a warning — only when *every* candidate is dead.
+
+`ELEMENT_SUB` is the **only** such gap in the shipped material; every other category×element cell
+that has a rule also has a sample:
 
 | | EARTH | WATER | AIR | FIRE | ETHER |
 |---|---|---|---|---|---|
-| authors `ELEMENT_SUB` rules | yes | yes | yes | — | yes |
-| ships `ELEMENT_SUB` samples | 4 | **0** | 4 | 4 | **0** |
+| authors `ELEMENT_SUB` rules | Intro + Rx | Rx | Rx | — | Rx |
+| ships `ELEMENT_SUB` samples | 5 | 3 | 4 | 4 | **0** |
 
-**Borrowed timings turns that gap from a coin-flip into a certainty, in both directions**, because
-one chosen element supplies every track's audio rather than whichever element the lead landed on:
+Only ETHER's rule is unplayable, and because the draw skips it, `ELEMENT_SUB` now sounds in **every**
+cross-element draw — roughly half of them on EARTH, carrying both an Introduction and a Deep
+Relaxation. No element authors an `ELEMENT_SUB` rule for **Return**, so it never sounds there; that
+is missing material, not a rule.
 
-- **Sound: EARTH / AIR / FIRE** — `ELEMENT_SUB` *always* plays, and WATER's and ETHER's
-  `ELEMENT_SUB` timings become usable for the first time in any mode. FIRE is the sharpest case: it
-  authors no `ELEMENT_SUB` rules at all yet ships four samples, so borrowed-FIRE plays four other
-  elements' sub-element timings through FIRE audio — a combination no other mode can produce.
-- **Sound: WATER / ETHER** — `ELEMENT_SUB` is *always* skipped, where before it depended on where
-  the lead draw landed. The warning appears every time in those two, by construction rather than by
-  bad luck.
+*(Historical note: this table read `WATER: 0` until 2026-08-15. `src/manifest.json` held WATER's
+three sub samples under `ELEMENT`, at paths whose folder segment was `SUB` followed by an invisible
+`U+F028` — a Private Use character. That defeats the `parts[2] === 'SUB'` test in `categoryOf`, so
+they were classified as `ELEMENT`, and any URL built from those paths would 404. Rebuilding the
+manifest off the now-clean folder name fixed both. Worth knowing that a path can be wrong in a way
+no amount of reading the JSON will show you — compare code points, and re-run `verify:r2` after any
+path changes.)*
 
-**Under layering the warning is collapsed per category**, naming every element skipped —
+**Borrowed timings decides the question by hand**, because one chosen element supplies every track's
+audio rather than whichever element the lead landed on:
+
+- **Sound: EARTH / WATER / AIR / FIRE** — `ELEMENT_SUB` always plays, and ETHER's timing becomes
+  usable for the first time in any mode. FIRE is the sharpest case: it authors no `ELEMENT_SUB` rule
+  at all yet ships four samples, so borrowed-FIRE plays other elements' sub-element timings through
+  FIRE audio — a combination no other mode can produce.
+- **Sound: ETHER** — `ELEMENT_SUB` is always skipped, by construction rather than by bad luck, and
+  the warning names ETHER: it is the element that would have sounded, not the one that wrote the
+  rule.
+
+**The warning is collapsed per category**, naming every element skipped —
 `ELEMENT_SUB: no WATER, ETHER sample — those lanes skipped` — rather than repeating itself once per
-lane. It is kept even when other lanes of the category survived, because it is the only thing
-explaining why a chip you can see never produces a lane.
+lane. A category you have taken over can still hit it, since choosing a timing by hand bypasses the
+draw's filter.
 
 **3.7 — Draw probability follows rule count, not elements.** The lead is drawn uniformly over
 *candidate rules*, so an element with more authored variants in a category is likelier to win it —

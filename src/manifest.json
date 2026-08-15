@@ -212,24 +212,6 @@
         "ext": ".wav"
       },
       {
-        "name": "SUB WATER",
-        "path": "WATER/ELEMENT/SUB/SUB WATER.wav",
-        "bytes": 31752080,
-        "ext": ".wav"
-      },
-      {
-        "name": "WHALES 2",
-        "path": "WATER/ELEMENT/SUB/WHALES 2.wav",
-        "bytes": 84287210,
-        "ext": ".wav"
-      },
-      {
-        "name": "WHALES",
-        "path": "WATER/ELEMENT/SUB/WHALES.wav",
-        "bytes": 177198626,
-        "ext": ".wav"
-      },
-      {
         "name": "WATER",
         "path": "WATER/ELEMENT/WATER.wav",
         "bytes": 80823356,
@@ -282,7 +264,26 @@
         "ext": ".wav"
       }
     ],
-    "ELEMENT_SUB": [],
+    "ELEMENT_SUB": [
+      {
+        "name": "SUB WATER",
+        "path": "WATER/ELEMENT/SUB/SUB WATER.wav",
+        "bytes": 31752080,
+        "ext": ".wav"
+      },
+      {
+        "name": "WHALES 2",
+        "path": "WATER/ELEMENT/SUB/WHALES 2.wav",
+        "bytes": 84287210,
+        "ext": ".wav"
+      },
+      {
+        "name": "WHALES",
+        "path": "WATER/ELEMENT/SUB/WHALES.wav",
+        "bytes": 177198626,
+        "ext": ".wav"
+      }
+    ],
     "DRONE": [
       {
         "name": "DRONE WATER",
