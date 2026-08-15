@@ -19,18 +19,11 @@ interface Lane {
   lead: AuthoredRule;
 }
 
-/** Lead rules for a category, one per lane, drawn WITHOUT replacement of the element: each draw is
- *  uniform over the rules still in play, so an element with more authored variants stays likelier to
- *  win a lane (§3.7), and no element wins two. */
-function drawLeads(cands: AuthoredRule[], rng: RNG, count: number): AuthoredRule[] {
-  const out: AuthoredRule[] = [];
-  let remaining = cands;
-  while (out.length < count && remaining.length > 0) {
-    const lead = remaining[Math.floor(rng.float() * remaining.length)];
-    out.push(lead);
-    remaining = remaining.filter((r) => r.source.element !== lead.source.element);
-  }
-  return out;
+/** The lead rule for a category: a uniform draw over its candidates, so an element with more
+ *  authored variants is likelier to win the category (§3.7). The element it lands on is the one
+ *  the category sounds. */
+function drawLead(cands: AuthoredRule[], rng: RNG): AuthoredRule {
+  return cands[Math.floor(rng.float() * cands.length)];
 }
 
 export interface RemixPick {
@@ -63,9 +56,9 @@ export interface RemixDraw {
  *   - `section` set ⇒ one fixed-length module, one rule, rebased to the section start.
  *     Omitted ⇒ the whole session: **one rule per section**, so a bed sounds across all thirty
  *     minutes rather than only the third its lead happened to come from.
- *   - `lanesPerTrack` > 1 ⇒ Layered: a category takes several elements, each its own lane, drawn
- *     without replacement. Capped to 1 under `sampleElement`, where the extra lanes would be the
- *     same file staggered in time rather than several elements sounding.
+ *
+ *  A generated category is ONE lane, on the element its lead landed on. Several lanes happen only
+ *  where you make them: taking a category over (`manual`) gives one lane per element you light.
  *
  *  Pure and seeded: same pool + manifest + opts ⇒ same draw. No invariant repair — a category the
  *  pool doesn't cover is simply absent, and sparsity is accepted. */
@@ -79,8 +72,6 @@ export function generateRemix(
     sampleElement?: ElementName;
     section?: Mode;
     sessionSec: number;
-    /** Layered: how many elements the draw may take per category. 1 (and omitted) = one lane. */
-    lanesPerTrack?: number;
     /** category → slotKey → ruleKey. A category listed here is **manual**: the user took it over, so
      *  it is not drawn and its rules no longer apply to it. Absent ⇒ generated as usual. */
     manual?: Manual;
@@ -101,30 +92,23 @@ export function generateRemix(
   const picks: RemixPick[] = [];
   const warnings: string[] = [];
 
-  // Borrowed fixes every lane's audio to one element, so a second lane of a one-sample category
-  // would be byte-identical audio staggered in time — a different feature (§6.1). One lane, always.
-  const laneCount = opts.sampleElement ? 1 : Math.max(1, opts.lanesPerTrack ?? 1);
-
-
   for (const category of categories) {
     const cands = candidates.filter((r) => r.category === category);
 
-    /** Lane elements this category could not sound. Collected rather than warned per lane: under
-     *  layering the same §3.6 gap would otherwise be reported once per element (§7.3). */
+    /** Lane elements this category could not sound. Collected rather than warned per lane: a taken
+     *  category can hold several, and the same §3.6 gap would otherwise be reported once each. */
     const noSample: ElementName[] = [];
 
     // A category the user has taken over. Its rules do not apply to it any more — not
-    // one-lane-per-category, not lanesPerTrack, not one-element-per-lane. What was chosen is what
-    // sounds, and nothing here consults the draw.
+    // one-lane-per-category, not one-element-per-lane. What was chosen is what sounds, and nothing
+    // here consults the draw.
     const manual = opts.manual?.[category];
     const taken = manual ? cands.filter((r) => manual[slotKey(r)] === ruleKey(r)) : [];
 
-    // One stream per category, so what one category draws can never shift another.
+    // One stream per category, so what one category draws can never shift another. Drawn even for a
+    // manual category, so the streams below it do not shift when a row is taken over or handed back.
     const catRng = makeRng(seedFrom(opts.seed, category));
-    // Leads are all drawn before any lane is filled, which is what lets the draw be without
-    // replacement. Still drawn for a manual category, so the streams below it do not shift when a
-    // row is taken over or handed back.
-    const leads = drawLeads(cands, catRng, laneCount);
+    const lead = drawLead(cands, catRng);
 
     let lanes: Lane[];
     if (manual) {
@@ -141,16 +125,12 @@ export function generateRemix(
           lead: taken.find((r) => r.source.element === e)!,
         }));
     } else {
-      const laneElements = laneCount === 1
-        ? [leads[0].source.element]
-        : ELEMENTS.filter((e) => leads.some((l) => l.source.element === e));
-      lanes = opts.sampleElement
-        ? [{ ruleElement: null, audioElement: opts.sampleElement, lead: leads[0] }]
-        : laneElements.map((e) => ({
-          ruleElement: e,
-          audioElement: e,
-          lead: leads.find((l) => l.source.element === e)!,
-        }));
+      // A generated category is one lane, on the element its lead landed on.
+      lanes = [{
+        ruleElement: opts.sampleElement ? null : lead.source.element,
+        audioElement: opts.sampleElement ?? lead.source.element,
+        lead,
+      }];
     }
 
     for (const lane of lanes) {

@@ -23,7 +23,7 @@ export type Pins = Record<string, string>;
 
 /** category → its hand-chosen timings. A category present here is **manual**: the user has taken it
  *  over, so the generator neither draws it nor applies its rules to it — no one-lane-per-category,
- *  no lanesPerTrack, no lead element. What is listed is exactly what sounds.
+ *  no lead element. What is listed is exactly what sounds.
  *
  *  Absent ⇒ the category is still generated, by whichever mode is on. Rules govern generation; they
  *  do not govern you. */

@@ -87,7 +87,6 @@ instead of narrowing anything:
 | **Cross-element** (default) | the whole pool; each track's sample follows the rule it picked |
 | **Scoped**(el) | only that element's rules, and that element's samples |
 | **Borrowed timings**(el) | the whole pool for **timing**, and **el**'s samples for every track |
-| **Layered**(n) | the whole pool, and up to **n elements per category** — each its own lane |
 | **Full session** (default) | the whole 30-minute timeline |
 | **Section**(s) | only rules tagged to that section |
 
@@ -96,9 +95,9 @@ modes rather than four.
 
 Then, for each category the narrowed pool covers:
 
-**3.1 — One lane per category, per element.** `id = category·ELEMENT` — `MELODY·FIRE` — so a
-category may hold several lanes, one per element the draw took — or, once you take the track
-over (§8), one per element you chose. The id carries the
+**3.1 — One lane per category, per element.** `id = category·ELEMENT` — `MELODY·FIRE`. **A drawn
+category is exactly one lane**, on the element its lead landed on. A category holds several lanes
+only once you take it over (§8) — one per element you chose. The id carries the
 element even when there is only one lane: an id that changed shape when a sibling appeared would
 lose that lane's mute state and make the engine reload it mid-session. `MELODY 2` and `SUB MELODY`
 still collapse onto the `MELODY` category; the picked variant and the element become the lane's
@@ -132,15 +131,9 @@ always was on paper — pure timing. In that mode there is no lead element and n
 track's three sections can come from three different elements — drawn that way, or **chosen** that
 way by clicking a chip per section (§8).
 
-Layering does not repeal this rule — it scopes it down from a category to a lane. Cross-element
-mixing still never happens inside a lane; it now happens across the lanes of one category as well as
-across categories.
-
-**Borrowed is capped at one lane**, for the same reason. It fixes every lane's audio to one element,
-so two lanes of a category would draw from the same `manifest[el][category]` list — and six of the
-eleven categories (NOISE, FX, DRONE, PAD, BASS and MELODY) ship exactly one sample per element. Those
-lanes would be byte-identical audio staggered in time: a real phasing effect, but a different feature
-from "several elements sounding", and not worth the extra states.
+Taking a category over does not repeal this rule — it scopes it down from a category to a lane.
+Cross-element mixing still never happens inside a lane; it happens across the lanes of a taken
+category as well as across categories.
 
 **3.5 — The sample follows the element — the picked one, or the chosen one.** A track's audio is
 `manifest[element][category]`, drawn at random from that list. `element` is the lead rule's element
@@ -178,15 +171,15 @@ explaining why a chip you can see never produces a lane.
 **3.8 — Tracks are ordered by the vertical grammar** (`STACK_ORDER`): NOISE, ELEMENT, ELEMENT_SUB,
 FX, ISO, PLANET, DRONE, PAD, BASS, ARP, MELODY.
 
-**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + lanes + the
-manual choices ⇒ the same draw. Regenerate advances the seed and rerolls every **generated** track;
+**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + the manual
+choices ⇒ the same draw. Regenerate advances the seed and rerolls every **generated** track;
 a track you took over (§8) does not move.
 
 Each **lane owns its own random stream**, seeded from `(seed, category, element)` rather than drawn
-from one shared sequence. This is what makes an edit local: taking one track over, or raising the
-lanes setting, cannot disturb what any other lane already chose, and the lane you were listening to
-survives a change to its neighbours. A single shared stream couples everything — change how many
-values one lane consumes and every later lane shifts.
+from one shared sequence. This is what makes an edit local: taking one track over cannot disturb
+what any other lane already chose, and the lane you were listening to survives a change to its
+neighbours. A single shared stream couples everything — change how many values one lane consumes and
+every later lane shifts.
 
 ## 4. Laying it on the timeline
 

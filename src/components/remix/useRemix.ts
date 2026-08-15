@@ -14,9 +14,8 @@ const manifest = manifestJson as unknown as Manifest;
 const EMPTY_STORE: RuleStore = { EARTH: [], WATER: [], AIR: [], FIRE: [], ETHER: [] };
 
 /** `cross` draws every track from the whole authored pool; `scoped` from one element's rules only;
- *  `borrowed` draws timings from every element but plays them all through one element's samples;
- *  `layered` is `cross` with the draw taking SEVERAL elements per category, each its own lane. */
-export type RemixMode = 'scoped' | 'cross' | 'borrowed' | 'layered';
+ *  `borrowed` draws timings from every element but plays them all through one element's samples. */
+export type RemixMode = 'scoped' | 'cross' | 'borrowed';
 
 export interface RemixState {
   tracks: ArrTrack[];
@@ -38,9 +37,6 @@ export interface RemixState {
    *  ships a sample for its category. False only for the §3.6 gap — WATER and ETHER author
    *  `ELEMENT_SUB` rules but ship no `ELEMENT_SUB` file. */
   canSound: (rule: AuthoredRule) => boolean;
-  /** How many elements a category's draw may take, in `layered`. Every other mode is one lane. */
-  lanesPerTrack: number;
-  setLanesPerTrack: (n: number) => void;
   /** category → the timings chosen by hand. A category listed here is manual — the generator has
    *  handed it over, and its rules no longer apply to it. */
   manual: Manual;
@@ -76,7 +72,6 @@ export function useRemix(): RemixState {
   const [mode, setMode] = useState<RemixMode>('cross');
   const [element, setElement] = useState<ElementName>(ELEMENTS[0]);
   const [section, setSection] = useState<Mode | null>(null);
-  const [lanesPerTrack, setLanesPerTrack] = useState(2);
   const [manual, setManual] = useState<Manual>({});
   /** The mix you dialled in, keyed by lane id — and ONLY what you actually moved, so a category you
    *  never touched keeps its config default rather than being pinned to whatever it happened to
@@ -115,11 +110,6 @@ export function useRemix(): RemixState {
   const scopedTo = mode === 'scoped' ? element : undefined;
   const borrowing = mode === 'borrowed';
   const sampleElement = borrowing ? element : undefined;
-  // Layering is the only mode that takes more than one lane: Scoped is one element by definition,
-  // and Borrowed is capped at one because the extra lanes would be the same file staggered. It is
-  // also the only mode where clicking a chip can ADD a lane rather than swap the one that is there.
-  const layering = mode === 'layered';
-  const lanes = layering ? lanesPerTrack : 1;
 
   const draw = useMemo(
     () => generateRemix(pool, manifest, {
@@ -128,11 +118,10 @@ export function useRemix(): RemixState {
       sampleElement,
       section: section ?? undefined,
       sessionSec: sessionMin * 60,
-      lanesPerTrack: lanes,
       manual,
     }),
     // `manual` is an input to the draw, not a decoration on it — determinism now includes it.
-    [pool, seed, scopedTo, sampleElement, section, sessionMin, lanes, manual],
+    [pool, seed, scopedTo, sampleElement, section, sessionMin, manual],
   );
 
   // The scheduler and the WAV renderer both read arrangementStore.tracks — keep them in step with
@@ -171,8 +160,8 @@ export function useRemix(): RemixState {
     }
   }, [draw, scopedTo, sampleElement, sessionMin]);
 
-  // Both write through to every lane of the category: a pool row IS a category, and in layered mode
-  // a category may hold several. Coarser than the store, which keys both per lane — deliberately so.
+  // Both write through to every lane of the category: a pool row IS a category, and a category you
+  // took over may hold several. Coarser than the store, which keys both per lane — deliberately so.
   const setCategoryVolume = useCallback((c: Category, db: number) => {
     const st = arrangementStore.getState();
     for (const t of draw.tracks.filter((t) => t.category === c)) {
@@ -266,8 +255,6 @@ export function useRemix(): RemixState {
     section,
     candidatesFor,
     canSound,
-    lanesPerTrack,
-    setLanesPerTrack,
     manual,
     toggleChip,
     resetCategory,

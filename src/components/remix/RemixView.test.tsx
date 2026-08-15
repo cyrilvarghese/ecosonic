@@ -90,6 +90,17 @@ const rule = (
 const laneRegion = (category: string, enterSec = 0) =>
   new RegExp(`^region-${category}·[A-Z]+-${enterSec}$`);
 
+/** A generated category is ONE lane. Clicking the MELODY chip the draw did not take adds a second —
+ *  taking the category over is how a category comes to hold two. */
+const addSecondMelodyLane = async () => {
+  const row = screen.getByTestId('pool-MELODY');
+  const drawnIsWater = within(row).getByRole('button', { name: 'Water·I' })
+    .className.includes('bg-[var(--accent-ink)]');
+  await userEvent.click(
+    within(row).getByRole('button', { name: drawnIsWater ? 'Fire·I' : 'Water·I' }),
+  );
+};
+
 // WATER authored a MELODY but no PAD — so scoping to WATER visibly drops the PAD lane. BASS exists
 // only in RETURN, so picking that section visibly narrows the draw to it.
 const STORE = {
@@ -548,24 +559,12 @@ describe('RemixView — borrowed timings', () => {
   });
 });
 
-describe('RemixView — layered lanes', () => {
-  it('offers a fourth mode with a lanes control of its own', async () => {
-    render(<RemixView />);
-    await screen.findByTestId(laneRegion('PAD'));
-
-    expect(screen.queryByLabelText(/lanes per track/i)).toBeNull();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
-
-    expect(screen.getByRole('button', { name: 'Layered' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByLabelText(/lanes per track/i)).toHaveValue('2');
-  });
-
-  it('stacks two coloured lanes for a category two elements authored', async () => {
+describe('RemixView — a category holding two lanes', () => {
+  it('stacks two coloured lanes, each keeping its own element', async () => {
     const { container } = render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    await addSecondMelodyLane();
 
     // MELODY is authored by WATER and FIRE, so both lanes exist and each keeps its own colour.
     expect(screen.getByTestId('region-MELODY·WATER-0')).toBeInTheDocument();
@@ -578,7 +577,7 @@ describe('RemixView — layered lanes', () => {
   it('mutes one lane without touching its sibling', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    await addSecondMelodyLane();
 
     await userEvent.click(screen.getByRole('button', { name: /Mute MELODY · Water/ }));
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
@@ -588,22 +587,10 @@ describe('RemixView — layered lanes', () => {
     expect(exportCtl.lastArgs!.tracks.map((t) => t.id)).toContain('MELODY·FIRE');
   });
 
-  it('honours the lanes control', async () => {
-    render(<RemixView />);
-    await screen.findByTestId(laneRegion('PAD'));
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
-
-    await userEvent.selectOptions(screen.getByLabelText(/lanes per track/i), '1');
-
-    // Each MELODY rule here has one phrase in one section, so lanes and regions count one for one.
-    expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(1);
-  });
-
   it('shows one pool row per category, not one per lane', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    await addSecondMelodyLane();
 
     // Two MELODY lanes, but the pool of MELODY candidates is one thing and is listed once.
     expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
@@ -746,7 +733,7 @@ describe('RemixView — send sliders across a category', () => {
   it('moves every lane of a category together, because a row covers them all', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    await addSecondMelodyLane();
     expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
 
     const row = screen.getByTestId('pool-MELODY');
@@ -780,7 +767,7 @@ describe('RemixView — volume across a category', () => {
   it('moves every lane of a category together, and leaves the others alone', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    await userEvent.click(screen.getByRole('button', { name: 'Layered' }));
+    await addSecondMelodyLane();
     expect(screen.getAllByTestId(/^region-MELODY·/)).toHaveLength(2);
 
     const row = screen.getByTestId('pool-MELODY');

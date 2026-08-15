@@ -28,7 +28,6 @@ const MODES: { value: RemixMode; label: string }[] = [
   { value: 'cross', label: 'Cross-element' },
   { value: 'scoped', label: 'Scoped' },
   { value: 'borrowed', label: 'Borrowed timings' },
-  { value: 'layered', label: 'Layered' },
 ];
 /** null draws the whole authored session on its absolute timeline; a Mode draws one module. */
 const SECTIONS: { value: Mode | null; label: string }[] = [
@@ -42,7 +41,6 @@ const HINT: Record<RemixMode, (el: ElementName) => string> = {
   cross: () => 'every track draws from the whole pool — its sample follows the element it picked',
   scoped: () => "every track draws from one element's rules, and that element's samples",
   borrowed: (el) => `every track plays ${el}'s samples, on timings drawn from every element`,
-  layered: () => 'a category may sound several elements at once — click a chip to pin one',
 };
 
 export function RemixView() {
@@ -54,7 +52,7 @@ export function RemixView() {
   const {
     tracks, picks, regions, totalSec, warnings, loading, loadError,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
-    lanesPerTrack, setLanesPerTrack, manual, toggleChip, resetCategory, canSound,
+    manual, toggleChip, resetCategory, canSound,
     setCategoryVolume, setCategorySend,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
@@ -84,7 +82,7 @@ export function RemixView() {
   const pickedRules = new Set(picks.map((p) => p.rule));
   // Scoped narrows the pool to one element and takes its samples, so every chip in a row is already
   // the lane's own element and there is nothing a click could decide. Everywhere else a click means
-  // something: which element owns the lane (cross, layered) or which element's timing fills a
+  // something: which element owns the lane (cross) or which element's timing fills a
   // section (borrowed, where the sound is fixed by hand and sections may differ).
   const chipsClickable = mode !== 'scoped';
   // Rows come from the POOL, not from the lanes that happen to exist. A category you took over and
@@ -244,19 +242,6 @@ export function RemixView() {
             </button>
           ))}
         </div>
-
-        {mode === 'layered' && (
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Lanes per track
-            <select
-              value={lanesPerTrack}
-              onChange={(e) => setLanesPerTrack(Number(e.target.value))}
-              className="rounded border border-border bg-transparent px-1 py-0.5 text-xs"
-            >
-              {[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-        )}
 
         {/* The same chips serve two meanings: in scoped they narrow the rules, in borrowed they
             choose the sound. Only the latter needs saying, hence the caption on that mode alone. */}

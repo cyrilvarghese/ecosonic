@@ -312,38 +312,21 @@ describe('useRemix — borrowed timings', () => {
   });
 });
 
-describe('useRemix — layered lanes', () => {
-  it('draws one lane per element for a category in layered mode', async () => {
+describe('useRemix — one lane per category', () => {
+  it('gives each category a single lane, whatever the mode', async () => {
     const { result } = renderHook(() => useRemix());
     await waitFor(() => expect(result.current.tracks).toHaveLength(3));
 
-    act(() => result.current.setMode('layered'));
-
-    // MELODY is authored by WATER and FIRE, so it gains a second lane; PAD and BASS only by FIRE.
-    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(2);
-    expect(result.current.tracks.map((t) => t.id).sort())
-      .toEqual(['BASS·FIRE', 'MELODY·FIRE', 'MELODY·WATER', 'PAD·FIRE']);
-  });
-
-  it('defaults to two lanes and honours a change', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-    expect(result.current.lanesPerTrack).toBe(2);
-
-    act(() => result.current.setMode('layered'));
-    act(() => result.current.setLanesPerTrack(1));
-
-    expect(result.current.tracks.filter((t) => t.category === 'MELODY')).toHaveLength(1);
-  });
-
-  it('leaves the other modes on one lane whatever lanesPerTrack says', async () => {
-    const { result } = renderHook(() => useRemix());
-    await waitFor(() => expect(result.current.tracks).toHaveLength(3));
-
-    act(() => result.current.setLanesPerTrack(3));
-
-    expect(result.current.mode).toBe('cross');
-    expect(result.current.tracks).toHaveLength(3);
+    // MELODY is authored by WATER and FIRE, PAD and BASS by FIRE alone — three categories, three
+    // lanes. A second lane comes from taking a category over, never from the draw.
+    for (const mode of ['cross', 'scoped', 'borrowed'] as const) {
+      act(() => result.current.setMode(mode));
+      const byCategory = new Map<string, number>();
+      for (const t of result.current.tracks) {
+        byCategory.set(t.category, (byCategory.get(t.category) ?? 0) + 1);
+      }
+      expect([...byCategory.values()].every((n) => n === 1)).toBe(true);
+    }
   });
 });
 
