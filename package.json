@@ -15,7 +15,8 @@
     "build:sessions": "tsx scripts/build-sessions.ts",
     "transcode:web": "tsx scripts/transcode-web.ts",
     "upload:r2": "tsx scripts/upload-r2.ts",
-    "verify:r2": "tsx scripts/verify-r2.ts"
+    "verify:r2": "tsx scripts/verify-r2.ts",
+    "build:rulebook": "tsx scripts/build-rulebook.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

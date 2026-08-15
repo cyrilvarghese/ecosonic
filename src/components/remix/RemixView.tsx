@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Menu } from '@base-ui/react/menu';
 import { Check, ChevronDown } from 'lucide-react';
 import { ELEMENTS, type Category, type ElementName } from '@/types';
@@ -268,6 +269,13 @@ export function RemixView() {
         )}
 
         <p className="text-xs text-muted-foreground">{HINT[mode](element)}</p>
+
+        <Link
+          href="/rulebook"
+          className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2 transition-calm hover:text-[var(--accent-ink)]"
+        >
+          rulebook →
+        </Link>
 
         <div className="flex w-full flex-wrap items-center gap-1">
           {SECTIONS.map((s) => (

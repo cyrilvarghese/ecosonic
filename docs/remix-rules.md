@@ -306,10 +306,23 @@ what live playback does, where the context runs continuously across `advanceSess
 **5a.6 — Effects do not smooth loop seams (rule 5.2).** A tail cannot bridge a seam in a signal
 that never stopped.
 
-## 6. Adjust intervals to whole loops (opt-in)
+**5a.7 — Where a track starts, before you touch it.** A freshly drawn track sits at
+`audio.volume.defaultTrackDb` — unity — unless its category is listed in `audio.volume.categoryDb`,
+which mirrors `defaultSends` for level. `NOISE` starts at **−20 dB**: it is a bed and belongs under
+the rest from the first bar, rather than at unity waiting to be pulled down.
 
-Off by default. When on, every interval is resized so it contains a whole number of loops and no
-sample is cut part-way through a pass.
+The per-track slider runs `trackMinDb`…`trackMaxDb`, **−30 to +20 dB** — deeper than it is tall,
+because burying a bed is a routine mix move and boosting one past +20 is not. Level is part of the
+draw, so the WAV export carries it; it is not saved with an arrangement (rule 5a.3).
+
+## 6. Adjust intervals to whole loops
+
+**On by default.** Every interval is resized so it contains a whole number of loops and no sample is
+cut part-way through a pass — a seam mid-pass is audible, and wanting one is the rarer choice. Clear
+the box to hear intervals exactly as authored.
+
+The trim needs sample lengths the engine only reports after loading, so a mix played immediately
+starts on authored intervals and re-trims the moment those lengths arrive.
 
 **6.1** `loops = round(intervalLength / sampleLength)` — ≥ .5 rounds up, < .5 rounds down.
 `1.7×` → `2×`; `1.49×` → `1×`.
