@@ -229,13 +229,30 @@ export function generateRemix(
         continue;
       }
 
-      // A fanning category sounds its element's samples TOGETHER; every other draws one of them.
       const fans = FANS_OUT.has(category);
-      const voices = fans
-        ? samples.slice(0, FAN_OUT_MAX)
-        : [samples[Math.floor(laneRng.float() * samples.length)]];
+      // Rotating: the lane plays a DIFFERENT file each section, so the same loop is not heard for
+      // thirty minutes. One draw either way, so a category's stream does not shift between branches.
+      const rotates = !fans && samples.length > 1;
+      const pick = Math.floor(laneRng.float() * samples.length);
+      const laneId = `${category}·${lane.audioElement}`;
+      const laneLabel = `${drawn[0].rule.variant ?? category} · ${titleCase(lane.audioElement)}`;
 
-      for (const sample of voices) {
+      // PLANET sounds every body across every section (§3.5a). A rotating lane deals its sections
+      // out over its samples in turn, so nothing repeats until the list runs out — with two files
+      // and three sections that is A, B, A, and Return bookends the Introduction rather than
+      // looking like the draw ran short. Everything else is one file for the whole lane.
+      const voices = fans
+        ? samples.slice(0, FAN_OUT_MAX).map((sample) => ({ sample, sections: drawn }))
+        : rotates
+          ? samples
+            .map((sample, si) => ({
+              sample,
+              sections: drawn.filter((_, i) => (pick + i) % samples.length === si),
+            }))
+            .filter((v) => v.sections.length > 0)
+          : [{ sample: samples[pick], sections: drawn }];
+
+      for (const { sample, sections } of voices) {
         const track: ArrTrack = {
           // A lane is category × element, so the id carries both — and carries them even when there
           // is only one lane, because an id that changed shape when a sibling appeared would lose
@@ -243,12 +260,12 @@ export function generateRemix(
           // carries the sample too, for the same reason and one more: keyed on the body rather than
           // on a slot, your mute and level follow THAT planet across a redraw. It carries it even
           // where the element ships a single sample, so the shape never depends on the count.
-          id: fans
-            ? `${category}·${lane.audioElement}·${sample.name}`
-            : `${category}·${lane.audioElement}`,
+          id: fans || rotates ? `${laneId}·${sample.name}` : laneId,
+          // A rotating lane is one voice taking turns, so its tracks collapse to one row. PLANET's
+          // pair sound together and stay two rows — same mechanism, opposite intent.
+          row: rotates ? { id: laneId, label: laneLabel } : undefined,
           category,
-          label: `${drawn[0].rule.variant ?? category} · ${titleCase(lane.audioElement)}`
-            + (fans ? ` · ${titleCase(sample.name)}` : ''),
+          label: laneLabel + (fans || rotates ? ` · ${titleCase(sample.name)}` : ''),
           sample: { name: sample.name, path: sample.path, bytes: sample.bytes },
           // Where this category sits from the first bar — NOISE is a bed and belongs under the
           // rest, so it starts cut rather than at unity. Unlisted categories start at unity.
@@ -258,9 +275,9 @@ export function generateRemix(
           locked: lockedAt !== undefined,
         };
         tracks.push(track);
-        // Every voice takes the SAME timings — one rule, laid on each of them, so the pair sounds
-        // as one gesture and a single chip lights for both.
-        for (const c of drawn) {
+        // A fanning voice takes every section (the pair sounds as one gesture, one chip lit for
+        // both); a rotating voice takes only the sections dealt to it.
+        for (const c of sections) {
           picks.push({ track, rule: c.rule, poolSize: c.poolSize });
           for (const r of c.regions) regions.push({ ...r, trackId: track.id });
         }

@@ -265,3 +265,49 @@ describe('ResultTimeline scale', () => {
     expect(screen.queryByText('30:00')).toBeNull();
   });
 });
+
+describe('ResultTimeline — a lane that rotates its samples', () => {
+  const rotating = (name: string) => ({
+    id: `MELODY·EARTH·${name}`,
+    row: { id: 'MELODY·EARTH', label: 'MELODY · Earth' },
+    category: 'MELODY' as const,
+    label: `MELODY · Earth · ${name}`,
+    sample: { name, path: `${name}.wav`, bytes: 1 },
+    ceilingDb: 0,
+    locked: false,
+  });
+
+  it('renders as ONE row, not one per file', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800}
+        tracks={[rotating('A'), rotating('B'), rotating('C')]}
+        regions={[
+          { trackId: 'MELODY·EARTH·A', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 },
+          { trackId: 'MELODY·EARTH·B', enterSec: 600, exitSec: 1200, fadeInSec: 0, fadeOutSec: 0 },
+          { trackId: 'MELODY·EARTH·C', enterSec: 1200, exitSec: 1800, fadeInSec: 0, fadeOutSec: 0 },
+        ]}
+      />,
+    );
+    expect(screen.getAllByTestId(/^lane-/)).toHaveLength(1);
+    expect(screen.getByTestId('lane-MELODY·EARTH')).toBeInTheDocument();
+    // All three sections sit on that one row.
+    expect(screen.getAllByTestId(/^region-MELODY·EARTH·/)).toHaveLength(3);
+  });
+
+  it('names the file each block plays, so the rotation is visible', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800}
+        tracks={[rotating('OCEAN'), rotating('RAIN')]}
+        regions={[
+          { trackId: 'MELODY·EARTH·OCEAN', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 },
+          { trackId: 'MELODY·EARTH·RAIN', enterSec: 600, exitSec: 1200, fadeInSec: 0, fadeOutSec: 0 },
+        ]}
+      />,
+    );
+    const sources = screen.getAllByTestId('interval-source').map((n) => n.textContent);
+    expect(sources.some((s) => s?.includes('OCEAN'))).toBe(true);
+    expect(sources.some((s) => s?.includes('RAIN'))).toBe(true);
+  });
+});

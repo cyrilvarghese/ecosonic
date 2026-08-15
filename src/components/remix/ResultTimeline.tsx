@@ -91,6 +91,30 @@ export function ResultTimeline({
   const step = tickStep(totalSec);
   const ticks = Array.from({ length: Math.floor(totalSec / step) + 1 }, (_, i) => i * step);
 
+  /** One row per LANE, not per track. A lane that rotates its samples across the sections is
+   *  several tracks — one per file, because a track carries exactly one — but it is one voice
+   *  taking turns, so it reads as a single row whose blocks happen to name different files.
+   *  Everything else, PLANET's pair included, is its own row and this is a no-op. */
+  const rows = tracks.reduce<{
+    id: string; label: string; head: ArrTrack; ids: Set<string>; byId: Map<string, ArrTrack>;
+  }[]>((acc, t) => {
+    const id = t.row?.id ?? t.id;
+    const found = acc.find((r) => r.id === id);
+    if (found) {
+      found.ids.add(t.id);
+      found.byId.set(t.id, t);
+      return acc;
+    }
+    acc.push({
+      id,
+      label: t.row?.label ?? t.label,
+      head: t,
+      ids: new Set([t.id]),
+      byId: new Map([[t.id, t]]),
+    });
+    return acc;
+  }, []);
+
   const secondsAt = (clientX: number, el: HTMLElement): number => {
     const rect = el.getBoundingClientRect();
     const frac = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
@@ -115,13 +139,16 @@ export function ResultTimeline({
         </div>
       </div>
 
-      {tracks.map((t) => {
+      {rows.map((row) => {
+        // The row's representative: lock state and the controls address it, and for every lane but
+        // a rotating one it IS the lane. Kept as `t` so the row reads the same as a single track.
+        const t = row.head;
         const muted = mutedIds?.has(t.id) ?? false;
         const lit = highlightedIds?.has(t.id) ?? false;
         return (
           <div
-            key={t.id}
-            data-testid={`lane-${t.id}`}
+            key={row.id}
+            data-testid={`lane-${row.id}`}
             data-highlighted={lit}
             onMouseEnter={() => onHoverTrack?.(t.id)}
             onMouseLeave={() => onHoverTrack?.(null)}
@@ -134,7 +161,7 @@ export function ResultTimeline({
                 <button
                   type="button"
                   aria-pressed={t.locked}
-                  aria-label={`${t.locked ? 'Unlock' : 'Lock'} ${t.label}`}
+                  aria-label={`${t.locked ? "Unlock" : "Lock"} ${row.label}`}
                   title={t.locked
                     ? 'Locked — Regenerate leaves this track alone. Click to release it.'
                     : 'Lock this track, so Regenerate rerolls the others around it'}
@@ -150,7 +177,7 @@ export function ResultTimeline({
                 <button
                   type="button"
                   aria-pressed={muted}
-                  aria-label={`${muted ? 'Unmute' : 'Mute'} ${t.label}`}
+                  aria-label={`${muted ? "Unmute" : "Mute"} ${row.label}`}
                   onClick={() => onToggleMute(t.id)}
                   className="rounded px-1 text-xs leading-none transition-calm hover:bg-muted/60"
                 >
@@ -158,16 +185,20 @@ export function ResultTimeline({
                 </button>
               )}
               <span className={`truncate text-xs ${muted ? 'text-muted-foreground/50 line-through' : 'text-muted-foreground'}`}>
-                {t.label}
+                {row.label}
               </span>
             </span>
             <div className={`relative h-5 flex-1 rounded bg-muted/30 ${muted ? 'opacity-35' : ''}`}>
               {ticks.slice(1, -1).map((tick) => (
                 <span key={tick} className="absolute inset-y-0 w-px bg-border/60" style={{ left: pct(tick) }} aria-hidden />
               ))}
-              {regions.filter((r) => r.trackId === t.id).map((r, i) => {
+              {regions.filter((r) => row.ids.has(r.trackId)).map((r, i) => {
+                // Which file THIS block plays. A rotating row hands its sections to different
+                // samples, so the length, the loop count and the name all come from the block's own
+                // track rather than from the row.
+                const own = row.byId.get(r.trackId) ?? t;
                 const clipDur = r.exitSec - r.enterSec;
-                const { panels, segmented, unit, source, note } = loopFit(clipDur, trackDurations?.[t.id]);
+                const { panels, segmented, unit, source, note } = loopFit(clipDur, trackDurations?.[r.trackId]);
                 return (
                   <div
                     key={i}
@@ -175,7 +206,7 @@ export function ResultTimeline({
                     // data-element rebinds --accent-ink to that element's brand colour (globals.css),
                     // so each fragment is coloured by the element it was authored in.
                     data-element={trackElements?.[r.trackId]?.toLowerCase()}
-                    title={`${t.label} · ${clock(r.enterSec)}–${clock(r.exitSec)}${note} · interval ${clock(clipDur)}`}
+                    title={`${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)}${note} · interval ${clock(clipDur)}`}
                     className="absolute inset-y-0.5 flex items-center justify-between gap-1 overflow-hidden rounded bg-[var(--accent-ink)] px-1"
                     style={{ left: pct(r.enterSec), width: pct(clipDur) }}
                   >
@@ -198,7 +229,7 @@ export function ResultTimeline({
                       data-testid="interval-source"
                       className="relative z-10 truncate text-[10px] leading-none text-white/90"
                     >
-                      {t.label}{source ? ` ${source}` : ''}
+                      {own.label}{source ? ` ${source}` : ""}
                     </span>
                     <span
                       data-testid="interval-length"

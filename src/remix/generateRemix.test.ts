@@ -633,6 +633,86 @@ describe('generateRemix — a track starts at its category’s level', () => {
   });
 });
 
+describe('generateRemix — a lane rotates its samples across sections', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  /** One EARTH lane authored across all three sections. */
+  const threeSections = [
+    rule('MELODY', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+    rule('MELODY', 'EARTH', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600),
+    rule('MELODY', 'EARTH', [ph(1200, 1800)], undefined, 'RETURN', 1200),
+  ];
+  const withSamples = (...names: string[]): Manifest => {
+    const m = fakeManifest();
+    m.EARTH.MELODY = names.map(entry);
+    return m;
+  };
+  /** section index → the sample heard there, read back off the regions. */
+  const heard = (draw: ReturnType<typeof generateRemix>) => {
+    const byId = new Map(draw.tracks.map((t) => [t.id, t.sample.name]));
+    return draw.regions
+      .slice()
+      .sort((a, b) => a.enterSec - b.enterSec)
+      .map((r) => byId.get(r.trackId)!);
+  };
+
+  it('plays a different sample in each section', () => {
+    const draw = generateRemix(threeSections, withSamples('A', 'B', 'C'), BASE);
+    const order = heard(draw);
+    expect(order).toHaveLength(3);
+    expect(new Set(order).size).toBe(3); // nothing repeats
+  });
+
+  it('bookends with two samples over three sections — A, B, A', () => {
+    const order = heard(generateRemix(threeSections, withSamples('A', 'B'), BASE));
+    expect(order[0]).toBe(order[2]);
+    expect(order[1]).not.toBe(order[0]);
+  });
+
+  it('collapses to ONE row, however many samples it takes', () => {
+    const { tracks } = generateRemix(threeSections, withSamples('A', 'B', 'C'), BASE);
+    expect(tracks).toHaveLength(3);
+    expect(new Set(tracks.map((t) => t.row?.id))).toEqual(new Set(['MELODY·EARTH']));
+    expect(new Set(tracks.map((t) => t.row?.label))).toEqual(new Set(['MELODY · Earth']));
+  });
+
+  it('names each track by the file it plays, so a block can say which', () => {
+    const { tracks } = generateRemix(threeSections, withSamples('A', 'B', 'C'), BASE);
+    expect(tracks.map((t) => t.id).sort())
+      .toEqual(['MELODY·EARTH·A', 'MELODY·EARTH·B', 'MELODY·EARTH·C']);
+    expect(tracks.find((t) => t.id === 'MELODY·EARTH·A')!.label).toBe('MELODY · Earth · A');
+  });
+
+  it('gives the sections to a lane that ships only one sample, unchanged', () => {
+    const { tracks, regions } = generateRemix(threeSections, withSamples('A'), BASE);
+    expect(tracks.map((t) => t.id)).toEqual(['MELODY·EARTH']);
+    expect(tracks[0].row).toBeUndefined(); // its own row, as before
+    expect(regions).toHaveLength(3);
+  });
+
+  it('reshuffles which section opens on which sample when the seed moves', () => {
+    const manifest = withSamples('A', 'B', 'C');
+    const firsts = new Set(Array.from({ length: 12 }, (_, i) =>
+      heard(generateRemix(threeSections, manifest, { ...BASE, seed: i + 1 }))[0]));
+    expect(firsts.size).toBeGreaterThan(1);
+  });
+
+  it('leaves PLANET fanning rather than rotating — both bodies, every section', () => {
+    const planet = [
+      rule('PLANET', 'EARTH', [ph(0, 600)], undefined, 'INTRODUCTION', 0),
+      rule('PLANET', 'EARTH', [ph(600, 1200)], undefined, 'DEEP_RELAXATION', 600),
+    ];
+    const m = fakeManifest();
+    m.EARTH.PLANET = [entry('MERCURY'), entry('SUN')];
+    const { tracks, regions } = generateRemix(planet, m, BASE);
+
+    expect(tracks).toHaveLength(2);
+    expect(tracks.every((t) => t.row === undefined)).toBe(true); // two rows, not one
+    // Each body plays BOTH sections — 2 tracks × 2 sections.
+    expect(regions).toHaveLength(4);
+  });
+});
+
 describe('generateRemix — PLANET sounds every sample its element ships', () => {
   const BASE = { seed: 1, sessionSec: 1800 };
 
@@ -678,14 +758,16 @@ describe('generateRemix — PLANET sounds every sample its element ships', () =>
     expect(tracks.map((t) => t.id)).toEqual(['PLANET·EARTH·EARTH-PLANET']);
   });
 
-  it('leaves every other multi-sample category on one drawn sample', () => {
-    // ISO ships four per element; those are alternates to choose between, not bodies to stack.
+  it('does not STACK another multi-sample category — those rotate instead', () => {
+    // ISO ships four per element; alternates to take turns with, not bodies to sound together.
+    // One authored section here, so it takes exactly one of them and sounds once.
     const m = fakeManifest();
     m.EARTH.ISO = [entry('ISO-A'), entry('ISO-B')];
-    const { tracks } = generateRemix([rule('ISO', 'EARTH')], m, BASE);
+    const { tracks, regions } = generateRemix([rule('ISO', 'EARTH')], m, BASE);
     expect(tracks).toHaveLength(1);
-    expect(tracks[0].id).toBe('ISO·EARTH');
+    expect(regions).toHaveLength(1); // not two voices at once, unlike PLANET
     expect(['ISO-A', 'ISO-B']).toContain(tracks[0].sample.name);
+    expect(tracks[0].row?.id).toBe('ISO·EARTH'); // and it belongs to the lane's one row
   });
 
   it('fans out under Borrowed too, where the two files still differ', () => {

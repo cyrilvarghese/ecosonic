@@ -122,10 +122,15 @@ export function RemixView() {
     hoveredCategory ? tracks.filter((t) => t.category === hoveredCategory).map((t) => t.id) : [],
   );
 
+  // Mute addresses the ROW. A rotating lane is several tracks taking turns on one row, so silencing
+  // it has to silence all of them — otherwise the row goes quiet for one section and comes back.
   const toggleMute = (trackId: string) =>
     setMutedIds((prev) => {
+      const rowId = tracks.find((t) => t.id === trackId)?.row?.id ?? trackId;
+      const siblings = tracks.filter((t) => (t.row?.id ?? t.id) === rowId);
       const next = new Set(prev);
-      if (!next.delete(trackId)) next.add(trackId);
+      const silencing = !prev.has(trackId);
+      for (const s of siblings) { if (silencing) next.add(s.id); else next.delete(s.id); }
       return next;
     });
 

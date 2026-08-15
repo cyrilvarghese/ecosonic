@@ -21,6 +21,11 @@ export interface ArrTrack {
   sample: { name: string; path: string; bytes: number };
   ceilingDb: number;
   locked: boolean;
+  /** Display grouping. A track carries exactly one file, so a lane that rotates samples across its
+   *  sections has to be several tracks — but it is ONE thing to the ear and one row on screen.
+   *  Tracks sharing a `row.id` render as a single timeline row named `row.label`, and mute together.
+   *  Omitted ⇒ the track is its own row, which is every other case including PLANET's pair. */
+  row?: { id: string; label: string };
 }
 
 /** Minimal timing shape shared by template (module-relative) and absolute regions. */
