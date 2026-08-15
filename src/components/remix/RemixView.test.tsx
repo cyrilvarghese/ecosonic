@@ -254,29 +254,41 @@ describe('RemixView', () => {
     expect(screen.getByTestId('transport-clock')).toHaveTextContent('15:30 / 30:00');
   });
 
-  it('leaves intervals as authored until asked to adjust them', async () => {
+  it('adjusts intervals to whole loops out of the box', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    expect(screen.getByRole('checkbox', { name: /whole loops/i })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /whole loops/i })).toBeChecked();
+
+    // 1:00 over a 0:40 sample = 1.5 loops → rounds up to 2 → 1:20. Sample lengths arrive from the
+    // engine after the first paint, so the trim lands a beat later — hence the wait.
     await waitFor(() =>
       expect(within(screen.getByTestId(laneRegion('PAD'))).getByTestId('interval-length'))
-        .toHaveTextContent('1:00'));
+        .toHaveTextContent('1:20'));
   });
 
-  it('rounds an interval to whole loops when adjust is ticked', async () => {
+  it('leaves intervals as authored once the box is cleared', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    // Wait for the engine to report sample lengths — nothing can be adjusted before that.
     await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
 
     await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
 
-    // 1:00 over a 0:40 sample = 1.5 loops → rounds up to 2 → 1:20.
     expect(within(screen.getByTestId(laneRegion('PAD'))).getByTestId('interval-length'))
-      .toHaveTextContent('1:20');
+      .toHaveTextContent('1:00');
   });
 
   it('exports the adjusted intervals, not the authored ones', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
+
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec).toBe(80);
+  });
+
+  it('exports the authored intervals once the box is cleared', async () => {
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
     await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
@@ -285,7 +297,7 @@ describe('RemixView', () => {
     await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
 
     await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
-    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec).toBe(80);
+    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec).toBe(60);
   });
 
   it('plays the adjusted intervals, not the authored ones', async () => {
@@ -293,21 +305,33 @@ describe('RemixView', () => {
     await screen.findByTestId(laneRegion('PAD'));
     await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
 
-    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
 
     const pad = arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE');
     expect(pad?.exitSec).toBe(80);
   });
 
-  it('adjusts what is PLAYING when the box is ticked mid-playback', async () => {
+  it('restores the authored intervals when the box is cleared mid-playback', async () => {
     // The scheduler reads moduleRegions from the store every frame; the view draws its own
-    // mixRegions. moduleRegions is only written when Play is pressed, so ticking the box while
-    // playing used to redraw a clipped bar over a track that went on sounding to its old end.
+    // mixRegions. moduleRegions is only written when Play is pressed, so toggling the box while
+    // playing used to redraw the bar over a track that went on sounding to its old end.
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
     await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
 
+    await userEvent.click(screen.getByRole('button', { name: /Play/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
+
+    expect(arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec)
+      .toBe(60);
+  });
+
+  it('adjusts what is PLAYING when the box is ticked back on mid-playback', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
     await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
 
@@ -315,17 +339,16 @@ describe('RemixView', () => {
       .toBe(80);
   });
 
-  it('puts the authored intervals back when the box is unticked mid-playback', async () => {
+  it('trims a mix that started before the sample lengths arrived', async () => {
+    // The trim needs lengths the engine reports asynchronously, so a mix played immediately starts
+    // on authored intervals. It must not stay that way once the lengths land.
     render(<RemixView />);
     await screen.findByTestId(laneRegion('PAD'));
-    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
-
-    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
     await userEvent.click(screen.getByRole('button', { name: /Play/ }));
-    await userEvent.click(screen.getByRole('checkbox', { name: /whole loops/i }));
 
-    expect(arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec)
-      .toBe(60);
+    await waitFor(() =>
+      expect(arrangementStore.getState().moduleRegions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec)
+        .toBe(80));
   });
 
   it('uploads a session under the element chosen for it', async () => {

@@ -129,7 +129,10 @@ export function RemixView() {
 
   // Trim every interval to a whole number of loops so nothing is cut mid-sample. Needs the engine's
   // reported sample lengths, so it does nothing until those arrive.
-  const [wholeLoops, setWholeLoops] = useState(false);
+  // On by default: a sample cut part-way through a pass is a seam you hear, and wanting that is the
+  // rarer choice. It has no effect until the engine reports sample lengths, so a mix that starts
+  // before they land trims itself the moment they arrive (the effect below reinstalls it).
+  const [wholeLoops, setWholeLoops] = useState(true);
   const mixRegions = wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions;
 
   // Play installs the mix ONCE. Reshape it while the transport is running — tick the whole-loops
