@@ -585,6 +585,67 @@ describe('RemixView — borrowed timings', () => {
   });
 });
 
+describe('RemixView — locking a track against Regenerate', () => {
+  /** The lane ids a category currently holds, in timeline order. */
+  const lanesOf = (category: string) => screen.getAllByTestId(new RegExp(`^region-${category}·`))
+    .map((n) => n.getAttribute('data-testid')!.replace(/-\d+$/, ''));
+
+  /** Roll until MELODY lands somewhere else, so "held" means something. Its pool is WATER + FIRE. */
+  const rollUntilMelodyMoves = async (from: string) => {
+    for (let i = 0; i < 20; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /Regenerate/ }));
+      if (lanesOf('MELODY')[0] !== from) return true;
+    }
+    return false;
+  };
+
+  it('holds a locked track while everything around it rerolls', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    const melodyBefore = lanesOf('MELODY')[0];
+    await userEvent.click(screen.getByRole('button', { name: /^Lock MELODY/ }));
+
+    expect(await rollUntilMelodyMoves(melodyBefore)).toBe(false);
+    expect(lanesOf('MELODY')[0]).toBe(melodyBefore);
+  });
+
+  it('lets it move again once unlocked', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    const melodyBefore = lanesOf('MELODY')[0];
+
+    await userEvent.click(screen.getByRole('button', { name: /^Lock MELODY/ }));
+    await rollUntilMelodyMoves(melodyBefore);
+    await userEvent.click(screen.getByRole('button', { name: /^Unlock MELODY/ }));
+
+    expect(await rollUntilMelodyMoves(melodyBefore)).toBe(true);
+  });
+
+  it('reports the lock state on the control, not by colour alone', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    const lock = () => screen.getByRole('button', { name: /^(Lock|Unlock) PAD/ });
+    expect(lock()).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(lock());
+
+    expect(lock()).toHaveAttribute('aria-pressed', 'true');
+    expect(lock()).toHaveAccessibleName(expect.stringContaining('Unlock'));
+  });
+
+  it('locks the track you asked for and no other', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    await userEvent.click(screen.getByRole('button', { name: /^Lock PAD/ }));
+
+    expect(screen.getByRole('button', { name: /^Unlock PAD/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Lock MELODY/ })).toBeInTheDocument();
+  });
+});
+
 describe('RemixView — PLANET on two lanes', () => {
   /** The fixture store plus a PLANET rule, so the category actually draws. */
   const withPlanet = () => vi.stubGlobal('fetch', vi.fn(async () => ({

@@ -485,6 +485,67 @@ describe('generateRemix — lanes', () => {
   });
 });
 
+describe('generateRemix — a locked category holds its draw', () => {
+  const BASE = { sessionSec: 1800 };
+
+  // Authored by three elements each, so an unlocked category has room to visibly reroll.
+  const pool = [
+    rule('MELODY', 'EARTH'), rule('MELODY', 'WATER'), rule('MELODY', 'FIRE'),
+    rule('NOISE', 'EARTH'), rule('NOISE', 'WATER'), rule('NOISE', 'FIRE'),
+  ];
+  /** What a category was DRAWN as — the lock flag itself normalised away, so a locked draw can be
+   *  compared against the unlocked draw it is supposed to be holding. The flag has its own test. */
+  const of = (draw: ReturnType<typeof generateRemix>, category: Category) => ({
+    tracks: draw.tracks.filter((t) => t.category === category).map((t) => ({ ...t, locked: false })),
+    regions: draw.regions.filter((r) => r.trackId.startsWith(`${category}·`)),
+  });
+
+  it('draws a locked category at the seed it was locked on, whatever the seed becomes', () => {
+    const manifest = fakeManifest();
+    const locked = { NOISE: 1 };
+    const first = generateRemix(pool, manifest, { ...BASE, seed: 1, locked });
+
+    for (let seed = 2; seed <= 12; seed++) {
+      const next = generateRemix(pool, manifest, { ...BASE, seed, locked });
+      expect(of(next, 'NOISE')).toEqual(of(first, 'NOISE'));
+    }
+  });
+
+  it('still rerolls everything else', () => {
+    const manifest = fakeManifest();
+    const locked = { NOISE: 1 };
+    const first = generateRemix(pool, manifest, { ...BASE, seed: 1, locked });
+
+    const melodies = Array.from({ length: 12 }, (_, i) =>
+      generateRemix(pool, manifest, { ...BASE, seed: i + 1, locked }).tracks
+        .find((t) => t.category === 'MELODY')!.id);
+    expect(new Set(melodies).size).toBeGreaterThan(1);
+    expect(of(first, 'MELODY').tracks[0].id).toBe(melodies[0]);
+  });
+
+  it('marks the locked track, so the timeline can show it without a second source', () => {
+    const { tracks } = generateRemix(pool, fakeManifest(), { ...BASE, seed: 3, locked: { NOISE: 1 } });
+    expect(tracks.find((t) => t.category === 'NOISE')!.locked).toBe(true);
+    expect(tracks.find((t) => t.category === 'MELODY')!.locked).toBe(false);
+  });
+
+  it('is exactly today’s draw when nothing is locked', () => {
+    const manifest = fakeManifest();
+    for (let seed = 1; seed <= 10; seed++) {
+      expect(generateRemix(pool, manifest, { ...BASE, seed, locked: {} }))
+        .toEqual(generateRemix(pool, manifest, { ...BASE, seed }));
+    }
+  });
+
+  it('locks at whatever seed it was given, not only the first', () => {
+    const manifest = fakeManifest();
+    // Locked on seed 5: the held draw is seed 5's, not seed 1's.
+    const atFive = generateRemix(pool, manifest, { ...BASE, seed: 5 });
+    const held = generateRemix(pool, manifest, { ...BASE, seed: 9, locked: { NOISE: 5 } });
+    expect(of(held, 'NOISE')).toEqual(of(atFive, 'NOISE'));
+  });
+});
+
 describe('generateRemix — a track starts at its category’s level', () => {
   const BASE = { seed: 1, sessionSec: 1800 };
 

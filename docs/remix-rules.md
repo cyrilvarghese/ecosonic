@@ -186,15 +186,29 @@ explaining why a chip you can see never produces a lane.
 **3.8 — Tracks are ordered by the vertical grammar** (`STACK_ORDER`): NOISE, ELEMENT, ELEMENT_SUB,
 FX, ISO, PLANET, DRONE, PAD, BASS, ARP, MELODY.
 
-**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + the manual
-choices ⇒ the same draw. Regenerate advances the seed and rerolls every **generated** track;
-a track you took over (§8) does not move.
+**3.9 — Deterministic, and local.** Same pool + manifest + seed + element + section + the locks + the
+manual choices ⇒ the same draw. Regenerate advances the seed and rerolls every **generated,
+unlocked** track; a track you took over (§8) does not move, and neither does a locked one.
 
 Each **lane owns its own random stream**, seeded from `(seed, category, element)` rather than drawn
 from one shared sequence. This is what makes an edit local: taking one track over cannot disturb
 what any other lane already chose, and the lane you were listening to survives a change to its
 neighbours. A single shared stream couples everything — change how many values one lane consumes and
 every later lane shifts.
+
+**3.9a — Locking holds a category's draw.** A lock records the seed that was current when you set
+it; that category then draws from the recorded seed while Regenerate advances the one everything
+else uses. So a locked track redraws to bit-for-bit what you were hearing, and the lanes around it
+reroll.
+
+It stays **generated**, which is what separates a lock from taking a track over: its rules still
+govern it, its chips still read as a draw rather than as pins, and it redraws — identically — if the
+mode or section around it changes. `ArrTrack.locked` carries the state onto the drawn track, so the
+timeline reads its own rows rather than a second, parallel record of the same fact.
+
+Locks are held per **category**, the grain the random streams run at. A generated category is one
+lane, so the two coincide; `PLANET`'s pair (§3.5a) shares one rule and therefore locks and releases
+together. A category you have taken over already ignores the seed, so locking it changes nothing.
 
 ## 4. Laying it on the timeline
 

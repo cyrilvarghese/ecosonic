@@ -59,7 +59,7 @@ function loopFit(clipDur: number, total: number | undefined) {
  *  playhead sweeping every lane — draggable, like Layer Two's module designer. */
 export function ResultTimeline({
   regions, totalSec, tracks, positionSec = 0, trackElements,
-  onScrub, onScrubStart, onScrubEnd, mutedIds, onToggleMute, trackDurations,
+  onScrub, onScrubStart, onScrubEnd, mutedIds, onToggleMute, onToggleLock, trackDurations,
 }: {
   regions: TemplateRegion[];
   totalSec: number;
@@ -75,6 +75,9 @@ export function ResultTimeline({
   /** Omit onToggleMute to render without mute controls. */
   mutedIds?: ReadonlySet<string>;
   onToggleMute?: (trackId: string) => void;
+  /** Omit to render without lock controls. Whether a lane IS locked is read off the track itself
+   *  (`ArrTrack.locked`), which the generator sets — no second source of truth for the same fact. */
+  onToggleLock?: (trackId: string) => void;
   /** trackId → real sample length in seconds; only known once the engine has loaded it. */
   trackDurations?: Record<string, number>;
 }) {
@@ -111,6 +114,22 @@ export function ResultTimeline({
         return (
           <div key={t.id} className="flex items-center gap-2">
             <span className="flex w-44 shrink-0 items-center gap-1">
+              {onToggleLock && (
+                <button
+                  type="button"
+                  aria-pressed={t.locked}
+                  aria-label={`${t.locked ? 'Unlock' : 'Lock'} ${t.label}`}
+                  title={t.locked
+                    ? 'Locked — Regenerate leaves this track alone. Click to release it.'
+                    : 'Lock this track, so Regenerate rerolls the others around it'}
+                  onClick={() => onToggleLock(t.id)}
+                  className={`rounded px-1 text-xs leading-none transition-calm hover:bg-muted/60 ${
+                    t.locked ? 'bg-[var(--accent-ink)]/15' : 'opacity-45 hover:opacity-100'
+                  }`}
+                >
+                  {t.locked ? '🔒' : '🔓'}
+                </button>
+              )}
               {onToggleMute && (
                 <button
                   type="button"

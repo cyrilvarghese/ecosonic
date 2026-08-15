@@ -86,6 +86,11 @@ export function generateRemix(
     sampleElement?: ElementName;
     section?: Mode;
     sessionSec: number;
+    /** category → the seed to draw it at, overriding `seed`. A category listed here is **locked**:
+     *  it was pinned to the seed that was current when you locked it, so Regenerate advances `seed`
+     *  and rerolls everything else while this one redraws to exactly what you were hearing. It stays
+     *  GENERATED — unlike `manual`, its rules still govern it and its chips still read as a draw. */
+    locked?: Record<string, number>;
     /** category → slotKey → ruleKey. A category listed here is **manual**: the user took it over, so
      *  it is not drawn and its rules no longer apply to it. Absent ⇒ generated as usual. */
     manual?: Manual;
@@ -121,7 +126,10 @@ export function generateRemix(
 
     // One stream per category, so what one category draws can never shift another. Drawn even for a
     // manual category, so the streams below it do not shift when a row is taken over or handed back.
-    const catRng = makeRng(seedFrom(opts.seed, category));
+    // A locked category draws from the seed it was locked on, so Regenerate moves everything but it.
+    const lockedAt = opts.locked?.[category];
+    const catSeed = lockedAt ?? opts.seed;
+    const catRng = makeRng(seedFrom(catSeed, category));
     const lead = drawLead(cands, catRng);
 
     let lanes: Lane[];
@@ -151,7 +159,7 @@ export function generateRemix(
       // One stream per LANE, keyed by its identity rather than by its position in a shared stream.
       // This is what makes a click local: pinning a slot, swapping a lane's element or adding a
       // second lane cannot disturb what any other lane already chose.
-      const laneRng = makeRng(seedFrom(opts.seed, category, lane.audioElement));
+      const laneRng = makeRng(seedFrom(catSeed, category, lane.audioElement));
 
       // One SAMPLE per lane: a lane is a single file. Which element that file comes from is either
       // fixed by the caller (borrowed timings) or follows the lead rule — and only in the latter
@@ -229,7 +237,9 @@ export function generateRemix(
           // Where this category sits from the first bar — NOISE is a bed and belongs under the
           // rest, so it starts cut rather than at unity. Unlisted categories start at unity.
           ceilingDb: config.audio.volume.categoryDb[category] ?? config.audio.volume.defaultTrackDb,
-          locked: false,
+          // Reflected onto the track so the timeline reads its own rows rather than being handed a
+          // second, parallel source of truth for the same fact.
+          locked: lockedAt !== undefined,
         };
         tracks.push(track);
         // Every voice takes the SAME timings — one rule, laid on each of them, so the pair sounds

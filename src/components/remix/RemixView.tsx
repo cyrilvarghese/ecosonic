@@ -52,7 +52,7 @@ export function RemixView() {
   const {
     tracks, picks, regions, totalSec, warnings, loading, loadError,
     mode, element, section, candidatesFor, setMode, setElement, setSection, regenerate, refetch,
-    manual, toggleChip, resetCategory, canSound,
+    manual, toggleChip, resetCategory, canSound, toggleLock,
     setCategoryVolume, setCategorySend,
   } = useRemix();
   const masterDb = useArrangement((s) => s.masterDb);
@@ -399,10 +399,24 @@ export function RemixView() {
           onScrubEnd={() => setScrubbing(false)}
           mutedIds={mutedIds}
           onToggleMute={toggleMute}
+          // A lock is held per CATEGORY — that is the grain the draw's random stream runs at. Since
+          // a generated category is one lane the two coincide, except for PLANET's pair, which
+          // shares a rule and so locks and releases together.
+          onToggleLock={(id) => {
+            const track = tracks.find((t) => t.id === id);
+            if (track) toggleLock(track.category);
+          }}
           trackDurations={trackDurations}
         />
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="button" className={BTN_PRIMARY} onClick={regenerate}>🎲 Regenerate</button>
+          <button
+            type="button"
+            className={BTN_PRIMARY}
+            title="Reroll every track that is not locked"
+            onClick={regenerate}
+          >
+            🎲 Regenerate
+          </button>
           <button type="button" className={BTN} onClick={onTransport}>
             {playing ? '⏸ Pause' : '▶ Play'}
           </button>

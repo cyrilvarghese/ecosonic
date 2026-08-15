@@ -45,6 +45,9 @@ export interface RemixState {
   toggleChip: (rule: AuthoredRule) => void;
   /** Hand a category back to the generator. */
   resetCategory: (c: Category) => void;
+  /** Hold this category's draw against Regenerate, or release it. Locking pins it to the seed that
+   *  is current now, so it redraws to exactly what you are hearing while the rest rerolls. */
+  toggleLock: (c: Category) => void;
   /** Set the level (dB) on every lane of a category, and remember it across redraws. */
   setCategoryVolume: (c: Category, db: number) => void;
   /** Set one aux send on every lane of a category, and remember it across redraws. */
@@ -73,6 +76,9 @@ export function useRemix(): RemixState {
   const [element, setElement] = useState<ElementName>(ELEMENTS[0]);
   const [section, setSection] = useState<Mode | null>(null);
   const [manual, setManual] = useState<Manual>({});
+  /** category → the seed it was locked on. Present = locked: Regenerate advances `seed` and this
+   *  category keeps drawing from the one recorded here, so it holds exactly what you were hearing. */
+  const [lockedSeeds, setLockedSeeds] = useState<Record<string, number>>({});
   /** The mix you dialled in, keyed by lane id — and ONLY what you actually moved, so a category you
    *  never touched keeps its config default rather than being pinned to whatever it happened to
    *  start at. `initFrom` rebuilds `tracks` and reseeds `trackSends` on every redraw, so without
@@ -118,10 +124,12 @@ export function useRemix(): RemixState {
       sampleElement,
       section: section ?? undefined,
       sessionSec: sessionMin * 60,
+      locked: lockedSeeds,
       manual,
     }),
-    // `manual` is an input to the draw, not a decoration on it — determinism now includes it.
-    [pool, seed, scopedTo, sampleElement, section, sessionMin, manual],
+    // `manual` and `lockedSeeds` are inputs to the draw, not decorations on it — determinism
+    // includes them.
+    [pool, seed, scopedTo, sampleElement, section, sessionMin, lockedSeeds, manual],
   );
 
   // The scheduler and the WAV renderer both read arrangementStore.tracks — keep them in step with
@@ -233,6 +241,20 @@ export function useRemix(): RemixState {
     });
   }, [frozen, borrowing]);
 
+  // Records the seed that is current NOW, so what you locked is what you were listening to. Storing
+  // the seed rather than the drawn tracks keeps the category generated: its rules still govern it,
+  // and it redraws (identically) if the mode or section around it changes.
+  const toggleLock = useCallback((c: Category) => {
+    setLockedSeeds((prev) => {
+      if (c in prev) {
+        const next = { ...prev };
+        delete next[c];
+        return next;
+      }
+      return { ...prev, [c]: seed };
+    });
+  }, [seed]);
+
   const resetCategory = useCallback((c: Category) => {
     setManual((prev) => {
       if (!(c in prev)) return prev;
@@ -258,6 +280,7 @@ export function useRemix(): RemixState {
     manual,
     toggleChip,
     resetCategory,
+    toggleLock,
     setCategoryVolume,
     setCategorySend,
     setMode,
