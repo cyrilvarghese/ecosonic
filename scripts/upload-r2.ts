@@ -13,33 +13,17 @@
 //   npm run upload:r2          # upload what is missing
 //   npm run upload:r2 -- --dry # list what would be uploaded, touch nothing
 
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { toWebExt } from '../src/webAudioExt';
 import manifestJson from '../src/manifest.json';
+import { loadEnv, required } from './loadEnv';
 
 const DRY = process.argv.includes('--dry');
 const WEB_AUDIO = process.env.ECOSONIC_WEB_AUDIO_DIR ?? path.join(process.cwd(), 'web-audio');
 const CONCURRENCY = Number(process.env.ECOSONIC_UPLOAD_JOBS ?? 6);
-
-/** Minimal .env.local reader — this script runs outside Next, which would otherwise load it. */
-function loadEnv(file: string): void {
-  if (!existsSync(file)) return;
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const m = /^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (!m || line.trimStart().startsWith('#')) continue;
-    // Strip surrounding quotes; leave everything else exactly as written.
-    process.env[m[1]] ??= m[2].trim().replace(/^["'](.*)["']$/, '$1');
-  }
-}
-
-function required(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`${name} is not set — add it to .env.local`);
-  return v;
-}
 
 // decodeAudioData sniffs the bytes, but a correct type keeps range requests and caches honest.
 const MIME: Record<string, string> = { '.m4a': 'audio/mp4', '.flac': 'audio/flac' };
@@ -53,7 +37,7 @@ function manifestKeys(): string[] {
 }
 
 async function main() {
-  loadEnv(path.join(process.cwd(), '.env.local'));
+  loadEnv();
 
   const bucket = required('R2_BUCKET');
   const client = new S3Client({

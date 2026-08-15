@@ -9,6 +9,11 @@
 
 import { toWebExt } from '../src/webAudioExt';
 import manifestJson from '../src/manifest.json';
+import { loadEnv } from './loadEnv';
+
+// Before BASE is read, not inside main(): this runs under tsx rather than Next, so nothing else
+// loads .env.local. Without it the script reported the variable as missing while it sat in the file.
+loadEnv();
 
 const BASE = process.env.NEXT_PUBLIC_SAMPLE_BASE_URL;
 const CONCURRENCY = 12;
