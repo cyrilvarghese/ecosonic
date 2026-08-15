@@ -485,6 +485,31 @@ describe('generateRemix — lanes', () => {
   });
 });
 
+describe('generateRemix — a track starts at its category’s level', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+
+  it('sits NOISE under the mix, where a bed belongs', () => {
+    const { tracks } = generateRemix([rule('NOISE', 'EARTH')], fakeManifest(), BASE);
+    expect(tracks[0].ceilingDb).toBe(config.audio.volume.categoryDb.NOISE);
+    expect(tracks[0].ceilingDb).toBeLessThan(0);
+  });
+
+  it('starts every unlisted category at unity', () => {
+    const pool = [rule('MELODY', 'EARTH'), rule('PAD', 'EARTH')];
+    const { tracks } = generateRemix(pool, fakeManifest(), BASE);
+    expect(tracks.map((t) => t.ceilingDb))
+      .toEqual([config.audio.volume.defaultTrackDb, config.audio.volume.defaultTrackDb]);
+  });
+
+  it('keeps every starting level inside the slider’s range', () => {
+    const { trackMinDb, trackMaxDb } = config.audio.volume;
+    for (const db of Object.values(config.audio.volume.categoryDb)) {
+      expect(db).toBeGreaterThanOrEqual(trackMinDb);
+      expect(db).toBeLessThanOrEqual(trackMaxDb);
+    }
+  });
+});
+
 describe('generateRemix — PLANET sounds every sample its element ships', () => {
   const BASE = { seed: 1, sessionSec: 1800 };
 

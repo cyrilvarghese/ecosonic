@@ -226,7 +226,9 @@ export function generateRemix(
           label: `${drawn[0].rule.variant ?? category} · ${titleCase(lane.audioElement)}`
             + (fans ? ` · ${titleCase(sample.name)}` : ''),
           sample: { name: sample.name, path: sample.path, bytes: sample.bytes },
-          ceilingDb: config.audio.volume.defaultTrackDb,
+          // Where this category sits from the first bar — NOISE is a bed and belongs under the
+          // rest, so it starts cut rather than at unity. Unlisted categories start at unity.
+          ceilingDb: config.audio.volume.categoryDb[category] ?? config.audio.volume.defaultTrackDb,
           locked: false,
         };
         tracks.push(track);

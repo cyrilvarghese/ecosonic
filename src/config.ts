@@ -106,11 +106,16 @@ export const ConfigSchema = z.object({
     volume: z.object({
       minDb: z.number(),
       maxDb: z.number(),
-      // Per-track slider range: a boost/cut span centered on 0 dB (unity). Separate
-      // from minDb/maxDb, which stay the master range and the silence floor.
+      // Per-track slider range: a boost/cut span around 0 dB (unity). Deeper than it is tall —
+      // burying a bed is a normal mix move, boosting one past +20 is not. Separate from
+      // minDb/maxDb, which stay the master range and the silence floor.
       trackMinDb: z.number(),
       trackMaxDb: z.number(),
       defaultTrackDb: z.number(),
+      /** Per-category starting level (dB), keyed by Category — the level a freshly drawn track of
+       *  that category sits at. An unlisted category starts at `defaultTrackDb`. Mirrors
+       *  `effects.defaultSends`: some categories belong under the others from the first bar. */
+      categoryDb: z.record(z.string(), z.number()),
       defaultMasterDb: z.number(),
       muteRampMs: z.number().nonnegative(),
       changeRampMs: z.number().nonnegative(),
