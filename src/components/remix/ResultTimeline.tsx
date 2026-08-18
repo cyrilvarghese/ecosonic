@@ -1,6 +1,13 @@
 import type { ArrTrack, TemplateRegion } from '@/arrange/types';
 import { FadeEnvelope, ceilingFrac } from '@/components/arrange/FadeEnvelope';
 
+/** The lane's toggles: square, bordered, and large enough to aim at. Lit variants carry the state,
+ *  so the control looks pressed rather than merely coloured. */
+const ICON_BTN = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-sm '
+  + 'leading-none transition-calm';
+const ICON_IDLE = 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground';
+const ICON_LIT = 'border-[var(--accent-ink)]/50 bg-[var(--accent-ink)]/15 text-[var(--accent-ink)]';
+
 const NICE_STEPS = [30, 60, 120, 300, 600, 900, 1800];
 
 /** The coarsest nice step that still yields at most 8 labels — keeps the scale readable whether the
@@ -161,7 +168,7 @@ export function ResultTimeline({
               lit ? 'bg-[var(--accent-ink)]/8 ring-1 ring-inset ring-[var(--accent-ink)]/25' : ''
             }`}
           >
-            <span className="flex w-44 shrink-0 items-center gap-1">
+            <span className="flex w-44 shrink-0 items-center gap-1.5">
               {onToggleLock && (
                 <button
                   type="button"
@@ -171,9 +178,7 @@ export function ResultTimeline({
                     ? 'Locked — Regenerate leaves this track alone. Click to release it.'
                     : 'Lock this track, so Regenerate rerolls the others around it'}
                   onClick={() => onToggleLock(t.id)}
-                  className={`rounded px-1 text-xs leading-none transition-calm hover:bg-muted/60 ${
-                    t.locked ? 'bg-[var(--accent-ink)]/15' : 'opacity-45 hover:opacity-100'
-                  }`}
+                  className={`${ICON_BTN} ${t.locked ? ICON_LIT : ICON_IDLE}`}
                 >
                   {t.locked ? '🔒' : '🔓'}
                 </button>
@@ -184,7 +189,7 @@ export function ResultTimeline({
                   aria-pressed={muted}
                   aria-label={`${muted ? "Unmute" : "Mute"} ${row.label}`}
                   onClick={() => onToggleMute(t.id)}
-                  className="rounded px-1 text-xs leading-none transition-calm hover:bg-muted/60"
+                  className={`${ICON_BTN} ${muted ? ICON_LIT : ICON_IDLE}`}
                 >
                   {muted ? '🔇' : '🔊'}
                 </button>
