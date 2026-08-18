@@ -214,10 +214,10 @@ export function ResultTimeline({
                     data-element={trackElements?.[r.trackId]?.toLowerCase()}
                     data-pending={pending}
                     title={pending
-                      ? `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)} · loading the sample, so its loop count is not known yet`
+                      ? `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)} · Loading Samples — the loop count is not known until this one has loaded`
                       : `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)}${note} · interval ${clock(clipDur)}`}
                     className={`absolute inset-y-0.5 flex items-center justify-between gap-1 overflow-hidden rounded bg-[var(--accent-ink)] px-1 ${
-                      pending ? 'animate-pulse opacity-70' : ''
+                      pending ? 'animate-pulse opacity-50' : ''
                     }`}
                     style={{ left: pct(r.enterSec), width: pct(clipDur) }}
                   >
@@ -244,7 +244,14 @@ export function ResultTimeline({
                       {/* The bar's position and width are already real; only the loop count is
                           waiting on the sample, so only that is a placeholder. */}
                       {pending
-                        ? <span data-testid="source-skeleton" className="inline-block h-2 w-10 shrink-0 rounded-sm bg-white/35" />
+                        ? (
+                          <span
+                            data-testid="source-skeleton"
+                            className="inline-block shrink-0 rounded-sm bg-white/55 px-1 py-px text-[9px] leading-none text-[var(--accent-ink)]"
+                          >
+                            Loading Samples
+                          </span>
+                        )
                         : source ? ` ${source}` : ''}
                     </span>
                     <span

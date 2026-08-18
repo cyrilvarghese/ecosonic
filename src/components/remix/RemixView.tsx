@@ -465,7 +465,7 @@ export function RemixView() {
           </span>
           {pendingIds.size > 0 && tracks.length > 0 && (
             <span data-testid="samples-loading" className="text-xs tabular-nums text-muted-foreground">
-              ⏳ Loading samples… {tracks.length - pendingIds.size}/{tracks.length}
+              ⏳ Loading Samples {tracks.length - pendingIds.size}/{tracks.length}
             </span>
           )}
           <label

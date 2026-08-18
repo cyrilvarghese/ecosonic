@@ -330,7 +330,7 @@ describe('ResultTimeline — waiting on sample lengths', () => {
     );
     const bar = screen.getByTestId('region-PAD·WATER-0');
     expect(bar).toHaveAttribute('data-pending', 'true');
-    expect(screen.getByTestId('source-skeleton')).toBeInTheDocument();
+    expect(screen.getByTestId('source-skeleton')).toHaveTextContent('Loading Samples');
     // The bar itself is real — only the count is unknown.
     expect(within(bar).getByTestId('interval-source')).toHaveTextContent('PAD · Water');
   });
@@ -343,7 +343,7 @@ describe('ResultTimeline — waiting on sample lengths', () => {
       />,
     );
     expect(screen.getByTestId('region-PAD·WATER-0').getAttribute('title'))
-      .toMatch(/loading the sample/i);
+      .toMatch(/Loading Samples/);
   });
 
   it('settles once the length arrives', () => {
