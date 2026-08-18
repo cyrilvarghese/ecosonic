@@ -205,7 +205,7 @@ export function ResultTimeline({
                 // Length unknown yet: the bar is real, the loop count is not.
                 const pending = pendingIds?.has(r.trackId) ?? false;
                 const clipDur = r.exitSec - r.enterSec;
-                const { panels, segmented, unit, source, note } = loopFit(clipDur, trackDurations?.[r.trackId]);
+                const { panels, segmented, unit, note } = loopFit(clipDur, trackDurations?.[r.trackId]);
                 return (
                   <div
                     key={i}
@@ -243,6 +243,7 @@ export function ResultTimeline({
                       region={r}
                       ceilFrac={ceilingFrac(own.ceilingDb)}
                       stroke="rgba(255,255,255,0.7)"
+                      fill="rgba(255,255,255,0.3)"
                       dots={false}
                     />
                     {/* Left: what the material IS. Right: how long the window is. Both clipped away
@@ -251,9 +252,8 @@ export function ResultTimeline({
                       data-testid="interval-source"
                       className="relative z-10 flex min-w-0 items-center gap-1 truncate text-[10px] leading-none text-white/90"
                     >
-                      {own.label}
-                      {/* The bar's position and width are already real; only the loop count is
-                          waiting on the sample, so only that is a placeholder. */}
+                      {own.sample.name}
+                      {/* Only the loop count waits on the sample; the bar itself is already real. */}
                       {pending
                         ? (
                           <span
@@ -263,7 +263,7 @@ export function ResultTimeline({
                             Loading Samples
                           </span>
                         )
-                        : source ? ` ${source}` : ''}
+                        : null}
                     </span>
                     <span
                       data-testid="interval-length"

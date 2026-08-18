@@ -3,9 +3,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ResultTimeline, tickStep } from './ResultTimeline';
 
+/** The bar shows the file name; the material's length and loop count live in its tooltip. */
+const titleOf = (bar: HTMLElement) => bar.getAttribute('title') ?? '';
+
 const lane = [{
   id: 't', category: 'MELODY' as const, label: 'MELODY',
-  sample: { name: '', path: '', bytes: 0 }, ceilingDb: 0, locked: false,
+  sample: { name: 'OCEAN', path: 'OCEAN.wav', bytes: 0 }, ceilingDb: 0, locked: false,
 }];
 
 describe('ResultTimeline', () => {
@@ -69,15 +72,14 @@ describe('ResultTimeline interval labels', () => {
     // 2:00 sample under a 10:00 interval → exactly 5 passes.
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 120 }} />);
     const bar = screen.getByTestId('region-t-300');
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY 2:00 ×5');
+    expect(titleOf(bar)).toContain('2:00 ×5');
     expect(within(bar).getByTestId('interval-length')).toHaveTextContent('10:00');
   });
 
   it('never multiplies the interval length by the loop count', () => {
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} trackDurations={{ t: 120 }} />);
     // "10:00 ×5" would read as fifty minutes of audio; the ×N belongs to the sample.
-    expect(within(screen.getByTestId('region-t-300')).getByTestId('interval-source'))
-      .not.toHaveTextContent('10:00');
+    expect(titleOf(screen.getByTestId('region-t-300'))).not.toContain('10:00 ×');
   });
 
   it('spells the whole thing out on hover, for bars too narrow to read', () => {
@@ -89,7 +91,8 @@ describe('ResultTimeline interval labels', () => {
   it('shows only the interval until the sample length is known', () => {
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar600} />);
     const bar = screen.getByTestId('region-t-300');
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('MELODY');
+    // The bar names the FILE now; the lane's name is already in the gutter beside it.
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('OCEAN');
     expect(within(bar).getByTestId('interval-length')).toHaveTextContent('10:00');
     expect(bar).toHaveAttribute('title', 'MELODY · 5:00–15:00 · interval 10:00');
   });
@@ -104,7 +107,7 @@ describe('ResultTimeline loop length', () => {
     // 5 × 1:56 = 9:40. The count is a product, so the numbers on screen must agree.
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar(0, 580)} trackDurations={{ t: 116 }} />);
     const b = screen.getByTestId('region-t-0');
-    expect(within(b).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56 ×5');
+    expect(titleOf(b)).toContain('1:56 ×5');
     expect(within(b).getByTestId('interval-length')).toHaveTextContent('9:40');
   });
 
@@ -112,7 +115,7 @@ describe('ResultTimeline loop length', () => {
     // 5 × 116.2 = 581 = 9:41. Printing "1:56" would read as 9:40.
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={bar(0, 581)} trackDurations={{ t: 116.2 }} />);
     const b = screen.getByTestId('region-t-0');
-    expect(within(b).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56.2 ×5');
+    expect(titleOf(b)).toContain('1:56.2 ×5');
     expect(within(b).getByTestId('interval-length')).toHaveTextContent('9:41');
   });
 
@@ -123,15 +126,14 @@ describe('ResultTimeline loop length', () => {
         regions={bar(0, 5 * sample)} trackDurations={{ t: sample }} />,
     );
     // ceil() on 5.000000000000001 would have said ×6.
-    expect(within(screen.getByTestId('region-t-0')).getByTestId('interval-source'))
-      .toHaveTextContent('×5');
+    expect(titleOf(screen.getByTestId('region-t-0'))).toContain('×5');
   });
 
   it('marks a count that does not multiply out rather than inventing one', () => {
     // 600 / 116 = 5.17 — no integer works, so say "5 whole passes and part of another".
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 116 }} />);
     const b = screen.getByTestId('region-t-0');
-    expect(within(b).getByTestId('interval-source')).toHaveTextContent('MELODY 1:56 ×5+');
+    expect(titleOf(b)).toContain('1:56 ×5+');
     expect(b).toHaveAttribute('title', 'MELODY · 0:00–10:00 · sample 1:56 ×5+ · interval 10:00');
   });
 
@@ -155,7 +157,7 @@ describe('ResultTimeline loop length', () => {
   it('does not segment when the sample fills the interval once', () => {
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 600 }} />);
     const bar = screen.getByTestId('region-t-0');
-    expect(within(bar).getByTestId('interval-source')).not.toHaveTextContent('×');
+    expect(titleOf(bar)).not.toContain('×');
     expect(within(bar).queryAllByTestId('loop-seg')).toHaveLength(0);
   });
 
@@ -163,7 +165,7 @@ describe('ResultTimeline loop length', () => {
     // 5s under 10:00 = 120 repeats; the count still carries the number.
     render(<ResultTimeline totalSec={1800} tracks={lane} regions={tenMinBar} trackDurations={{ t: 5 }} />);
     const b = screen.getByTestId('region-t-0');
-    expect(within(b).getByTestId('interval-source')).toHaveTextContent('0:05 ×120');
+    expect(titleOf(b)).toContain('0:05 ×120');
     expect(within(b).queryAllByTestId('loop-seg')).toHaveLength(0);
   });
 });
@@ -332,7 +334,7 @@ describe('ResultTimeline — waiting on sample lengths', () => {
     expect(bar).toHaveAttribute('data-pending', 'true');
     expect(screen.getByTestId('source-skeleton')).toHaveTextContent('Loading Samples');
     // The bar itself is real — only the count is unknown.
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('PAD · Water');
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('p');
   });
 
   it('says why, rather than leaving a pulsing bar unexplained', () => {
@@ -357,7 +359,7 @@ describe('ResultTimeline — waiting on sample lengths', () => {
     const bar = screen.getByTestId('region-PAD·WATER-0');
     expect(bar).toHaveAttribute('data-pending', 'false');
     expect(screen.queryByTestId('source-skeleton')).toBeNull();
-    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('×5');
+    expect(titleOf(bar)).toContain('×5');
   });
 
   it('shows no skeleton at all when the caller passes no pending set', () => {
@@ -400,5 +402,45 @@ describe('ResultTimeline — the volume line', () => {
     const d = screen.getByTestId('fade-envelope').querySelector('path')!.getAttribute('d')!;
     // Vertical rise at the left edge and drop at the right — a handful of points, not a curve.
     expect(d.split('L').length).toBeLessThan(6);
+  });
+});
+
+describe('ResultTimeline — the bar says only what the row cannot', () => {
+  const t = {
+    id: 'PLANET·ETHER·NEPTUNE', category: 'PLANET' as const,
+    row: undefined, label: 'PLANET · Ether · Neptune',
+    sample: { name: 'NEPTUNE', path: 'n.wav', bytes: 1 }, ceilingDb: 0, locked: false,
+  };
+  const regions = [{ trackId: 'PLANET·ETHER·NEPTUNE', enterSec: 0, exitSec: 600, fadeInSec: 30, fadeOutSec: 30 }];
+  const setup = () =>
+    render(<ResultTimeline totalSec={1800} tracks={[t]} regions={regions} trackDurations={{ 'PLANET·ETHER·NEPTUNE': 120 }} />);
+
+  it('names the file, not the lane — the gutter already says that', () => {
+    setup();
+    const bar = screen.getByTestId('region-PLANET·ETHER·NEPTUNE-0');
+    const source = within(bar).getByTestId('interval-source');
+    expect(source).toHaveTextContent('NEPTUNE');
+    expect(source).not.toHaveTextContent('PLANET · Ether');
+  });
+
+  it('drops the loop count from the bar — the dividers already show it', () => {
+    setup();
+    const bar = screen.getByTestId('region-PLANET·ETHER·NEPTUNE-0');
+    expect(within(bar).getByTestId('interval-source')).not.toHaveTextContent('×');
+    expect(within(bar).getAllByTestId('loop-seg').length).toBeGreaterThan(1);
+    // …and it is still on hover, for when you want the number.
+    expect(bar.getAttribute('title')).toContain('×5');
+  });
+
+  it('keeps the total time on the right', () => {
+    setup();
+    expect(within(screen.getByTestId('region-PLANET·ETHER·NEPTUNE-0'))
+      .getByTestId('interval-length')).toHaveTextContent('10:00');
+  });
+
+  it('shades the area under the volume curve', () => {
+    setup();
+    const path = screen.getByTestId('fade-envelope').querySelector('path')!;
+    expect(path.getAttribute('fill')).toBe('rgba(255,255,255,0.3)');
   });
 });

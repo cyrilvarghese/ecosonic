@@ -17,12 +17,15 @@ export const ceilingFrac = (db: number) =>
  *  what it ought to be. Shared by Layer Two's ModuleDesigner and the remix timeline; they differ
  *  only in `stroke`, because one draws dark-on-pale and the other light-on-saturated. */
 export function FadeEnvelope({
-  region, ceilFrac, stroke = 'rgba(0,0,0,0.95)', dots = true,
+  region, ceilFrac, stroke = 'rgba(0,0,0,0.95)', fill = 'none', dots = true,
 }: {
   region: TemplateRegion;
   /** 0..1 — how high the held level sits, i.e. the track's volume ceiling. */
   ceilFrac: number;
   stroke?: string;
+  /** Shades the area under the curve — the path runs silence-to-silence, so SVG closes it along the
+   *  bottom and the fill is exactly what the region contributes. 'none' leaves it a bare line. */
+  fill?: string;
   /** Breakpoint dots. Useful on a tall lane, noise on a thin one. */
   dots?: boolean;
 }) {
@@ -70,7 +73,7 @@ export function FadeEnvelope({
       preserveAspectRatio="none"
       aria-hidden
     >
-      <path d={`M${pts.join(' L')}`} fill="none" stroke={stroke}
+      <path d={`M${pts.join(' L')}`} fill={fill} stroke={stroke}
         strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
       {/* zero-length round-cap subpaths render as circular dots even under non-uniform scale */}
       {dots && (
