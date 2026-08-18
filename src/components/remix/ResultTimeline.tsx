@@ -127,7 +127,7 @@ export function ResultTimeline({
   };
 
   return (
-    <div className="relative flex flex-col gap-1">
+    <div className="relative flex flex-col gap-1.5">
       <div className="flex items-end gap-2">
         <span className="w-44 shrink-0" aria-hidden />
         <div className="relative h-4 flex-1">
@@ -193,7 +193,7 @@ export function ResultTimeline({
                 {row.label}
               </span>
             </span>
-            <div className={`relative h-5 flex-1 rounded bg-muted/30 ${muted ? 'opacity-35' : ''}`}>
+            <div className={`relative h-12 flex-1 rounded bg-muted/30 ${muted ? 'opacity-35' : ''}`}>
               {ticks.slice(1, -1).map((tick) => (
                 <span key={tick} className="absolute inset-y-0 w-px bg-border/60" style={{ left: pct(tick) }} aria-hidden />
               ))}
@@ -217,7 +217,7 @@ export function ResultTimeline({
                     title={pending
                       ? `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)} · Loading Samples — the loop count is not known until this one has loaded`
                       : `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)}${note} · interval ${clock(clipDur)}`}
-                    className={`absolute inset-y-0.5 flex items-center justify-between gap-1 overflow-hidden rounded bg-[var(--accent-ink)] px-1 ${
+                    className={`absolute inset-y-0.5 flex items-start justify-between gap-1 overflow-hidden rounded bg-[var(--accent-ink)] px-1 pt-1 ${
                       pending ? 'animate-pulse opacity-50' : ''
                     }`}
                     style={{ left: pct(r.enterSec), width: pct(clipDur) }}
@@ -244,7 +244,7 @@ export function ResultTimeline({
                       ceilFrac={ceilingFrac(own.ceilingDb)}
                       stroke="rgba(255,255,255,0.7)"
                       fill="rgba(255,255,255,0.3)"
-                      dots={false}
+                      dots
                     />
                     {/* Left: what the material IS. Right: how long the window is. Both clipped away
                         on narrow bars, where the title carries the whole reading. */}
