@@ -1,12 +1,22 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import bakedRulebook from '@/rulebook.json';
+import bakedEn from '@/rulebook.json';
+import bakedIt from '@/rulebook.it.json';
 import type { Block, Rulebook } from '@/rules/parseRulebook';
+import { LANGS, STRINGS, type Lang } from '@/rules/strings';
 import { RuleBlocks, inline } from '@/components/rules/RuleBlocks';
 import { LiveEvidence, RULES_WITH_EVIDENCE } from '@/components/rules/LiveEvidence';
 
-const book = bakedRulebook as unknown as Rulebook;
+/** Both books ship in the bundle, so switching is a state change rather than a navigation — and the
+ *  static export stays one prerendered page. They are generated from two docs with identical rule
+ *  numbering; a test asserts that stays true. */
+const BOOKS: Record<Lang, Rulebook> = {
+  en: bakedEn as unknown as Rulebook,
+  it: bakedIt as unknown as Rulebook,
+};
+
+const STORAGE_KEY = 'ecosonic.rulebook.lang';
 
 /** Everything a rule says, flattened, so search matches body text and not only titles. */
 const textOf = (blocks: Block[]): string =>
@@ -15,10 +25,29 @@ const textOf = (blocks: Block[]): string =>
       : [...b.head, ...b.rows.flat()].join(' '))).join(' ');
 
 export default function RulebookPage() {
+  const [lang, setLang] = useState<Lang>('en');
   const [query, setQuery] = useState('');
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(new Set());
 
+  // Read the remembered choice after mount rather than during render: the prerendered pass and the
+  // first client pass have to agree, and localStorage exists on only one of them. Reading it in a
+  // lazy initialiser would render Italian on the client against English in the HTML.
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    // Syncing FROM an external store on mount — the same shape as useRemix's fetch-on-mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved === 'en' || saved === 'it') setLang(saved);
+  }, []);
+
+  const choose = (next: Lang) => {
+    setLang(next);
+    window.localStorage.setItem(STORAGE_KEY, next);
+  };
+
+  const book = BOOKS[lang];
+  const t = STRINGS[lang];
   const q = query.trim().toLowerCase();
+
   const sections = useMemo(() => {
     if (!q) return book.sections;
     return book.sections
@@ -30,7 +59,7 @@ export default function RulebookPage() {
           || textOf(e.body).toLowerCase().includes(q)),
       }))
       .filter((s) => s.entries.length > 0 || s.title.toLowerCase().includes(q));
-  }, [q]);
+  }, [q, book]);
 
   const hits = sections.reduce((n, s) => n + s.entries.length, 0);
   const total = book.sections.reduce((n, s) => n + s.entries.length, 0);
@@ -46,24 +75,46 @@ export default function RulebookPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-3">
-        <Link href="/remix" className="text-xs text-muted-foreground transition-calm hover:text-foreground">
-          ← /remix
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/remix" className="text-xs text-muted-foreground transition-calm hover:text-foreground">
+            {t.back}
+          </Link>
+          <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Language">
+            {LANGS.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                aria-pressed={lang === l.code}
+                title={l.title}
+                onClick={() => choose(l.code)}
+                className={`rounded px-2 py-0.5 text-xs transition-calm ${
+                  lang === l.code
+                    ? 'bg-[var(--accent-ink)] text-white'
+                    : 'text-muted-foreground hover:bg-muted/40'
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <h1 className="text-2xl font-medium tracking-tight">{book.title}</h1>
         {book.intro.map((b, i) => (
           <div key={i} className="max-w-prose"><RuleBlocks blocks={[b]} /></div>
         ))}
+
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search the rules…"
-            aria-label="Search the rules"
+            placeholder={t.searchPlaceholder}
+            aria-label={t.searchLabel}
             className="w-64 rounded-[var(--radius-md)] border border-border bg-transparent px-3 py-1.5 text-sm outline-none transition-calm focus:border-[var(--accent-ink)]"
           />
           <span className="text-xs tabular-nums text-muted-foreground">
-            {q ? `${hits} of ${total} rules` : `${total} rules · ${book.sections.length} sections`}
+            {q ? t.hits(hits, total) : t.count(total, book.sections.length)}
           </span>
           {q && (
             <button
@@ -71,18 +122,13 @@ export default function RulebookPage() {
               onClick={() => setQuery('')}
               className="text-xs text-muted-foreground underline underline-offset-2 transition-calm hover:text-foreground"
             >
-              clear
+              {t.clear}
             </button>
           )}
         </div>
       </header>
 
-      {hits === 0 && q && (
-        <p className="text-sm text-muted-foreground">
-          Nothing matches “{query}”. The rules cover the pool, the draw, the timeline, playback,
-          sends, whole loops and the UI.
-        </p>
-      )}
+      {hits === 0 && q && <p className="text-sm text-muted-foreground">{t.empty(query)}</p>}
 
       {sections.map((section) => (
         <section key={section.id} id={`s${section.id}`} className="flex flex-col gap-4">
@@ -124,7 +170,7 @@ export default function RulebookPage() {
                       <span aria-hidden />
                       <div className="max-w-prose">
                         <RuleBlocks blocks={entry.body} />
-                        <LiveEvidence ruleId={entry.id} />
+                        <LiveEvidence ruleId={entry.id} lang={lang} />
                       </div>
                     </div>
                   )}
@@ -135,11 +181,7 @@ export default function RulebookPage() {
         </section>
       ))}
 
-      <footer className="border-t border-border pt-4 text-xs text-muted-foreground">
-        Generated from <code className="font-mono">docs/remix-rules.md</code> by{' '}
-        <code className="font-mono">npm run build:rulebook</code>. A test fails if the two drift
-        apart, so what you are reading is what is built.
-      </footer>
+      <footer className="border-t border-border pt-4 text-xs text-muted-foreground">{t.footer}</footer>
     </main>
   );
 }

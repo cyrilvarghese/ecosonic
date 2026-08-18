@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RulebookPage from './page';
 
@@ -89,5 +89,65 @@ describe('RulebookPage — live evidence', () => {
     const panel = screen.getByTestId('live-panel');
     expect(within(panel).getByText('NOISE')).toBeInTheDocument();
     expect(within(panel).getByText('-20 dB')).toBeInTheDocument();
+  });
+});
+
+describe('RulebookPage — language switch', () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it('starts in English with both languages offered', () => {
+    render(<RulebookPage />);
+    expect(screen.getByRole('button', { name: 'EN' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'IT' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('switches the rules themselves, not just the chrome', async () => {
+    render(<RulebookPage />);
+    expect(screen.getByText(/Choosing what plays/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'IT' }));
+
+    expect(screen.getByText(/Scegliere cosa suona/)).toBeInTheDocument();
+    expect(screen.queryByText(/Choosing what plays/)).toBeNull();
+    expect(screen.getByText(/47 regole · 11 sezioni/)).toBeInTheDocument();
+  });
+
+  it('translates the search control and says the translation is approximate', async () => {
+    render(<RulebookPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'IT' }));
+
+    expect(screen.getByLabelText(/cerca nelle regole/i)).toBeInTheDocument();
+    // The caveat lives in the doc's own intro, so it appears exactly once.
+    expect(screen.getByText(/traduzione approssimativa/i)).toBeInTheDocument();
+  });
+
+  it('remembers the choice', async () => {
+    const { unmount } = render(<RulebookPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'IT' }));
+    unmount();
+
+    render(<RulebookPage />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'IT' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByText(/Scegliere cosa suona/)).toBeInTheDocument();
+  });
+
+  it('keeps a rule’s live panel working in Italian', async () => {
+    render(<RulebookPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'IT' }));
+    await userEvent.click(screen.getByRole('button', { name: /^§3\.6/ }));
+
+    const panel = screen.getByTestId('live-panel');
+    expect(within(panel).getByText(/cosa copre davvero la libreria/i)).toBeInTheDocument();
+    // The data itself is language-neutral and still there.
+    expect(within(panel).getByText(/ELEMENT_SUB·ETHER/)).toBeInTheDocument();
+  });
+
+  it('searches the Italian text when Italian is showing', async () => {
+    render(<RulebookPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'IT' }));
+    await userEvent.type(screen.getByLabelText(/cerca nelle regole/i), 'corsia');
+
+    expect(screen.getByText(/di 47 regole/)).toBeInTheDocument();
   });
 });
