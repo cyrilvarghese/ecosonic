@@ -4,16 +4,13 @@ import type { ArrTrack, TemplateRegion } from '@/arrange/types';
 import { useArrangement } from '@/arrange/arrangementStore';
 import { nudgeOptions } from '@/arrange/generate/steerModule';
 import { clampRegion } from '@/arrange/geometry';
-import { regionEnvAt } from '@/arrange/regionEnv';
+import { FadeEnvelope, ceilingFrac } from '@/components/arrange/FadeEnvelope';
 import { heights } from '@/components/WaveformStrip';
 import { Slider } from '@/components/ui/slider';
 import { config } from '@/config';
 
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const { trackMinDb, trackMaxDb } = config.audio.volume;
-/** Map a track's dB ceiling onto the lane's drawable height (0..1); floored so the line stays visible. */
-const ceilingFrac = (db: number) =>
-  Math.max(0.08, Math.min(1, (db - trackMinDb) / (trackMaxDb - trackMinDb)));
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 /** One module: every handed-off track as a draggable clip on a [0, moduleSeconds] timeline,
  *  with a single playhead sweeping across all lanes. */
@@ -275,55 +272,4 @@ function ClipRow({
 /** DAW-style volume automation over a clip: the region's actual audible envelope (regionEnvAt —
  *  cosine rise over fadeIn, hold at the ceiling, cosine fall over fadeOut), with breakpoint dots
  *  at the four automation corners. Pointer-transparent; sits under the drag handles. */
-function FadeEnvelope({ region, ceilFrac }: { region: TemplateRegion; ceilFrac: number }) {
-  const dur = region.exitSec - region.enterSec;
-  if (dur <= 0) return null;
-  // env 0 → y90 (bottom), 1 → y10 (top); the hold level is scaled by ceilFrac so the automation
-  // tops out at the track's volume ceiling rather than the full lane height.
-  const Y = (env: number) => (90 - ceilFrac * env * 80).toFixed(1);
-  // Piecewise, with exact breakpoints: cosine samples across each fade, straight hold between,
-  // and a true vertical edge when a fade is 0 (BASS enter, spanning NOISE exit) — so the line
-  // is exactly what the audio does, not a uniform-sampling approximation.
-  const X = (s: number) => (((s - region.enterSec) / dur) * 100).toFixed(2);
-  const K = 24;
-  const pts: string[] = [`0 ${Y(0)}`];
-  if (region.fadeInSec > 0) {
-    for (let j = 1; j <= K; j++) {
-      const s = region.enterSec + (j / K) * region.fadeInSec;
-      pts.push(`${X(s)} ${Y(regionEnvAt(region, Math.min(s, region.exitSec)))}`);
-    }
-  } else {
-    pts.push(`0 ${Y(1)}`); // no fade-in: vertical rise at the left edge
-  }
-  const foStart = region.exitSec - region.fadeOutSec;
-  if (region.fadeOutSec > 0) {
-    pts.push(`${X(Math.max(foStart, region.enterSec))} ${Y(1)}`);
-    for (let j = 1; j <= K; j++) {
-      const s = foStart + (j / K) * region.fadeOutSec;
-      pts.push(`${X(s)} ${Y(regionEnvAt(region, Math.min(s, region.exitSec - 1e-6)))}`);
-    }
-    pts.push(`100 ${Y(0)}`);
-  } else {
-    pts.push(`100 ${Y(1)}`, `100 ${Y(0)}`); // no fade-out: vertical drop at the right edge
-  }
-  const bps: Array<[number, number]> = [
-    [0, 0],
-    [Math.min(1, region.fadeInSec / dur) * 100, 1],
-    [(1 - Math.min(1, region.fadeOutSec / dur)) * 100, 1],
-    [100, 0],
-  ];
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <path d={`M${pts.join(' L')}`} fill="none" stroke="rgba(0,0,0,0.95)"
-        strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-      {/* zero-length round-cap subpaths render as circular dots even under non-uniform scale */}
-      <path d={bps.map(([x, e]) => `M${x.toFixed(2)} ${Y(e)} l0.01 0`).join(' ')} fill="none"
-        stroke="rgba(0,0,0,0.95)" strokeWidth={5.5} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
+

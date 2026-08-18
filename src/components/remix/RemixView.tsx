@@ -426,7 +426,7 @@ export function RemixView() {
         <ResultTimeline
           regions={mixRegions}
           totalSec={totalSec}
-          tracks={tracks}
+          tracks={tracks.map(leveled)}
           positionSec={positionSec}
           trackElements={trackElements}
           onScrub={seek}

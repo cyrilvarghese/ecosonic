@@ -1,4 +1,5 @@
 import type { ArrTrack, TemplateRegion } from '@/arrange/types';
+import { FadeEnvelope, ceilingFrac } from '@/components/arrange/FadeEnvelope';
 
 const NICE_STEPS = [30, 60, 120, 300, 600, 900, 1800];
 
@@ -234,6 +235,16 @@ export function ResultTimeline({
                         ))}
                       </div>
                     )}
+                    {/* The volume line: silence at the edges, up through the fade-in, held at the track's
+                        ceiling, down through the fade-out. Sampled from the same regionEnvAt the
+                        scheduler drives the gain with, so it is what you hear. White rather than
+                        Layer Two's black — these bars are saturated, not pale. */}
+                    <FadeEnvelope
+                      region={r}
+                      ceilFrac={ceilingFrac(own.ceilingDb)}
+                      stroke="rgba(255,255,255,0.7)"
+                      dots={false}
+                    />
                     {/* Left: what the material IS. Right: how long the window is. Both clipped away
                         on narrow bars, where the title carries the whole reading. */}
                     <span

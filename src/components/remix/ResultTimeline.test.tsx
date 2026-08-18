@@ -366,3 +366,39 @@ describe('ResultTimeline — waiting on sample lengths', () => {
     expect(screen.queryByTestId('source-skeleton')).toBeNull();
   });
 });
+
+describe('ResultTimeline — the volume line', () => {
+  const track = (ceilingDb: number) => ({
+    id: 'PAD·WATER', category: 'PAD' as const, label: 'PAD · Water',
+    sample: { name: 'p', path: 'p.wav', bytes: 1 }, ceilingDb, locked: false,
+  });
+  const faded = [{ trackId: 'PAD·WATER', enterSec: 0, exitSec: 600, fadeInSec: 60, fadeOutSec: 60 }];
+
+  it('draws an envelope over every region', () => {
+    render(<ResultTimeline totalSec={1800} tracks={[track(0)]} regions={faded} />);
+    expect(screen.getAllByTestId('fade-envelope')).toHaveLength(1);
+  });
+
+  it('rides the track’s level, so pulling the volume down lowers the line', () => {
+    const { container, rerender } = render(
+      <ResultTimeline totalSec={1800} tracks={[track(0)]} regions={faded} />,
+    );
+    const held = () => container.querySelector('[data-testid="fade-envelope"] path')!.getAttribute('d')!;
+    const atUnity = held();
+
+    rerender(<ResultTimeline totalSec={1800} tracks={[track(-30)]} regions={faded} />);
+
+    expect(held()).not.toBe(atUnity);
+    // y grows downward in the viewBox, so a quieter track holds at a LARGER y.
+    const topOf = (d: string) => Math.min(...d.match(/ (\d+\.\d)/g)!.map(Number));
+    expect(topOf(held())).toBeGreaterThan(topOf(atUnity));
+  });
+
+  it('shows a square shape when a region has no fades at all', () => {
+    const square = [{ trackId: 'PAD·WATER', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 }];
+    render(<ResultTimeline totalSec={1800} tracks={[track(0)]} regions={square} />);
+    const d = screen.getByTestId('fade-envelope').querySelector('path')!.getAttribute('d')!;
+    // Vertical rise at the left edge and drop at the right — a handful of points, not a curve.
+    expect(d.split('L').length).toBeLessThan(6);
+  });
+});
