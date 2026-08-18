@@ -5,7 +5,8 @@ import { arrangementStore } from '@/arrange/arrangementStore';
 
 // Record every setTracks call so we can assert the engine follows the store — and every level
 // change, which must reach the graph WITHOUT a setTracks call.
-const { calls, volumes } = vi.hoisted(() => ({
+const { calls, volumes, cleared } = vi.hoisted(() => ({
+  cleared: { count: 0 },
   calls: [] as { path: string; volumeDb: number }[][],
   volumes: [] as { id: string; db: number }[],
 }));
@@ -23,7 +24,7 @@ vi.mock('@/audio/AudioEngine', () => ({
     setMute = vi.fn();
     triggerTrack = vi.fn();
     releaseTrack = vi.fn();
-    clear = vi.fn();
+    clear = vi.fn(() => { cleared.count += 1; });
   },
 }));
 
@@ -37,6 +38,7 @@ const track = (id: string, path: string): ArrTrack => ({
 beforeEach(() => {
   calls.length = 0;
   volumes.length = 0;
+  cleared.count = 0;
   arrangementStore.setState({ tracks: [], masterDb: 0 });
 });
 
@@ -92,5 +94,35 @@ describe('useLayer2Engine', () => {
     act(() => { arrangementStore.setState({ positionSec: 42 }); });
 
     expect(calls).toHaveLength(loads);
+  });
+});
+
+describe('useLayer2Engine — the engine survives a redraw', () => {
+  it('does not tear down when the track list changes', async () => {
+    renderHook(() => useLayer2Engine());
+    act(() => { arrangementStore.setState({ tracks: [track('A', 'a.wav')] }); });
+    await waitFor(() => expect(calls.at(-1)).toHaveLength(1));
+
+    // A pool edit adds a lane. Everything already loaded must stay loaded — tearing the engine down
+    // here is what made a chip click refetch and re-decode every sample.
+    act(() => {
+      arrangementStore.setState({ tracks: [track('A', 'a.wav'), track('B', 'b.wav')] });
+    });
+    await waitFor(() => expect(calls.at(-1)).toHaveLength(2));
+
+    expect(cleared.count).toBe(0);
+    // …and setTracks still gets told about both, so it can reuse A and load only B.
+    expect(calls.at(-1)!.map((c) => c.path)).toEqual(['a.wav', 'b.wav']);
+  });
+
+  it('tears down on unmount, where it belongs', async () => {
+    const { unmount } = renderHook(() => useLayer2Engine());
+    act(() => { arrangementStore.setState({ tracks: [track('A', 'a.wav')] }); });
+    await waitFor(() => expect(calls.at(-1)).toHaveLength(1));
+    expect(cleared.count).toBe(0);
+
+    unmount();
+
+    expect(cleared.count).toBe(1);
   });
 });

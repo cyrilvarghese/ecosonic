@@ -103,8 +103,15 @@ export function useLayer2Engine(): AudioEngine {
         else engine.suspendContext();
       }
     });
-    return () => { cancelled = true; unsub(); engine.clear(); };
+    return () => { cancelled = true; unsub(); };
   }, [engine, trackKey]);
+
+  // The engine outlives a redraw. This used to sit in the effect above, whose key changes on every
+  // pool edit — so a chip click disposed every loaded layer and closed the AudioContext, and
+  // setTracks's reuse branch (`existing.path === s.path`) never had anything left to reuse. Every
+  // sample was refetched and re-decoded to arrive at the same graph. Tearing down is unmount
+  // behaviour; setTracks already disposes the layers a new draw no longer wants.
+  useEffect(() => () => engine.clear(), [engine]);
 
   return engine;
 }
