@@ -129,6 +129,24 @@ comunque per intero.
 
 **4.5 — Una regione per frase.** Una regola con più frasi produce più regioni sulla sua traccia.
 
+**4.6 — La forma della dissolvenza è fissata per categoria, non ereditata.** Le sessioni scritte
+non concordano affatto sulle dissolvenze — ISO entra in 180s in un elemento e per niente in un
+altro — quindi `audio.remix.categoryFades` decide la forma:
+
+| categoria | dissolvenza in entrata | in uscita |
+|---|---|---|
+| `ISO`, `NOISE`, `PLANET`, `PAD`, `ELEMENT` | 30s | 30s |
+| `BASS`, `ARP`, `MELODY` | *come scritto* | 3s |
+| `ELEMENT_SUB` | *come scritto* | *come scritto* |
+
+I letti prendono un respiro lungo e uniforme in entrata e in uscita. I layer ritmici e melodici
+prendono una coda breve per fermarsi puliti, e conservano l'entrata scritta nella sessione: `BASS`
+non scrive alcuna dissolvenza in entrata da nessuna parte, ed è la regola R4, il basso entra
+direttamente.
+
+Un lato che la configurazione omette conserva quanto scritto; una categoria omessa resta intatta.
+Ogni valore è comunque limitato alla larghezza superstite della regione (§4.4).
+
 ## 5. Riproduzione ed export
 
 **5.1 — I campioni vanno in loop sotto il loro intervallo.** `loop = true` in tutti e tre i percorsi.

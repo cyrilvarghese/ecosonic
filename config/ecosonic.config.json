@@ -49,7 +49,38 @@
       "alwaysLoopCategories": [
         "NOISE",
         "BASS"
-      ]
+      ],
+      "categoryFades": {
+        "ISO": {
+          "in": 30,
+          "out": 30
+        },
+        "NOISE": {
+          "in": 30,
+          "out": 30
+        },
+        "PLANET": {
+          "in": 30,
+          "out": 30
+        },
+        "PAD": {
+          "in": 30,
+          "out": 30
+        },
+        "ELEMENT": {
+          "in": 30,
+          "out": 30
+        },
+        "BASS": {
+          "out": 3
+        },
+        "ARP": {
+          "out": 3
+        },
+        "MELODY": {
+          "out": 3
+        }
+      }
     }
   },
   "selection": {

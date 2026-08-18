@@ -11,7 +11,7 @@ describe('RulebookPage', () => {
   it('lists every section and rule as an index', () => {
     render(<RulebookPage />);
     expect(screen.getByRole('heading', { level: 1, name: /remix/i })).toBeInTheDocument();
-    expect(screen.getByText(/47 rules · 11 sections/)).toBeInTheDocument();
+    expect(screen.getByText(/48 rules · 11 sections/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^§3\.6/ })).toBeInTheDocument();
   });
 
@@ -28,7 +28,7 @@ describe('RulebookPage', () => {
     render(<RulebookPage />);
     await userEvent.type(screen.getByLabelText(/search the rules/i), 'whole loops');
 
-    expect(screen.getByText(/of 47 rules/)).toBeInTheDocument();
+    expect(screen.getByText(/of 48 rules/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^§5\.1/ })).toBeNull();
   });
 
@@ -109,7 +109,7 @@ describe('RulebookPage — language switch', () => {
 
     expect(screen.getByText(/Scegliere cosa suona/)).toBeInTheDocument();
     expect(screen.queryByText(/Choosing what plays/)).toBeNull();
-    expect(screen.getByText(/47 regole · 11 sezioni/)).toBeInTheDocument();
+    expect(screen.getByText(/48 regole · 11 sezioni/)).toBeInTheDocument();
   });
 
   it('translates the search control and says the translation is approximate', async () => {
@@ -148,6 +148,6 @@ describe('RulebookPage — language switch', () => {
     await userEvent.click(screen.getByRole('button', { name: 'IT' }));
     await userEvent.type(screen.getByLabelText(/cerca nelle regole/i), 'corsia');
 
-    expect(screen.getByText(/di 47 regole/)).toBeInTheDocument();
+    expect(screen.getByText(/di 48 regole/)).toBeInTheDocument();
   });
 });

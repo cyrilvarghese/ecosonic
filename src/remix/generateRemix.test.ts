@@ -139,11 +139,13 @@ describe('generateRemix', () => {
   });
 
   it('emits one region per phrase, keyed to its track', () => {
-    const pool = [rule('PAD', 'FIRE', [ph(0, 120, 0, 120), ph(540, 600, 60, 0)])];
+    // ELEMENT_SUB: the fade config does not name it, so the authored fades pass through and this
+    // stays a test about one-region-per-phrase rather than about fade shapes (§4.6).
+    const pool = [rule('ELEMENT_SUB', 'FIRE', [ph(0, 120, 0, 120), ph(540, 600, 60, 0)])];
     const { regions } = generateRemix(pool, fakeManifest(), { ...SESSION, seed: 1 });
     expect(regions).toHaveLength(2);
-    expect(regions.every((r) => r.trackId === 'PAD·FIRE')).toBe(true);
-    expect(regions[0]).toEqual({ trackId: 'PAD·FIRE', enterSec: 0, exitSec: 120, fadeInSec: 0, fadeOutSec: 120 });
+    expect(regions.every((r) => r.trackId === 'ELEMENT_SUB·FIRE')).toBe(true);
+    expect(regions[0]).toEqual({ trackId: 'ELEMENT_SUB·FIRE', enterSec: 0, exitSec: 120, fadeInSec: 0, fadeOutSec: 120 });
   });
 
   it('repeats its draw for a seed and redraws for a different one', () => {
@@ -255,9 +257,15 @@ describe('generateRemix — section axis', () => {
   });
 
   it('caps a fade at the width the clip has left after clipping', () => {
+    // Clipped to 40s of surviving width, so PAD's configured 30s shape fits — but a 20s survivor
+    // cannot carry it, and that is the cap §4.4 promises.
     const pool = [rule('PAD', 'EARTH', [ph(560, 900, 0, 120)], undefined, 'INTRODUCTION', 0)];
     const { regions } = generateRemix(pool, fakeManifest(), { ...BASE, section: 'INTRODUCTION' });
-    expect(regions[0]).toMatchObject({ enterSec: 560, exitSec: 600, fadeOutSec: 40 });
+    expect(regions[0]).toMatchObject({ enterSec: 560, exitSec: 600, fadeOutSec: 30 });
+
+    const tight = [rule('PAD', 'EARTH', [ph(580, 900, 0, 120)], undefined, 'INTRODUCTION', 0)];
+    const clipped = generateRemix(tight, fakeManifest(), { ...BASE, section: 'INTRODUCTION' }).regions[0];
+    expect(clipped.fadeOutSec).toBe(20); // capped at the 20s that survived
   });
 
   it('skips a rule whose phrases all fall outside the module, and warns', () => {
@@ -740,7 +748,8 @@ describe('generateRemix — PLANET sounds every sample its element ships', () =>
     const { regions } = generateRemix(pool, twoPlanets(), BASE);
     const times = (id: string) => regions.filter((r) => r.trackId === id)
       .map((r) => `${r.enterSec}-${r.exitSec}-${r.fadeInSec}-${r.fadeOutSec}`);
-    expect(times('PLANET·EARTH·MERCURY')).toEqual(['0-600-0-0', '900-1200-30-30']);
+    // PLANET's shape is configured (§4.6), so both phrases carry it whatever was authored.
+    expect(times('PLANET·EARTH·MERCURY')).toEqual(['0-600-30-30', '900-1200-30-30']);
     expect(times('PLANET·EARTH·SUN')).toEqual(times('PLANET·EARTH·MERCURY'));
   });
 
@@ -896,5 +905,48 @@ describe('generateRemix — a track taken over by hand', () => {
     const manifest = fakeManifest();
     expect(generateRemix(pool, manifest, { ...BASE, seed: 5, manual }))
       .toEqual(generateRemix(pool, manifest, { ...BASE, seed: 5, manual }));
+  });
+});
+
+describe('generateRemix — the fade shape is set per category', () => {
+  const BASE = { seed: 1, sessionSec: 1800 };
+  /** An authored rule with deliberately odd fades, so an override is visible. */
+  const withFades = (category: Category, fadeIn: number, fadeOut: number) =>
+    rule(category, 'EARTH', [ph(0, 600, fadeIn, fadeOut)]);
+  const fadesOf = (category: Category, fadeIn = 111, fadeOut = 222) => {
+    const { regions } = generateRemix([withFades(category, fadeIn, fadeOut)], fakeManifest(), BASE);
+    return [regions[0].fadeInSec, regions[0].fadeOutSec];
+  };
+
+  it('gives the beds a 30-second shape both ways, whatever was authored', () => {
+    for (const c of ['ISO', 'NOISE', 'PLANET', 'PAD', 'ELEMENT'] as Category[]) {
+      expect(fadesOf(c), c).toEqual([30, 30]);
+    }
+  });
+
+  it('gives the rhythmic and melodic layers a 3-second tail, leaving their entry alone', () => {
+    for (const c of ['BASS', 'ARP', 'MELODY'] as Category[]) {
+      expect(fadesOf(c), c).toEqual([111, 3]); // authored fade-in survives
+    }
+  });
+
+  it('leaves a category the config does not name exactly as authored', () => {
+    expect(fadesOf('ELEMENT_SUB')).toEqual([111, 222]);
+  });
+
+  it('never lets a fade outlast its region (§4.4)', () => {
+    // A 20-second region cannot carry a 30-second shape.
+    const short = rule('NOISE', 'EARTH', [ph(0, 20, 0, 0)]);
+    const { regions } = generateRemix([short], fakeManifest(), BASE);
+    const width = regions[0].exitSec - regions[0].enterSec;
+    expect(regions[0].fadeInSec).toBeLessThanOrEqual(width);
+    expect(regions[0].fadeOutSec).toBeLessThanOrEqual(width);
+  });
+
+  it('applies to every phrase of a multi-phrase rule', () => {
+    const many = rule('PAD', 'EARTH', [ph(0, 600, 5, 5), ph(900, 1500, 5, 5)]);
+    const { regions } = generateRemix([many], fakeManifest(), BASE);
+    expect(regions).toHaveLength(2);
+    expect(regions.every((r) => r.fadeInSec === 30 && r.fadeOutSec === 30)).toBe(true);
   });
 });

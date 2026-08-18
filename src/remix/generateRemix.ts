@@ -220,7 +220,9 @@ export function generateRemix(
       // A section draw rebases by the rule's OWN window start, so rules authored against different
       // windows (AIR opens Deep Relaxation at 9:30, everyone else at 10:00) land on one 0..totalSec module.
       const drawn = chosen
-        .map((c) => ({ ...c, regions: rebase(c.rule, opts.section ? c.rule.sectionStartSec : 0, totalSec) }))
+        .map((c) => ({ ...c, regions: withCategoryFades(
+          rebase(c.rule, opts.section ? c.rule.sectionStartSec : 0, totalSec), category,
+        ) }))
         .filter((c) => c.regions.length > 0);
       if (drawn.length === 0) {
         // The rules' OWN elements, which borrowing lets differ from the element being heard.
@@ -292,6 +294,28 @@ export function generateRemix(
   }
 
   return { tracks, regions, picks, warnings, totalSec };
+}
+
+/** Give a category the fade shape configured for it (§4.6). The authored sessions disagree wildly
+ *  about these — ISO ramps in over 180s in one element and not at all in another — so the shape is
+ *  decided here rather than inherited. A side the config omits keeps what the session wrote, and a
+ *  category the config omits is untouched.
+ *
+ *  Capped at the region's width like every other fade (§4.4), so a 30-second shape cannot outlast a
+ *  20-second region. */
+function withCategoryFades(
+  regions: Omit<TemplateRegion, 'trackId'>[], category: Category,
+): Omit<TemplateRegion, 'trackId'>[] {
+  const spec = config.audio.remix.categoryFades[category];
+  if (!spec) return regions;
+  return regions.map((r) => {
+    const width = r.exitSec - r.enterSec;
+    return {
+      ...r,
+      fadeInSec: Math.min(spec.in ?? r.fadeInSec, width),
+      fadeOutSec: Math.min(spec.out ?? r.fadeOutSec, width),
+    };
+  });
 }
 
 /** Shift a rule's phrases onto a 0..totalSec timeline, clipping the tail and dropping anything that

@@ -243,6 +243,24 @@ being cut mid-ramp.
 
 **4.5 — One region per phrase.** A multi-phrase rule produces several regions on its track.
 
+**4.6 — The fade shape is set per category, not inherited.** The authored sessions disagree wildly
+about fades — ISO ramps in over 180s in one element and not at all in another, NOISE carries seven
+different fade-outs — so `audio.remix.categoryFades` decides the shape instead:
+
+| category | fade in | fade out |
+|---|---|---|
+| `ISO`, `NOISE`, `PLANET`, `PAD`, `ELEMENT` | 30s | 30s |
+| `BASS`, `ARP`, `MELODY` | *as authored* | 3s |
+| `ELEMENT_SUB` | *as authored* | *as authored* |
+
+The beds get a long, even breath in and out. The rhythmic and melodic layers get a short tail so
+they stop cleanly, and keep whatever entry the session wrote — `BASS` authors no fade-in anywhere,
+which is grammar rule R4: bass enters directly.
+
+A side the config omits keeps what the session wrote; a category it omits is untouched. Every value
+is still capped at the region's surviving width (§4.4), so a 30-second shape cannot outlast a
+20-second region.
+
 ## 5. Playback and export
 
 **5.1 — Samples loop under their interval.** `loop = true` in all three paths: buffered playback,

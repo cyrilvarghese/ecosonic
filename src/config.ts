@@ -109,6 +109,14 @@ export const ConfigSchema = z.object({
     remix: z.object({
       longSampleSec: z.number().positive(),
       alwaysLoopCategories: z.array(z.string()),
+      /** Per-category fade shapes, keyed by Category — seconds. The authored sessions disagree
+       *  wildly (ISO ramps in over 180s in one element and not at all in another), so the shape is
+       *  set here rather than inherited. An omitted side keeps what the session wrote; an omitted
+       *  category is left alone entirely. Always capped at the region's width (§4.4). */
+      categoryFades: z.record(z.string(), z.object({
+        in: z.number().nonnegative().optional(),
+        out: z.number().nonnegative().optional(),
+      })),
     }),
     volume: z.object({
       minDb: z.number(),

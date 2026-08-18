@@ -4,7 +4,7 @@ import { ConfigSchema, config } from '@/config';
 const valid = {
   audio: {
     hybridThresholdBytes: 8388608,
-    remix: { longSampleSec: 180, alwaysLoopCategories: ['NOISE', 'BASS'] },
+    remix: { longSampleSec: 180, alwaysLoopCategories: ['NOISE', 'BASS'], categoryFades: { ISO: { in: 30, out: 30 }, BASS: { out: 3 } } },
     volume: { minDb: -60, maxDb: 0, trackMinDb: -30, trackMaxDb: 20, defaultTrackDb: 0, categoryDb: { NOISE: -20 }, defaultMasterDb: 0, muteRampMs: 80, changeRampMs: 200 },
     tuning: { baseHz: 440, defaultHz: 440, presetsHz: [432, 440] },
     effects: {
