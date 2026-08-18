@@ -20,6 +20,9 @@ export interface ArrangementState {
   tracks: ArrTrack[];
   moduleRegions: TemplateRegion[];
   trackDurations: Record<string, number>; // real sample length (sec), filled once loaded
+  /** trackId → why its sample never loaded. A lane in here will never get a duration, so the UI
+   *  must stop waiting on it and say what happened instead. */
+  sampleErrors: Record<string, string>;
   /** Per-track aux send levels, keyed by track id. Runtime mix state, like trackDurations —
    *  deliberately not on ArrTrack, which describes what a track IS. */
   trackSends: Record<string, TrackSends>;
@@ -74,6 +77,7 @@ export interface ArrangementState {
   /** Drag a track's clip: set when it enters/exits the module. */
   updateModuleRegion: (trackId: string, next: { enterSec: number; exitSec: number }) => void;
   setTrackDuration: (trackId: string, sec: number) => void;
+  setSampleError: (trackId: string, reason: string) => void;
   /** Set a track's volume ceiling (dB) — the max level its clip reaches. Inherited from Layer One. */
   setTrackCeilingDb: (trackId: string, db: number) => void;
   setTrackSend: (trackId: string, kind: 'reverb' | 'delay', value: number) => void;
@@ -95,6 +99,7 @@ export function createArrangementStore() {
       tracks: [],
       moduleRegions: [],
       trackDurations: {},
+      sampleErrors: {},
       trackSends: {},
       playing: false,
       positionSec: 0,
@@ -116,6 +121,7 @@ export function createArrangementStore() {
           activeMode: config.layerTwo.modes[0],
           moduleRegions: seedModuleFromTable(sel.tracks, config.layerTwo.modes[0]),
           trackDurations: {},
+          sampleErrors: {},
           trackSends: defaultSendsFor(sel.tracks, config.audio.effects.defaultSends),
           masterDb: sel.masterDb,
           playing: false,
@@ -195,6 +201,10 @@ export function createArrangementStore() {
         }),
       setTrackDuration: (trackId, sec) =>
         set((s) => (s.trackDurations[trackId] === sec ? {} : { trackDurations: { ...s.trackDurations, [trackId]: sec } })),
+      setSampleError: (trackId, reason) =>
+        set((s) => (s.sampleErrors[trackId] === reason
+          ? {}
+          : { sampleErrors: { ...s.sampleErrors, [trackId]: reason } })),
       setTrackCeilingDb: (trackId, db) =>
         set((s) => ({ tracks: s.tracks.map((t) => (t.id === trackId ? { ...t, ceilingDb: db } : t)) })),
       setTrackSend: (trackId, kind, value) =>

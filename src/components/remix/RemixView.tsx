@@ -67,6 +67,7 @@ export function RemixView() {
   const setScrubbing = useArrangement((s) => s.setScrubbing);
   // Real sample lengths, filled in by useLayer2Engine once each file has loaded.
   const trackDurations = useArrangement((s) => s.trackDurations);
+  const sampleErrors = useArrangement((s) => s.sampleErrors);
   const trackSends = useArrangement((s) => s.trackSends);
   // The DRAW's tracks always carry the ceiling the generator handed out; a level you set lives on
   // the store's copy of them. Everything that reads a level — the sliders, the export — has to come
@@ -125,7 +126,10 @@ export function RemixView() {
   // Lanes whose sample has not loaded. Their bars are already correct — the draw fixed those —
   // but the loop count and the whole-loop trim both wait on a length the engine reports after
   // loading, so those are shown as pending rather than as a number that would be a guess.
-  const pendingIds = new Set(tracks.filter((t) => !trackDurations[t.id]).map((t) => t.id));
+  const pendingIds = new Set(
+    tracks.filter((t) => !trackDurations[t.id] && !sampleErrors[t.id]).map((t) => t.id),
+  );
+  const failed = tracks.filter((t) => sampleErrors[t.id]);
 
   // Mute addresses the ROW. A rotating lane is several tracks taking turns on one row, so silencing
   // it has to silence all of them — otherwise the row goes quiet for one section and comes back.
@@ -243,6 +247,12 @@ export function RemixView() {
       {loadError && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           Could not load the authored sessions — every pool below will be empty. {loadError}
+        </p>
+      )}
+      {failed.length > 0 && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {failed.length} sample{failed.length > 1 ? 's' : ''} could not be loaded, so those tracks
+          are silent — {failed.map((t) => `${t.label} (${sampleErrors[t.id]})`).join('; ')}
         </p>
       )}
       {warnings.length > 0 && (

@@ -37,17 +37,32 @@ export function useLayer2Engine(): AudioEngine {
     engine.setMasterVolume(st.masterDb);
 
     let cancelled = false;
-    void engine.setTracks(specs).then(() => {
+    void engine.setTracks(specs).catch(() => {
+      // setTracks isolates per-layer failures, so reaching here means something broader broke. The
+      // collect pass below still runs: a lane that will never report must stop waiting, not pulse
+      // forever with nothing said.
+    }).then(() => {
       // Sample durations only exist after load (esp. streamed <audio>); poll until known.
       const collect = (attempt: number) => {
         if (cancelled) return;
         let missing = false;
         for (const t of st.tracks) {
+          const failed = engine.getLoadError(t.id);
+          if (failed) { arrangementStore.getState().setSampleError(t.id, failed); continue; }
           const dur = engine.getLayerDuration(t.id);
           if (dur && dur > 0) arrangementStore.getState().setTrackDuration(t.id, dur);
           else missing = true;
         }
-        if (missing && attempt < 20) setTimeout(() => collect(attempt + 1), 300);
+        if (missing && attempt < 20) { setTimeout(() => collect(attempt + 1), 300); return; }
+        // Out of attempts: whatever is still silent is not coming. Say so rather than leaving the
+        // lane pulsing, which is indistinguishable from "still downloading" and never resolves.
+        if (missing) {
+          for (const t of st.tracks) {
+            if (!engine.getLayerDuration(t.id) && !engine.getLoadError(t.id)) {
+              arrangementStore.getState().setSampleError(t.id, 'sample never reported a length');
+            }
+          }
+        }
       };
       collect(0);
     });

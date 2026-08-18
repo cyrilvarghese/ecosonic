@@ -97,8 +97,13 @@ export class Layer {
   }
 
   async load(): Promise<void> {
+    const need = async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} loading ${url}`);
+      return res;
+    };
     if (this.kind === 'buffer') {
-      const res = await fetch(this.url);
+      const res = await need(this.url);
       const arr = await res.arrayBuffer();
       this.buffer = await this.ctx.decodeAudioData(arr);
     } else {
@@ -107,7 +112,7 @@ export class Layer {
       // can play at once without hitting the browser's per-origin connection limit
       // (which stalled streamed <audio> elements beyond the ~6th). Memory stays ~1x
       // the file size (vs ~2x for decoded PCM).
-      const res = await fetch(this.url);
+      const res = await need(this.url);
       const blob = await res.blob();
       this.objectUrl = URL.createObjectURL(blob);
       const el = new Audio(this.objectUrl) as PitchedAudio;

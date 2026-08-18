@@ -26,6 +26,9 @@ export class AudioEngine {
   private analyser: AnalyserNode | null = null;
   private buses: EffectBuses | null = null;
   private layers = new Map<string, Layer>();
+  /** id → why its sample could not load. A lane in here will never report a duration, so the UI
+   *  needs it to stop waiting and say what happened. */
+  private loadErrors = new Map<string, string>();
   private running = false;
   private masterDb = 0;
 
@@ -75,12 +78,25 @@ export class AudioEngine {
         reverbSend: s.reverbSend, delaySend: s.delaySend,
       }, buses);
       this.layers.set(s.id, layer);
-      await layer.load();
+      try {
+        await layer.load();
+      } catch (e) {
+        // Keep going. A missing or unreadable sample costs its own lane, not the whole mix, and
+        // the reason is recorded so the UI can say it rather than waiting forever.
+        this.loadErrors.set(s.id, e instanceof Error ? e.message : String(e));
+        layer.dispose();
+        this.layers.delete(s.id);
+        continue;
+      }
       if (!this.ctx) { layer.dispose(); this.layers.delete(s.id); return; } // cleared during the await
+      this.loadErrors.delete(s.id);
       layer.setMutedInitial(s.muted);
       layer.setWantPlaying(s.playing, this.running, this.cfg.muteRampMs);
     }
   }
+
+  /** id → load failure, for lanes whose sample never arrived. */
+  getLoadError(id: string): string | undefined { return this.loadErrors.get(id); }
 
   setTrackVolume(id: string, db: number) { this.layers.get(id)?.setVolumeDb(db, this.cfg.changeRampMs); }
   /** Ramp one of a track's aux sends (0..1). */

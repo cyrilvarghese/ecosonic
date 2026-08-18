@@ -11,6 +11,7 @@ vi.mock('@/audio/AudioEngine', () => ({
     setTracks = vi.fn(async () => {});
     setMasterVolume = vi.fn();
     // 40s samples: the PAD/MELODY 1:00 intervals are 1.5 loops, so "adjust" rounds them up to 2.
+    getLoadError = vi.fn(() => undefined);
     getLayerDuration = vi.fn(() => layerDur.sec);
     resumeContext = vi.fn();
     suspendContext = vi.fn();

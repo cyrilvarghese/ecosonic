@@ -57,6 +57,7 @@ const gainOf = (layer: Layer) =>
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async () => ({
+    ok: true, // Layer.load checks it now — a 404's blob is an HTML page, not audio
     arrayBuffer: async () => new ArrayBuffer(8),
     blob: async () => new Blob(['x']),
   })));
@@ -103,5 +104,30 @@ describe('Layer — a dB change reaches the gain node', () => {
     const layer = await loadedLayer(-6);
     layer.setEnvelope(0.5, 200);
     expect(gainOf(layer).lastTarget).toBeCloseTo(10 ** (-6 / 20) * 0.5, 4);
+  });
+});
+
+describe('Layer — a sample that is not there', () => {
+  it('throws with the status rather than accepting an error page as audio', async () => {
+    // A 404 is a perfectly good Response. Its .blob() is HTML, which becomes an <audio> element
+    // that never reports a duration — a lane that waits forever with nothing said.
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false, status: 404,
+      arrayBuffer: async () => new ArrayBuffer(8),
+      blob: async () => new Blob(['<html>not found</html>']),
+    })));
+
+    const ctx = fakeCtx();
+    const layer = new Layer(
+      ctx as unknown as AudioContext,
+      fakeGain() as unknown as GainNode,
+      {
+        id: 'MELODY·WATER', path: 'missing.wav', bytes: 1, thresholdBytes: 1_000_000,
+        volumeDb: 0, minDb: MIN_DB, reverbSend: 0, delaySend: 0,
+      },
+      BUSES,
+    );
+
+    await expect(layer.load()).rejects.toThrow(/404/);
   });
 });

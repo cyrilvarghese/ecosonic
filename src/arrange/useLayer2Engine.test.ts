@@ -13,6 +13,7 @@ vi.mock('@/audio/AudioEngine', () => ({
   AudioEngine: class {
     setTracks = vi.fn(async (specs: { path: string; volumeDb: number }[]) => { calls.push(specs); });
     setMasterVolume = vi.fn();
+    getLoadError = vi.fn(() => undefined);
     getLayerDuration = vi.fn(() => 60);
     resumeContext = vi.fn();
     suspendContext = vi.fn();
