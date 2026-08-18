@@ -311,3 +311,58 @@ describe('ResultTimeline — a lane that rotates its samples', () => {
     expect(sources.some((s) => s?.includes('RAIN'))).toBe(true);
   });
 });
+
+describe('ResultTimeline — waiting on sample lengths', () => {
+  const track = {
+    id: 'PAD·WATER', category: 'PAD' as const, label: 'PAD · Water',
+    sample: { name: 'p', path: 'p.wav', bytes: 1 }, ceilingDb: 0, locked: false,
+  };
+  const regions = [
+    { trackId: 'PAD·WATER', enterSec: 0, exitSec: 600, fadeInSec: 0, fadeOutSec: 0 },
+  ];
+
+  it('shows a skeleton in place of the loop count while the sample loads', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800} tracks={[track]} regions={regions}
+        pendingIds={new Set(['PAD·WATER'])}
+      />,
+    );
+    const bar = screen.getByTestId('region-PAD·WATER-0');
+    expect(bar).toHaveAttribute('data-pending', 'true');
+    expect(screen.getByTestId('source-skeleton')).toBeInTheDocument();
+    // The bar itself is real — only the count is unknown.
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('PAD · Water');
+  });
+
+  it('says why, rather than leaving a pulsing bar unexplained', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800} tracks={[track]} regions={regions}
+        pendingIds={new Set(['PAD·WATER'])}
+      />,
+    );
+    expect(screen.getByTestId('region-PAD·WATER-0').getAttribute('title'))
+      .toMatch(/loading the sample/i);
+  });
+
+  it('settles once the length arrives', () => {
+    render(
+      <ResultTimeline
+        totalSec={1800} tracks={[track]} regions={regions}
+        trackDurations={{ 'PAD·WATER': 120 }}
+        pendingIds={new Set()}
+      />,
+    );
+    const bar = screen.getByTestId('region-PAD·WATER-0');
+    expect(bar).toHaveAttribute('data-pending', 'false');
+    expect(screen.queryByTestId('source-skeleton')).toBeNull();
+    expect(within(bar).getByTestId('interval-source')).toHaveTextContent('×5');
+  });
+
+  it('shows no skeleton at all when the caller passes no pending set', () => {
+    render(<ResultTimeline totalSec={1800} tracks={[track]} regions={regions} />);
+    expect(screen.getByTestId('region-PAD·WATER-0')).toHaveAttribute('data-pending', 'false');
+    expect(screen.queryByTestId('source-skeleton')).toBeNull();
+  });
+});

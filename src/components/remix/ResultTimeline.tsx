@@ -60,7 +60,7 @@ function loopFit(clipDur: number, total: number | undefined) {
 export function ResultTimeline({
   regions, totalSec, tracks, positionSec = 0, trackElements,
   onScrub, onScrubStart, onScrubEnd, mutedIds, onToggleMute, onToggleLock, trackDurations,
-  highlightedIds, onHoverTrack,
+  highlightedIds, onHoverTrack, pendingIds,
 }: {
   regions: TemplateRegion[];
   totalSec: number;
@@ -86,6 +86,10 @@ export function ResultTimeline({
   onHoverTrack?: (trackId: string | null) => void;
   /** trackId → real sample length in seconds; only known once the engine has loaded it. */
   trackDurations?: Record<string, number>;
+  /** Lanes whose sample has not loaded yet. Their bars are drawn but their loop count is not known,
+   *  so the readout is a shimmer rather than a number that would only be a guess. Omitted ⇒ nothing
+   *  is pending, which is what every caller outside /remix wants. */
+  pendingIds?: ReadonlySet<string>;
 }) {
   const pct = (sec: number) => `${(Math.min(Math.max(sec, 0), totalSec) / totalSec) * 100}%`;
   const step = tickStep(totalSec);
@@ -197,6 +201,8 @@ export function ResultTimeline({
                 // samples, so the length, the loop count and the name all come from the block's own
                 // track rather than from the row.
                 const own = row.byId.get(r.trackId) ?? t;
+                // Length unknown yet: the bar is real, the loop count is not.
+                const pending = pendingIds?.has(r.trackId) ?? false;
                 const clipDur = r.exitSec - r.enterSec;
                 const { panels, segmented, unit, source, note } = loopFit(clipDur, trackDurations?.[r.trackId]);
                 return (
@@ -206,8 +212,13 @@ export function ResultTimeline({
                     // data-element rebinds --accent-ink to that element's brand colour (globals.css),
                     // so each fragment is coloured by the element it was authored in.
                     data-element={trackElements?.[r.trackId]?.toLowerCase()}
-                    title={`${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)}${note} · interval ${clock(clipDur)}`}
-                    className="absolute inset-y-0.5 flex items-center justify-between gap-1 overflow-hidden rounded bg-[var(--accent-ink)] px-1"
+                    data-pending={pending}
+                    title={pending
+                      ? `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)} · loading the sample, so its loop count is not known yet`
+                      : `${own.label} · ${clock(r.enterSec)}–${clock(r.exitSec)}${note} · interval ${clock(clipDur)}`}
+                    className={`absolute inset-y-0.5 flex items-center justify-between gap-1 overflow-hidden rounded bg-[var(--accent-ink)] px-1 ${
+                      pending ? 'animate-pulse opacity-70' : ''
+                    }`}
                     style={{ left: pct(r.enterSec), width: pct(clipDur) }}
                   >
                     {/* One panel per repeat — identical widths make the loop points legible. */}
@@ -227,9 +238,14 @@ export function ResultTimeline({
                         on narrow bars, where the title carries the whole reading. */}
                     <span
                       data-testid="interval-source"
-                      className="relative z-10 truncate text-[10px] leading-none text-white/90"
+                      className="relative z-10 flex min-w-0 items-center gap-1 truncate text-[10px] leading-none text-white/90"
                     >
-                      {own.label}{source ? ` ${source}` : ""}
+                      {own.label}
+                      {/* The bar's position and width are already real; only the loop count is
+                          waiting on the sample, so only that is a placeholder. */}
+                      {pending
+                        ? <span data-testid="source-skeleton" className="inline-block h-2 w-10 shrink-0 rounded-sm bg-white/35" />
+                        : source ? ` ${source}` : ''}
                     </span>
                     <span
                       data-testid="interval-length"

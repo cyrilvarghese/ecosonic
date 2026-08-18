@@ -122,6 +122,10 @@ export function RemixView() {
   const highlightedIds = new Set(
     hoveredCategory ? tracks.filter((t) => t.category === hoveredCategory).map((t) => t.id) : [],
   );
+  // Lanes whose sample has not loaded. Their bars are already correct — the draw fixed those —
+  // but the loop count and the whole-loop trim both wait on a length the engine reports after
+  // loading, so those are shown as pending rather than as a number that would be a guess.
+  const pendingIds = new Set(tracks.filter((t) => !trackDurations[t.id]).map((t) => t.id));
 
   // Mute addresses the ROW. A rotating lane is several tracks taking turns on one row, so silencing
   // it has to silence all of them — otherwise the row goes quiet for one section and comes back.
@@ -438,6 +442,7 @@ export function RemixView() {
             if (track) toggleLock(track.category);
           }}
           trackDurations={trackDurations}
+          pendingIds={pendingIds}
           highlightedIds={highlightedIds}
           // A lane reports itself; the category it belongs to is what both surfaces highlight on.
           onHoverTrack={(id) =>
@@ -458,6 +463,11 @@ export function RemixView() {
           <span data-testid="transport-clock" className="text-xs tabular-nums text-muted-foreground">
             {clock(positionSec)} / {clock(totalSec)}
           </span>
+          {pendingIds.size > 0 && tracks.length > 0 && (
+            <span data-testid="samples-loading" className="text-xs tabular-nums text-muted-foreground">
+              ⏳ Loading samples… {tracks.length - pendingIds.size}/{tracks.length}
+            </span>
+          )}
           <label
             className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
             title="Resize every interval to a whole number of loops, so no sample is cut part-way through a pass. Rounds to the nearest whole loop, never below one."

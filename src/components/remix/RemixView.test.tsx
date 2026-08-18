@@ -1114,3 +1114,26 @@ describe('RemixView — a long sample plays one pass', () => {
     expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec).toBe(80);
   });
 });
+
+describe('RemixView — while the samples are still loading', () => {
+  it('counts what is left and clears when every length has arrived', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    // The engine reports lengths after loading, so the count is there first and gone after.
+    await waitFor(() => expect(screen.queryByTestId('samples-loading')).toBeNull());
+    expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40);
+  });
+
+  it('marks every lane pending until its length is known', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+
+    // Once lengths land nothing is pending — the state the skeleton exists to leave.
+    await waitFor(() => {
+      const bars = screen.getAllByTestId(/^region-/);
+      expect(bars.every((b) => b.getAttribute('data-pending') === 'false')).toBe(true);
+    });
+    expect(screen.queryByTestId('source-skeleton')).toBeNull();
+  });
+});
