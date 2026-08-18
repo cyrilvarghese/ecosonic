@@ -71,6 +71,16 @@ export function useLayer2Engine(): AudioEngine {
     const ceilings = new Map(st.tracks.map((t) => [t.id, t.ceilingDb]));
     const sends = new Map(st.tracks.map((t) => [t.id, st.trackSends[t.id] ?? DRY]));
     const unsub = arrangementStore.subscribe((s) => {
+      // Re-publish any length the store has lost. initFrom clears trackDurations on every redraw,
+      // and a redraw that changes nothing about the audio — locking a category pins its seed, so the
+      // draw comes out identical — leaves trackKey untouched, so the effect above never re-runs and
+      // collect() never fires again. Without this the lengths went and did not come back: the
+      // skeleton returned for good on something that never touched a sample.
+      for (const t of s.tracks) {
+        if (s.trackDurations[t.id]) continue;
+        const dur = engine.getLayerDuration(t.id);
+        if (dur && dur > 0) arrangementStore.getState().setTrackDuration(t.id, dur);
+      }
       // Per-track volume ceiling (Layer Two slider) — ramp the layer's gain like Layer One does.
       for (const t of s.tracks) {
         if (ceilings.get(t.id) !== t.ceilingDb) {

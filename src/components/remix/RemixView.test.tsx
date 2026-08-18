@@ -1138,3 +1138,27 @@ describe('RemixView — while the samples are still loading', () => {
     expect(screen.queryByTestId('source-skeleton')).toBeNull();
   });
 });
+
+describe('RemixView — locking must not disturb what is loaded', () => {
+  it('keeps the sample lengths it already had', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
+
+    await userEvent.click(screen.getByRole('button', { name: /^Lock PAD/ }));
+
+    // Locking pins a seed. The draw is identical, the samples are identical — nothing about the
+    // audio changed, so nothing about what is loaded should change either.
+    expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40);
+  });
+
+  it('does not put the loading skeleton back', async () => {
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(screen.queryByTestId('samples-loading')).toBeNull());
+
+    await userEvent.click(screen.getByRole('button', { name: /^Lock PAD/ }));
+
+    expect(screen.queryByTestId('samples-loading')).toBeNull();
+  });
+});
