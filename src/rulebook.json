@@ -760,6 +760,58 @@
       ]
     },
     {
+      "id": "6a",
+      "title": "Long samples play once",
+      "blurb": [
+        {
+          "kind": "p",
+          "text": "**Not a checkbox.** Unlike §6 this always applies: it is a fact about the material rather than a preference about seams."
+        }
+      ],
+      "entries": [
+        {
+          "id": "6a.1",
+          "title": "A long sample plays exactly one pass per interval.",
+          "body": [
+            {
+              "kind": "p",
+              "text": "Longer than `audio.remix.longSampleSec` (3:00), a file stops being a loop and becomes a composed passage; heard twice in a row it reads as a repeat rather than as a bed. The interval ends when the pass does."
+            }
+          ]
+        },
+        {
+          "id": "6a.2",
+          "title": "Beds are exempt.",
+          "body": [
+            {
+              "kind": "p",
+              "text": "Categories in `audio.remix.alwaysLoopCategories` — `NOISE` and `BASS` — keep cycling however long their file is. Being continuous is their job, and a long file there is a long bed, not a passage."
+            }
+          ]
+        },
+        {
+          "id": "6a.3",
+          "title": "Only ever shorter.",
+          "body": [
+            {
+              "kind": "p",
+              "text": "The start never moves (§6.5) and fades cap to the surviving width. An interval already shorter than one pass is left exactly as authored, as in §6.4."
+            }
+          ]
+        },
+        {
+          "id": "6a.4",
+          "title": "Applied after the whole-loop trim",
+          "body": [
+            {
+              "kind": "p",
+              "text": ", so that trim cannot extend a long sample back out to two passes. Like §6 it needs sample lengths the engine reports only after loading, so it lands a moment into playback and re-installs itself through the same path (§3.9a)."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "7",
       "title": "What the UI shows",
       "blurb": [

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { arrangementStore } from '@/arrange/arrangementStore';
+import { config } from '@/config';
 import { RemixView } from './RemixView';
 
 // RemixView mounts the real audio engine, which builds an AudioContext jsdom does not implement.
@@ -10,7 +11,7 @@ vi.mock('@/audio/AudioEngine', () => ({
     setTracks = vi.fn(async () => {});
     setMasterVolume = vi.fn();
     // 40s samples: the PAD/MELODY 1:00 intervals are 1.5 loops, so "adjust" rounds them up to 2.
-    getLayerDuration = vi.fn(() => 40);
+    getLayerDuration = vi.fn(() => layerDur.sec);
     resumeContext = vi.fn();
     suspendContext = vi.fn();
     setTrackVolume = vi.fn();
@@ -26,6 +27,9 @@ vi.mock('@/audio/AudioEngine', () => ({
 // The scheduler's requestAnimationFrame loop mutates positionSec continuously, which races every
 // assertion about the transport. Its behaviour is covered by useModuleScheduler.test.ts; here we
 // only care that RemixView mounts it, which `mountedScheduler` records.
+// Sample length the fake engine reports. 40s by default; a test raises it to exercise the
+// long-sample rule, which only bites past config.audio.remix.longSampleSec.
+const { layerDur } = vi.hoisted(() => ({ layerDur: { sec: 40 } }));
 const { mountedScheduler } = vi.hoisted(() => ({ mountedScheduler: { count: 0 } }));
 vi.mock('@/arrange/useModuleScheduler', () => ({
   useModuleScheduler: vi.fn(() => { mountedScheduler.count += 1; }),
@@ -131,6 +135,7 @@ beforeEach(() => {
   vi.stubGlobal('URL', { createObjectURL: () => 'blob:x', revokeObjectURL: () => {} });
   // ...and clicking the download anchor makes jsdom log "navigation to another Document".
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  layerDur.sec = 40;
   exportCtl.fail = false;
   exportCtl.hold = false;
   exportCtl.release = null;
@@ -1064,5 +1069,48 @@ describe('RemixView — a mix you dialled in survives a redraw', () => {
 
     // A level belongs to a lane, not to a category — FIRE's MELODY is a different lane and starts flat.
     expect(arrangementStore.getState().tracks.find((t) => t.id === 'MELODY·FIRE')?.ceilingDb).toBe(0);
+  });
+});
+
+describe('RemixView — a long sample plays one pass', () => {
+  const LONG = config.audio.remix.longSampleSec + 60; // 4:00, past the threshold
+
+  it('cuts the interval to a single pass, checkbox or not', async () => {
+    layerDur.sec = LONG;
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(LONG));
+
+    // Authored PAD interval is 1:00, already under one pass — it stays. MELODY's is what moves.
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    const exempt = config.audio.remix.alwaysLoopCategories;
+    const shaped = exportCtl.lastArgs!.regions.filter((r) => !exempt.includes(r.trackId.split(String.fromCharCode(183))[0]));
+    expect(shaped.length).toBeGreaterThan(0);
+    for (const r of shaped) {
+      expect(r.exitSec - 0, r.trackId).toBeLessThanOrEqual(LONG + 0.001);
+    }
+  });
+
+  it('leaves the beds looping, however long their file', async () => {
+    layerDur.sec = LONG;
+    render(<RemixView />);
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(LONG));
+    // NOISE and BASS are exempt by config; nothing in this fixture draws NOISE, so assert the rule
+    // rather than the draw: the exemption list is what the view hands the function.
+    expect(config.audio.remix.alwaysLoopCategories).toContain('NOISE');
+    expect(config.audio.remix.alwaysLoopCategories).toContain('BASS');
+  });
+
+  it('leaves a short sample looping as before', async () => {
+    render(<RemixView />); // layerDur.sec is 40 here
+    await screen.findByTestId(laneRegion('PAD'));
+    await waitFor(() => expect(arrangementStore.getState().trackDurations['PAD·FIRE']).toBe(40));
+
+    await userEvent.click(screen.getByRole('button', { name: /Export WAV/ }));
+    await waitFor(() => expect(exportCtl.lastArgs).not.toBeNull());
+    // 1:00 authored, 0:40 sample, whole-loops on → 1:20. Untouched by the long-sample rule.
+    expect(exportCtl.lastArgs!.regions.find((r) => r.trackId === 'PAD·FIRE')?.exitSec).toBe(80);
   });
 });

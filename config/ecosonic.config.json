@@ -43,6 +43,13 @@
           "delay": 0.3
         }
       }
+    },
+    "remix": {
+      "longSampleSec": 180,
+      "alwaysLoopCategories": [
+        "NOISE",
+        "BASS"
+      ]
     }
   },
   "selection": {

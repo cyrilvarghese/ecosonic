@@ -11,7 +11,7 @@ describe('RulebookPage', () => {
   it('lists every section and rule as an index', () => {
     render(<RulebookPage />);
     expect(screen.getByRole('heading', { level: 1, name: /remix/i })).toBeInTheDocument();
-    expect(screen.getByText(/43 rules · 10 sections/)).toBeInTheDocument();
+    expect(screen.getByText(/47 rules · 11 sections/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^§3\.6/ })).toBeInTheDocument();
   });
 
@@ -28,7 +28,7 @@ describe('RulebookPage', () => {
     render(<RulebookPage />);
     await userEvent.type(screen.getByLabelText(/search the rules/i), 'whole loops');
 
-    expect(screen.getByText(/of 43 rules/)).toBeInTheDocument();
+    expect(screen.getByText(/of 47 rules/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^§5\.1/ })).toBeNull();
   });
 

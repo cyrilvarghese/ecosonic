@@ -345,6 +345,26 @@ It applies to the timeline, playback and export together.
 **Scope:** this removes the seam at the interval's *end*. It does not touch the loop wraps *inside*
 the interval (§5.2) — a 10:00 bar over a 1:56 sample still wraps five times.
 
+## 6a. Long samples play once
+
+**Not a checkbox.** Unlike §6 this always applies: it is a fact about the material rather than a
+preference about seams.
+
+**6a.1 — A long sample plays exactly one pass per interval.** Longer than
+`audio.remix.longSampleSec` (3:00), a file stops being a loop and becomes a composed passage; heard
+twice in a row it reads as a repeat rather than as a bed. The interval ends when the pass does.
+
+**6a.2 — Beds are exempt.** Categories in `audio.remix.alwaysLoopCategories` — `NOISE` and `BASS` —
+keep cycling however long their file is. Being continuous is their job, and a long file there is a
+long bed, not a passage.
+
+**6a.3 — Only ever shorter.** The start never moves (§6.5) and fades cap to the surviving width. An
+interval already shorter than one pass is left exactly as authored, as in §6.4.
+
+**6a.4 — Applied after the whole-loop trim**, so that trim cannot extend a long sample back out to
+two passes. Like §6 it needs sample lengths the engine reports only after loading, so it lands a
+moment into playback and re-installs itself through the same path (§3.9a).
+
 ## 7. What the UI shows
 
 - **Chips** list the candidates the current scope could draw from — element **and** section

@@ -41,6 +41,9 @@ export interface Rulebook {
 // groups arrived. `[1]` is the id throughout, so the shape stays legible without them.
 const SECTION = /^##\s+(\d+[a-z]?)\.\s+(.+?)\s*$/;
 /** `**3.6 — Title.** rest`, or `**2.1** rest` with no title. Both dash characters are accepted.
+ *  A title must sit on ONE line — this is per-line, so a wrapped one leaves the closing `**` out
+ *  of reach and the rule is swallowed. The rulebook test asserts every numbered rule in the file
+ *  reaches the parsed book, so that mistake fails the suite rather than losing a rule quietly.
  *  The title is matched lazily rather than as "anything but an asterisk": §3.4's title carries
  *  *italics*, and italics are single asterisks, so the lazy run still stops at the closing `**`. */
 const ENTRY = /^\*\*(\d+[a-z]?\.\d+[a-z]?)(?:\s*[—-]\s*(.+?))?\*\*(.*)$/;

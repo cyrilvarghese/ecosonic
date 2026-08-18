@@ -12,6 +12,7 @@ import { useModuleScheduler } from '@/arrange/useModuleScheduler';
 import { estimatedWavBytes, exportFreeMixWav } from '@/remix/renderFreeMix';
 import { DRY } from '@/audio/effects';
 import { adjustToWholeLoops } from '@/remix/wholeLoops';
+import { playLongOnce } from '@/remix/longSamples';
 import { useRemix, type RemixMode } from './useRemix';
 import { TrackPoolRow } from './TrackPoolRow';
 import { ResultTimeline } from './ResultTimeline';
@@ -146,7 +147,12 @@ export function RemixView() {
   // rarer choice. It has no effect until the engine reports sample lengths, so a mix that starts
   // before they land trims itself the moment they arrive (the effect below reinstalls it).
   const [wholeLoops, setWholeLoops] = useState(true);
-  const mixRegions = wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions;
+  // Long samples play ONE pass, whatever the checkbox says (§6a) — applied after the trim so the
+  // trim cannot extend one back out to two passes.
+  const mixRegions = playLongOnce(
+    wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions,
+    trackDurations, (id) => tracks.find((t) => t.id === id)?.category, config,
+  );
 
   // Play installs the mix ONCE. Reshape it while the transport is running — tick the whole-loops
   // box, or have the engine report a sample length that changes the trim — and the scheduler was
@@ -155,8 +161,11 @@ export function RemixView() {
   // fresh array every render and would reinstall the mix on each one.
   useEffect(() => {
     if (!playing) return;
-    setMixRegions(wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions);
-  }, [playing, wholeLoops, regions, trackDurations, totalSec, setMixRegions]);
+    setMixRegions(playLongOnce(
+      wholeLoops ? adjustToWholeLoops(regions, trackDurations, totalSec) : regions,
+      trackDurations, (id) => tracks.find((t) => t.id === id)?.category, config,
+    ));
+  }, [playing, wholeLoops, regions, trackDurations, totalSec, tracks, setMixRegions]);
 
   // Mute is part of the mix, not just monitoring — a muted track is absent from the export too. So
   // is volume: the renderer builds its envelope from ceilingDb, so the export takes the store's

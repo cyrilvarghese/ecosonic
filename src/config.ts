@@ -103,6 +103,13 @@ const EffectsSchema = z.object({
 export const ConfigSchema = z.object({
   audio: z.object({
     hybridThresholdBytes: z.number().int().positive(),
+    // A sample longer than `longSampleSec` is a composed passage rather than a loop, so it plays
+    // ONCE per interval instead of cycling. Beds listed in `alwaysLoopCategories` are exempt:
+    // their job is to be continuous, however long the file is.
+    remix: z.object({
+      longSampleSec: z.number().positive(),
+      alwaysLoopCategories: z.array(z.string()),
+    }),
     volume: z.object({
       minDb: z.number(),
       maxDb: z.number(),
